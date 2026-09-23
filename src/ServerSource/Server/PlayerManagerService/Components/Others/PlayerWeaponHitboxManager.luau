@@ -7,6 +7,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PlayerWeaponHitboxManager = {}
 
 ---- How often we check hitbox overlap. The attack cooldown is checked inside the loop.
@@ -141,8 +142,23 @@ function PlayerWeaponHitboxManager:ApplyDamage(player, rockState, part, damage)
 		return
 	end
 
+	local maxHp = part:GetAttribute("MaxHp")
+	local oldHp = rockState.hp
+
 	rockState.hp = rockState.hp - damage
 	part:SetAttribute("Hp", rockState.hp)
+
+	-- Сколько сегментов откололось этим ударом — столько кусочков руды получает
+	-- игрок (та же формула, что у визуала на клиенте, см. OreConfig.GetBrokenSegments).
+	if maxHp and maxHp > 0 then
+		local brokenPieces = OreConfig.GetBrokenSegments(rockState.hp, maxHp)
+			- OreConfig.GetBrokenSegments(oldHp, maxHp)
+		if brokenPieces > 0 then
+			local oreName = OreConfig.GetOreNameForSection(part:GetAttribute("Section"))
+			PlayerManagerService:AddOrePieces(player, oreName, brokenPieces)
+		end
+	end
+
 	PlayerManagerService.Client.HitRock:Fire(
 		player,
 		part:GetAttribute("StripId"),

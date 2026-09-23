@@ -21,13 +21,11 @@ local ProfileTemplate = {
 		Money = "140",
 	},
 
+	-- Добытая руда, которую игрок несёт с собой (см. PlayerOresManager).
 	Ores = {
-		-- ["Copper"] = 0,
-		-- ["Iron"] = 0,
-		-- ["Silver"] = 0,
-		-- ["Gold"] = 0,
-		-- ["Platinum"] = 0,
-		-- ["Diamond"] = 0,
+		TotalWeight = 0,
+		-- [oreName] = { Weight = number, Pieces = number }
+		Items = {},
 	},
 
 	Multipliers = {

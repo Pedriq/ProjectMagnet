@@ -10,6 +10,9 @@ local PlayerManagerService = Knit.CreateService({
 	PlayersInventories = {},
 	Client = {
 		HitRock = Knit.CreateSignal(),
+		-- FireAll(player, oreName) — один кусочек руды улетел из игрока в пресс
+		-- (см. PlayerOresManager, клиентский OreUnloadEffects).
+		UnloadOrePiece = Knit.CreateSignal(),
 	},
 })
 
@@ -132,6 +135,18 @@ end
 
 function PlayerManagerService:GetPlayerMobility(player)
 	return ProfileService:GetData(player, { "Stats", "Mobility" })
+end
+
+function PlayerManagerService:GetPlayerOres(player)
+	return ProfileService:GetData(player, { "Ores" })
+end
+
+function PlayerManagerService:ChangePlayerOres(player, ores)
+	ProfileService:ChangeData(player, { "Ores" }, ores)
+end
+
+function PlayerManagerService:AddOrePieces(player, oreName, pieces)
+	self.Components.PlayerOresManager:AddOrePieces(player, oreName, pieces)
 end
 
 function PlayerManagerService:GetPlayerStatsValues(player)

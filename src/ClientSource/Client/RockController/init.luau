@@ -77,6 +77,10 @@ function RockController:KnitStart()
 		inRockZone = inZone
 	end)
 
+	PlayerManagerService.UnloadOrePiece:Connect(function(unloadingPlayer, oreName)
+		self.Components.OreUnloadEffects:PlayUnload(unloadingPlayer, oreName)
+	end)
+
 	PlayerManagerService.HitRock:Connect(function(stripId, rockIndex, maxHp, newHp)
 		if not stripId or not rockIndex then
 			return
