@@ -1,8 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local RockGeometry = require(ReplicatedStorage.SharedSource.Objects.RockGeometry)
-local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
+local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
 
 local RockVisualizer = {}
 
@@ -112,10 +111,13 @@ function RockVisualizer:UpdateRockDamage(hp, maxHp, visualData, animate)
 		return
 	end
 
-	local MAX_SEGMENTS = OreConfig.SEGMENTS_PER_ROCK
+	local MAX_SEGMENTS = 8
 
-	-- Та же формула, по которой сервер начисляет кусочки руды.
-	local targetBroken = OreConfig.GetBrokenSegments(hp, maxHp)
+	local hpPercent = math.clamp(hp / maxHp, 0, 1)
+
+	local targetRemaining = math.ceil(MAX_SEGMENTS * hpPercent)
+
+	local targetBroken = MAX_SEGMENTS - targetRemaining
 
 	if targetBroken <= visualData.BrokenSegments then
 		return

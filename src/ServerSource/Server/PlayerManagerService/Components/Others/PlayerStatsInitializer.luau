@@ -5,7 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local PlayerStatsContainer = require(ReplicatedStorage.SharedSource.Objects.PlayerStatsContainer)
+local PlayerStatsContainer = require(ReplicatedStorage.SharedSource.Object.PlayerStatsContainer)
 local PlayerStatsInitializer = {}
 
 ---- Utilities
@@ -30,8 +30,6 @@ function PlayerStatsInitializer:InitPlayerStats(player)
 
 	stats:UpdateRange(player:GetAttribute("RangeLevel"))
 
-	stats:UpdateAgility(player:GetAttribute("AgilityLevel"))
-
 	stats:UpdateCapacity(player:GetAttribute("CapacityLevel"))
 
 	stats:UpdateMobility(player:GetAttribute("MobilityLevel"))
@@ -41,14 +39,13 @@ function PlayerStatsInitializer:InitPlayerStats(player)
 		stats:UpdateRange(player:GetAttribute("RangeLevel"))
 
 		PlayerManagerService:CreateWeaponHitbox(player)
-	end)
-
-	player:GetAttributeChangedSignal("AgilityLevel"):Connect(function()
-		stats:UpdateAgility(player:GetAttribute("AgilityLevel"))
+		-- пересоздаёт модель оружия с масштабом под новый уровень (RangeScale.Multiplier)
+		PlayerManagerService:GiveWeapon(player)
 	end)
 
 	player:GetAttributeChangedSignal("CapacityLevel"):Connect(function()
 		stats:UpdateCapacity(player:GetAttribute("CapacityLevel"))
+		PlayerManagerService:PushCarryInfo(player)
 	end)
 
 	player:GetAttributeChangedSignal("MobilityLevel"):Connect(function()

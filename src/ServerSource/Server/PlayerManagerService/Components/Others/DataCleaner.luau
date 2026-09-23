@@ -44,6 +44,20 @@ function DataCleaner:CleanInventoryData(player)
 	end
 end
 
+function DataCleaner:CleanBuffs(player)
+	if PlayerManagerService.PlayerBuffs then
+		PlayerManagerService.PlayerBuffs[player.UserId] = nil
+	end
+end
+
+function DataCleaner:CleanLeaderstats(player)
+	local connection = PlayerManagerService.LeaderstatsConnections[player.UserId]
+	if connection then
+		connection:Disconnect()
+		PlayerManagerService.LeaderstatsConnections[player.UserId] = nil
+	end
+end
+
 function DataCleaner:CleanPlayerCollisionGrooup(player)
 	local charGroup = "Char_" .. player.UserId
 	local rockGroup = "Rock_" .. player.UserId
@@ -63,6 +77,8 @@ function DataCleaner:CleanPlayerData(player)
 	self:CleanStripData(player)
 	self:CleanPlayerCollisionGrooup(player)
 	self:CleanInventoryData(player)
+	self:CleanLeaderstats(player)
+	self:CleanBuffs(player)
 end
 
 function DataCleaner.Start() end

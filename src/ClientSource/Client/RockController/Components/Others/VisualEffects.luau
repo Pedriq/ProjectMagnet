@@ -1,8 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local VisualEffects = {}
 
@@ -18,8 +18,16 @@ local FLASH_OUT_TIME = 0.12
 
 local FLASH_FILL_TRANSPARENCY = 0.35
 
--- Страховка: если сегмент так и не долетел до игрока (персонаж пропал и т.п.) — удаляем.
-local SEGMENT_LIFETIME = 3
+-- «Магнит»: отколотый сегмент сначала чуть выскакивает из камня вверх/вбок,
+-- затем по дуге с ускорением летит в игрока, уменьшается и исчезает.
+local MAGNET_POP_HEIGHT = 1 -- лёгкий изгиб траектории вверх (0 = строго по прямой)
+local MAGNET_POP_SPREAD = 1 -- случайный разброс изгиба по горизонтали
+local MAGNET_TIME_MIN = 0.45 -- длительность полёта, сек (случайно в диапазоне)
+local MAGNET_TIME_MAX = 0.65
+local MAGNET_SHRINK_FROM = 0.55 -- с какой доли пути сегмент начинает уменьшаться
+local MAGNET_END_SCALE = 0.1 -- размер в момент «присасывания» (доля исходного)
+local MAGNET_SPIN_MAX = 12 -- рад/сек, вращение в полёте
+local MAGNET_TARGET_OFFSET = Vector3.new(0, 0.5, 0) -- точка на игроке (от HumanoidRootPart)
 
 local function getEffectData(model)
 	local data = activeEffects[model]
@@ -202,76 +210,69 @@ function VisualEffects:HitRock(model)
 	self:FlashRock(model)
 end
 
---[[
-	«Магнит»: отколотый сегмент сначала коротко отскакивает от камня (POP),
-	потом с разгоном летит в HumanoidRootPart игрока, уменьшается на подлёте
-	и исчезает. Двигаем вручную (Anchored + CFrame) одним общим Heartbeat —
-	без физики полёт предсказуемый и догоняет бегущего игрока.
-]]
-local POP_TIME = 0.25 -- сколько длится отскок от камня
-local POP_GRAVITY = 60
-local HOME_START_SPEED = 20
-local HOME_ACCEL = 140
-local HOME_MAX_SPEED = 120
-local HOME_TURN_RATE = 10 -- насколько резко доворачивает на игрока
-local SHRINK_DISTANCE = 6 -- с какой дистанции начинает уменьшаться
-local COLLECT_DISTANCE = 1.5 -- «долетел» — исчезает
-
-local flyingSegments = {}
+-- Сегменты, летящие в игрока. Двигаются одним общим Heartbeat-циклом, который
+-- подключён только пока в полёте есть хоть один сегмент.
+local flying = {}
 local flyConnection: RBXScriptConnection? = nil
 
-local function getTargetPosition(): Vector3?
+local function magnetTarget(): Vector3?
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	return root and root.Position
+	return root and root.Position + MAGNET_TARGET_OFFSET
 end
 
-local function stepFlyingSegments(dt: number)
-	local target = getTargetPosition()
+local function stepFlying()
+	local now = os.clock()
+	-- Цель берётся каждый кадр — сегмент догоняет игрока, даже если тот бежит.
+	local target = magnetTarget()
 
-	for i = #flyingSegments, 1, -1 do
-		local s = flyingSegments[i]
-		local part = s.part
-		s.age += dt
+	for i = #flying, 1, -1 do
+		local f = flying[i]
+		local part = f.part
 
-		local done = not part.Parent or not target or s.age > SEGMENT_LIFETIME
-
-		if not done then
-			if s.age < POP_TIME then
-				s.velocity += Vector3.new(0, -POP_GRAVITY * dt, 0)
-			else
-				local toTarget = target - s.position
-				local speed = math.min(HOME_START_SPEED + HOME_ACCEL * (s.age - POP_TIME), HOME_MAX_SPEED)
-				if toTarget.Magnitude > 1e-3 then
-					s.velocity = s.velocity:Lerp(toTarget.Unit * speed, math.min(1, HOME_TURN_RATE * dt))
-				end
-			end
-
-			s.position += s.velocity * dt
-			s.rotation *= CFrame.Angles(s.spin.X * dt, s.spin.Y * dt, s.spin.Z * dt)
-			part.CFrame = CFrame.new(s.position) * s.rotation
-
-			local distance = (target - s.position).Magnitude
-			if s.age >= POP_TIME and distance < SHRINK_DISTANCE then
-				part.Size = s.size * math.max(distance / SHRINK_DISTANCE, 0.15)
-			end
-
-			done = s.age >= POP_TIME and distance <= COLLECT_DISTANCE
+		if not part.Parent then
+			table.remove(flying, i)
+			continue
 		end
 
-		if done then
+		local elapsed = now - f.startTime
+		if elapsed < 0 then
+			continue -- ещё ждёт своей очереди (стаггер при полном разрушении)
+		end
+
+		if target then
+			f.goal = target
+		end
+
+		local t = math.clamp(elapsed / f.duration, 0, 1)
+		-- Сразу летит к игроку (стартовая скорость не нулевая, в отличие от t*t,
+		-- где кусок первые кадры почти стоял на месте) и ускоряется к концу —
+		-- «засасывание» магнитом.
+		local e = t * (1 + t) / 2
+
+		-- Квадратичная кривая Безье: старт -> точка дуги над камнем -> игрок.
+		local position = f.startPos:Lerp(f.control, e):Lerp(f.control:Lerp(f.goal, e), e)
+		part.CFrame = CFrame.new(position) * f.startRotation * CFrame.fromAxisAngle(f.spinAxis, f.spinSpeed * elapsed)
+
+		if t > MAGNET_SHRINK_FROM then
+			local k = (t - MAGNET_SHRINK_FROM) / (1 - MAGNET_SHRINK_FROM)
+			part.Size = f.baseSize * (1 - (1 - MAGNET_END_SCALE) * k)
+		end
+
+		if t >= 1 then
 			part:Destroy()
-			table.remove(flyingSegments, i)
+			table.remove(flying, i)
 		end
 	end
 
-	if #flyingSegments == 0 and flyConnection then
+	if #flying == 0 and flyConnection then
 		flyConnection:Disconnect()
 		flyConnection = nil
 	end
 end
 
-function VisualEffects:BreakSegment(segment)
+-- delay — задержка старта полёта (для «ручейка» сегментов при полном разрушении).
+function VisualEffects:BreakSegment(segment, delay: number?)
 	if not segment or not segment:IsA("BasePart") then
 		return
 	end
@@ -288,39 +289,62 @@ function VisualEffects:BreakSegment(segment)
 		weld:Destroy()
 	end
 
-	segment.Parent = workspace
+	local startCFrame = segment.CFrame
+
 	segment.Anchored = true
 	segment.CanCollide = false
 	segment.CanTouch = false
 	segment.CanQuery = false
+	segment.Parent = workspace
 
-	local cf = segment.CFrame
-	table.insert(flyingSegments, {
+	local goal = magnetTarget()
+	if not goal then
+		-- Персонажа нет (респавн) — лететь некуда, просто убираем кусок.
+		segment:Destroy()
+		return
+	end
+
+	local startPos = startCFrame.Position
+	local duration = MAGNET_TIME_MIN + math.random() * (MAGNET_TIME_MAX - MAGNET_TIME_MIN)
+	local startDelay = delay or 0
+
+	table.insert(flying, {
 		part = segment,
-		age = 0,
-		position = cf.Position,
-		rotation = cf - cf.Position,
-		size = segment.Size,
-		velocity = Vector3.new(math.random(-10, 10), math.random(15, 25), math.random(-10, 10)),
-		spin = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10)),
+		startPos = startPos,
+		control = startPos
+			+ Vector3.new(
+				(math.random() * 2 - 1) * MAGNET_POP_SPREAD,
+				MAGNET_POP_HEIGHT,
+				(math.random() * 2 - 1) * MAGNET_POP_SPREAD
+			),
+		goal = goal,
+		startTime = os.clock() + startDelay,
+		duration = duration,
+		baseSize = segment.Size,
+		startRotation = startCFrame.Rotation,
+		spinAxis = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5).Unit,
+		spinSpeed = (math.random() * 2 - 1) * MAGNET_SPIN_MAX,
 	})
 
+	-- Страховка: если цикл по какой-то причине не доведёт кусок до конца.
+	Debris:AddItem(segment, startDelay + duration + 1)
+
 	if not flyConnection then
-		flyConnection = RunService.Heartbeat:Connect(stepFlyingSegments)
+		flyConnection = RunService.Heartbeat:Connect(stepFlying)
 	end
 end
 
 -- Сколько живёт «скорлупа» модели после того, как все сегменты разлетелись.
--- Сегменты уже отвязаны в workspace со своим Debris (SEGMENT_LIFETIME) — держим
--- модель ровно на время финальной вспышки.
+-- Сегменты уже отвязаны в workspace и летят в игрока сами — держим модель
+-- ровно на время финальной вспышки.
 local SHATTER_MODEL_CLEANUP = 0.3
 
 --[[
 	Финальный развал камня по смертельному удару. Отвязан от лайфтайма модели:
 	раньше DeleteRockVisual делал visualData.Model:Destroy() сразу, и при ваншоте
 	импакт (flash + разлёт сегментов) не успевал проиграться — модель исчезала
-	в тот же кадр, а то и раньше remote-хендлера HitRock. Здесь бьём все
-	оставшиеся сегменты физикой, даём вспышку и чистим «скорлупу» отложенно.
+	в тот же кадр, а то и раньше remote-хендлера HitRock. Здесь все оставшиеся
+	сегменты сразу летят в игрока, даём вспышку и чистим «скорлупу» отложенно.
 ]]
 function VisualEffects:ShatterRock(model)
 	if not model or model:GetAttribute("Shattered") then

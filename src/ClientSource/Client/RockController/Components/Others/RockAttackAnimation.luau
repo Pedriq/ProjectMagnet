@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 
 -- Анимация удара по камню. Играет на каждый РЕАЛЬНЫЙ автоудар (см.
 -- RockController:HitRock — фирится сервером на фактическое попадание, не на
--- клик мышью). Темп фиксированный — BaseStatsValues.RockAttackCooldown.
+-- клик мышью).
 --
 -- 2026-09-18: несколько анимаций в пуле — каждый удар берётся случайная из них (см.
 -- PlayAttack), чтобы удары не выглядели одинаково подряд.
@@ -25,7 +25,7 @@ local state = {
 }
 
 -- Верхний предел ускорения — на случай экстремально короткого кулдауна
--- (если кто-то сильно уменьшит BaseStatsValues.RockAttackCooldown), визуально
+-- (если кто-то уменьшит BaseStatsValues.AttacksCooldawn сильнее задуманного), визуально
 -- всё равно нечитаемо быстрее.
 local MAX_SPEED = 8
 
@@ -65,8 +65,8 @@ end
 
 --[[
 	Вызывается RockController:HitRock на каждый реальный автоудар — cooldown это
-	кулдаун атаки (BaseStatsValues.RockAttackCooldown), а не измеренный по
-	таймеру интервал: скорость анимации подгоняется под него напрямую.
+	фиксированный кулдаун атаки (BaseStatsValues.AttacksCooldawn): скорость
+	анимации подгоняется под него, чтобы взмах укладывался между ударами.
 ]]
 function module:PlayAttack(cooldown: number?)
 	local character = player.Character

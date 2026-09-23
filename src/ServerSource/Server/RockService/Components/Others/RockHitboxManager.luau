@@ -6,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local RockGeometry = require(ReplicatedStorage.SharedSource.Objects.RockGeometry)
+local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
 local RockHitboxManager = {}
 
 local PlayersRockFolder = workspace:WaitForChild("PlayersRock")

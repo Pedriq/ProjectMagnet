@@ -1,80 +1,46 @@
--- HP каждого камня в секции. Урон за удар = Progress.Fat игрока (было Progress.Level, см.
--- PlayerWeaponHitboxManager:ApplyDamage), камень ломается при hp <= 0. Все камни секции стартуют с MaxHp.
---
--- 2026-09-15: урон перевели с Level на Fat (см. PlayerWeaponHitboxManager) — поэтому MaxHp теперь тоже
--- в шкале Fat, а не Level: MaxHp = (кумулятивный Fat, чтобы дойти до ожид. уровня, см. ClickerConfig/
--- RebirthConfig) × удары (та же геометрическая лестница 4→16, что и была на Level). См. Excel
--- «BirdPlace_Numbers.xlsx» -> лист «Симуляция камней».
---
--- ВАЖНО: это чинит только базовый случай (игрок ещё не упёрся в потолок реберса) — Fat в профиле
--- по-прежнему ничем не ограничен, а Level жёстко капается Rebirth×10 — так что игрок, закапавшийся
--- на потолке и продолжающий фармить (ждёт реберса), рано или поздно снова начнёт одношотно всё
--- подряд. Первый кап (ребёрс 1) — уже на уровне 10, то есть очень быстро.
---
---            ожид. Fat (кумулятивный) | ударов | MaxHp
---  Common          456                    4.0     1824
---  Uncommon        13153                  4.5     59055
---  Rare            208770                 5.0     1052135
---  Epic            3222647                5.7     18230044
---  Legendary       49657512               6.3     315305547
---  Mythic          765080489              7.1     5452873815
---  Secret          11694580197            8.0     93556641576
---  Godly           112005624781           9.0     1005776504111
---  Divine          493324901782          10.1     4972403425540
---  Celestial       1232774791553         11.3     13947254636527
---  Eternal         2197654586163         12.7     27908473615503
---  Cosmic          3162482675569         14.3     45079228188887
---  Ascendant       4170946271932         16.0     66735140350912
-return {
-	Common = {
-		MaxHp = 1824,
-	},
+--[[
+	RockConfig — HP камня по редкости.
 
-	Uncommon = {
-		MaxHp = 59055,
-	},
+	Экспоненциальная кривая: HP(rarity) = round(BASE_HP * SCALE * RATIO ^ (index - 1)),
+	index — позиция редкости в RarityOrder (Common = 1). Значения приблизительные
+	(баланс ещё не финализирован), не завязывайся на конкретные числа.
 
-	Rare = {
-		MaxHp = 1052135,
-	},
+	BASE_HP = 10 (Common), RATIO ~6.4 даёт Ascendant (index 13) ~50b HP.
+	SCALE — общий множитель поверх кривой: когда весь баланс нужно будет поднять
+	в разы, крути только его, не трогая RATIO/BASE_HP.
+]]
 
-	Epic = {
-		MaxHp = 18230044,
-	},
+local BASE_HP = 10
+local RATIO = 6.4
+local SCALE = 1
 
-	Legendary = {
-		MaxHp = 315305547,
-	},
-
-	Mythic = {
-		MaxHp = 5452873815,
-	},
-
-	Secret = {
-		MaxHp = 93556641576,
-	},
-
-	Godly = {
-		MaxHp = 1005776504111,
-	},
-
-	Divine = {
-		MaxHp = 4972403425540,
-	},
-
-	Celestial = {
-		MaxHp = 13947254636527,
-	},
-
-	Eternal = {
-		MaxHp = 27908473615503,
-	},
-
-	Cosmic = {
-		MaxHp = 45079228188887,
-	},
-
-	Ascendant = {
-		MaxHp = 66735140350912,
-	},
+local RarityOrder = {
+	"Common",
+	"Uncommon",
+	"Rare",
+	"Epic",
+	"Legendary",
+	"Mythic",
+	"Secret",
+	"Godly",
+	"Divine",
+	"Celestial",
+	"Eternal",
+	"Cosmic",
+	"Ascendant",
 }
+
+local RockConfig = {}
+
+RockConfig.RarityOrder = RarityOrder
+RockConfig.BASE_HP = BASE_HP
+RockConfig.RATIO = RATIO
+RockConfig.SCALE = SCALE
+
+for index, rarity in ipairs(RarityOrder) do
+	RockConfig[rarity] = {
+		MaxHp = math.floor(BASE_HP * SCALE * RATIO ^ (index - 1) + 0.5),
+	}
+end
+
+return RockConfig

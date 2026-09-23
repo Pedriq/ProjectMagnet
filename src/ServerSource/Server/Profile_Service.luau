@@ -80,72 +80,6 @@ local function HandlePlayerRemoving(player)
 	end
 end
 
-function ProfileService:GetData(player, redirectories)
-	local profile, profileData = ProfileService:GetProfile(player)
-
-	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
-		return nil
-	end
-
-	local directData = profileData
-
-	for i = 1, #redirectories do
-		if directData[redirectories[i]] == nil then
-			return nil
-		end
-
-		directData = directData[redirectories[i]]
-	end
-
-	return directData
-end
-
--- function ProfileService:ChangeData(player, redirectories, newValue)
--- 	local profile, profileData = ProfileService:GetProfile(player)
-
--- 	if not profileData then
--- 		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
--- 		return
--- 	end
-
--- 	local directData = profileData
-
--- 	-- Navigate through the redirectories path
--- 	for i = 1, #redirectories do
--- 		if not directData[redirectories[i]] and i ~= #redirectories then
--- 			local redirectoriesPath = "profileData"
--- 			for j = 1, i do
--- 				redirectoriesPath = redirectoriesPath .. "." .. redirectories[j]
--- 			end
--- 			error(
--- 				"'"
--- 					.. redirectoriesPath
--- 					.. "' table does not exist. ALWAYS PREVENT THIS BY MAKING TABLES INSIDE PROFILETEMPLATE."
--- 			)
--- 			return
--- 		end
-
--- 		if i ~= #redirectories then
--- 			directData = directData[redirectories[i]]
--- 		end
--- 	end
-
--- 	-- Set the new value
--- 	directData[redirectories[#redirectories]] = newValue
-
--- 	-- Синхронизация leaderstats: если путь совпал с одним из зарегистрированных -
--- 	-- сразу обновляем видимое значение, без ожидания следующего входа игрока
--- 	local statName = matchLeaderstatPath(redirectories)
--- 	if statName then
--- 		syncLeaderstat(player, statName, newValue)
--- 	end
-
--- 	-- Fire update signals
--- 	ProfileService.Client.UpdateSpecificData:Fire(player, redirectories, newValue)
--- 	ProfileService.UpdateSpecificData:Fire(player, redirectories, newValue)
--- end
-
 function ProfileService:WaitUntilProfileLoaded(player)
 	repeat
 		task.wait(2)
@@ -207,6 +141,27 @@ function ProfileService:ChangeData(player, redirectories, newValue)
 	ProfileService.UpdateSpecificData:Fire(player, redirectories, newValue)
 end
 
+function ProfileService:GetData(player, redirectories)
+	local profile, profileData = ProfileService:GetProfile(player)
+
+	if not profileData then
+		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		return nil
+	end
+
+	local directData = profileData
+
+	for i = 1, #redirectories do
+		if directData[redirectories[i]] == nil then
+			return nil
+		end
+
+		directData = directData[redirectories[i]]
+	end
+
+	return directData
+end
+
 function ProfileService.Client:GetOtherPlayer_ProfileData(player, otherPlayer)
 	local _, profileData = ProfileService:GetProfile(otherPlayer)
 	return profileData
@@ -238,6 +193,60 @@ function ProfileService:KnitStart()
 		local _, profileData = ProfileService:GetProfile(player)
 		ProfileService.Client.GetData:Fire(player, profileData)
 	end)
+end
+
+-- ==== Special for Rock game
+function ProfileService:AddItem(player, itemId, itemData)
+	local profile, profileData = ProfileService:GetProfile(player)
+	if not profileData then
+		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		return false
+	end
+
+	if profileData.Items[itemId] then
+		warn("Item with id " .. itemId .. " already exists for player: " .. player.Name)
+		return false
+	end
+
+	profileData.Items[itemId] = itemData
+
+	ProfileService.Client.UpdateSpecificData:Fire(player, { "Items", "Add" }, itemId, itemData)
+	ProfileService.UpdateSpecificData:Fire(player, { "Items", "Add" }, itemId, itemData)
+
+	return true
+end
+
+function ProfileService:RemoveItem(player, itemId)
+	local profile, profileData = ProfileService:GetProfile(player)
+	if not profileData then
+		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		return false
+	end
+
+	if not profileData.Items[itemId] then
+		warn("Item with id " .. tostring(itemId) .. " not found for player: " .. player.Name)
+		return false
+	end
+
+	profileData.Items[itemId] = nil
+
+	ProfileService.Client.UpdateSpecificData:Fire(player, { "Items", "Remove" }, itemId)
+	ProfileService.UpdateSpecificData:Fire(player, { "Items", "Remove" }, itemId)
+
+	return true
+end
+
+function ProfileService:ClearItems(player)
+	local profile, profileData = ProfileService:GetProfile(player)
+	if not profileData then
+		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		return
+	end
+
+	profileData.Items = {}
+
+	ProfileService.Client.UpdateSpecificData:Fire(player, { "Items", "Clear" })
+	ProfileService.UpdateSpecificData:Fire(player, { "Items", "Clear" })
 end
 
 function ProfileService:KnitInit()

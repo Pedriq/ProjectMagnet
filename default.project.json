@@ -28,6 +28,10 @@
       "StarterPlayerScripts": {
         "KnitClient": {
           "$path": "src/KnitClient"
+        },
+
+        "InitPlayerUI": {
+          "$path": "src/InitPlayerUI"
         }
       }
     }

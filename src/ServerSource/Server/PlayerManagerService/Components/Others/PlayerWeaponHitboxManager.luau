@@ -6,33 +6,25 @@ local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
-local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PlayerWeaponHitboxManager = {}
 
----- How often we check hitbox overlap. The attack cooldown is checked inside the loop.
-local HITBOX_CHECK_INTERVAL = 0.1
-
--- ТЕСТ: фиксированный урон по камням вместо Progress.Fat. nil — брать из профиля.
-local TEST_DAMAGE = 10
--- ТЕСТ: огромный полупрозрачный хитбокс атаки (для теста производительности). nil — обычный.
-local TEST_HITBOX_SIZE = Vector3.new(60, 10, 60)
-local TEST_HITBOX_TRANSPARENCY = 0.85
-
----- [userId] = os.clock() timestamp of the last landed attack
-local lastAttackTime = {}
+local WEAPON_HITBOX_FRONT_GAP = 1 -- зазор от игрока до ближней грани хитбокса (студы)
 
 ---- Utilities
 local utilsFolder = ReplicatedStorage.SharedSource.Utilities
 
 ---- Knit Services
 local PlayerManagerService
-local RockService
+local ClickerService
 
 ---- Datas
+local WeaponData = require(ReplicatedStorage.SharedSource.Datas.WeaponData)
 
 ---- Assets
-function PlayerWeaponHitboxManager:CreateWeaponHitbox(player)
+function PlayerWeaponHitboxManager:CreateWeaponHitbox(player, weaponName)
+	print("In create weapon hitbox")
 	local character = player.Character or player.CharacterAdded:Wait()
 	local root = character:FindFirstChild("HumanoidRootPart")
 
@@ -41,16 +33,21 @@ function PlayerWeaponHitboxManager:CreateWeaponHitbox(player)
 		return
 	end
 
+	if not WeaponData[weaponName] then
+		warn("Weapon data not found for weapon: " .. weaponName)
+		return
+	end
+
 	if character:FindFirstChild("WeaponHitbox") then
 		character:FindFirstChild("WeaponHitbox"):Destroy()
 	end
 
+	local size = PlayerManagerService:GetPlayerStatsValues(player).AttackRange
+
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "WeaponHitbox"
-	hitbox.Size = TEST_HITBOX_SIZE or PlayerManagerService:GetPlayerStatsValues(player).AttackRange
-	hitbox.Transparency = TEST_HITBOX_TRANSPARENCY or 1
-	hitbox.Color = Color3.fromRGB(255, 60, 60)
-	hitbox.CastShadow = false
+	hitbox.Size = size
+	hitbox.Transparency = 0.9
 	hitbox.CanCollide = false
 	hitbox.CanQuery = true
 	hitbox.CanTouch = false
@@ -63,12 +60,13 @@ function PlayerWeaponHitboxManager:CreateWeaponHitbox(player)
 	weld.Part1 = hitbox
 	weld.Parent = hitbox
 
-	-- В тестовом режиме хитбокс по центру игрока (бьёт во все стороны), иначе — чуть впереди.
-	hitbox.CFrame = root.CFrame * (TEST_HITBOX_SIZE and CFrame.identity or CFrame.new(0, 0, -3))
+	-- Ближняя грань хитбокса всегда в WEAPON_HITBOX_FRONT_GAP студ перед игроком,
+	-- дальше он растёт только вперёд (а не растягиваясь наполовину игроку за спину).
+	hitbox.CFrame = root.CFrame * CFrame.new(0, 0, -(WEAPON_HITBOX_FRONT_GAP + size.Z / 2))
 	hitbox.Parent = character
 end
 
-function PlayerWeaponHitboxManager:CheckHitsForPlayer(player)
+function PlayerWeaponHitboxManager:CollectTargets(player)
 	local OverlapParams = OverlapParams.new()
 	OverlapParams.FilterType = Enum.RaycastFilterType.Exclude
 	OverlapParams.FilterDescendantsInstances = {}
@@ -79,129 +77,94 @@ function PlayerWeaponHitboxManager:CheckHitsForPlayer(player)
 		return {}
 	end
 
-	-- Кулдаун атаки по камням фиксированный (BaseStatsValues.RockAttackCooldown) —
-	-- не зависит ни от кликов, ни от Agility-стата (PlayerStatsContainer).
-	local attackCooldown = BaseStatsValues.RockAttackCooldown
-	local now = os.clock()
-
-	if lastAttackTime[player.UserId] and now - lastAttackTime[player.UserId] < attackCooldown then
-		return {}
-	end
-
 	OverlapParams.CollisionGroup = hitbox.CollisionGroup
 
 	local parts = workspace:GetPartsInPart(hitbox, OverlapParams)
 
-	local hit = false
-	-- 2026-09-15: урон переведён с Level на Fat по просьбе владельца (было PlayerManagerService:GetPlayerLevel).
-	-- ВНИМАНИЕ: Fat в профиле ничем не ограничен и продолжает расти даже после того, как Level упёрся в потолок
-	-- реберса (Rebirth × 10) — то есть игрок, который закапался на потолке и продолжает фармить, будет наращивать
-	-- урон по камням бесконечно, хотя по уровню его прогресс стоит на месте. Обсуждали это отдельно — решение
-	-- оставить как есть (без клампа потолком реберса).
-	local damage = TEST_DAMAGE or PlayerManagerService:GetPlayerFat(player) or 1
-
-	-- Хитбоксы всех игроков стоят в одних координатах, а overlap по коллижн-группе
-	-- возвращает и чужие (Rock_X ↔ Rock_Y/Default коллидят по умолчанию). Бьём
-	-- только свои — иначе ApplyDamage добьёт чужой парт, а свой оставит с cut=true.
-	local ownFolderName = player.UserId .. "_Rock"
-
+	-- Собираем задетые камни, ничего пока не начисляя и не проигрывая —
+	-- иначе на каждый тик хитбокса (их может быть больше, чем реальных взмахов)
+	-- будут заново срабатывать урон/начисление/визуальные эффекты.
+	local targets = {}
 	for _, part in ipairs(parts) do
 		if CollectionService:HasTag(part, "RockHitbox") then
-			local stripFolder = part.Parent
-
-			if not stripFolder or not stripFolder.Parent or stripFolder.Parent.Name ~= ownFolderName then
-				continue
-			end
-
 			local rockState = PlayerManagerService:GetRockState(
 				player.UserId,
 				part:GetAttribute("StripId"),
 				part:GetAttribute("RockIndex")
 			)
 
-			if not rockState then
-				continue
+			if rockState then
+				table.insert(targets, { part = part, rockState = rockState })
 			end
-
-			if not hit then
-				hit = true
-				lastAttackTime[player.UserId] = now
-				-- PlayerManagerService:PlayAttackAnimation(player)
-			end
-
-			self:ApplyDamage(player, rockState, part, damage)
 		end
 	end
 
-	return {}
+	return targets
 end
 
-function PlayerWeaponHitboxManager:ApplyDamage(player, rockState, part, damage)
-	-- Камень уже добит, но модель ещё не удалилась (отложенный Destroy) — не бьём повторно.
-	if rockState.cut then
+-- Один тик StartPlayerLoop (раз в AttackCooldown) = один удар: начисление, урон
+-- и визуальные эффекты (ShakeRock/FlashRock, попап силы) идут разом — не за
+-- каждый задетый камень.
+function PlayerWeaponHitboxManager:ApplyHit(player)
+	local targets = self:CollectTargets(player)
+	if #targets == 0 then
 		return
 	end
 
-	local maxHp = part:GetAttribute("MaxHp")
-	local oldHp = rockState.hp
+	-- Урон по камню = общая накопленная сила игрока (Stats.Strength) ДО начисления за этот взмах.
+	local totalStrength = EtNum.convert(ClickerService:GetPlayerStrength(player))
+	local damage = math.max(1, math.floor(EtNum.toNumber(totalStrength) + 0.5))
 
-	rockState.hp = rockState.hp - damage
-	part:SetAttribute("Hp", rockState.hp)
+	ClickerService:Click(player)
+	-- Ровно 1 раз за взмах — UI-попап прироста силы слушает именно этот сигнал,
+	-- а не HitRock (тот стреляет по каждому задетому камню).
+	PlayerManagerService.Client.AttackHit:Fire(player)
 
-	-- Сколько сегментов откололось этим ударом — столько кусочков руды получает
-	-- игрок (та же формула, что у визуала на клиенте, см. OreConfig.GetBrokenSegments).
-	if maxHp and maxHp > 0 then
-		local brokenPieces = OreConfig.GetBrokenSegments(rockState.hp, maxHp)
-			- OreConfig.GetBrokenSegments(oldHp, maxHp)
-		if brokenPieces > 0 then
-			local oreName = OreConfig.GetOreNameForSection(part:GetAttribute("Section"))
-			PlayerManagerService:AddOrePieces(player, oreName, brokenPieces)
+	-- ВАЖНО: сами part:Destroy() для разбитых камней откладываются ДО ПОСЛЕ всех
+	-- HitRock — иначе клиент может получить репликацию удаления part'а раньше самого
+	-- события HitRock, DeleteRockVisual снесёт визуал первым, и обработчик
+	-- HitRock просто не найдёт камень в VisualizedRocks (эффект удара пропадёт).
+	local killedParts = {}
+
+	for _, target in ipairs(targets) do
+		local isLethal = self:ApplyDamage(target.rockState, target.part, damage)
+
+		PlayerManagerService.Client.HitRock:Fire(
+			player,
+			target.part:GetAttribute("StripId"),
+			target.part:GetAttribute("RockIndex"),
+			target.part:GetAttribute("MaxHp"),
+			target.rockState.hp
+		)
+
+		if isLethal then
+			table.insert(killedParts, target.part)
 		end
 	end
 
-	PlayerManagerService.Client.HitRock:Fire(
-		player,
-		part:GetAttribute("StripId"),
-		part:GetAttribute("RockIndex"),
-		part:GetAttribute("MaxHp"),
-		rockState.hp
-	)
-
-	if rockState.hp <= 0 then
-		rockState.cut = true
-		if part then
-			part:SetAttribute("Cut", true)
-			-- Уничтожаем на следующий кадр: атрибут Cut успевает реплицироваться
-			-- раньше удаления, и клиент в DescendantRemoving видит его выставленным
-			-- (иначе при ваншоте импакт-развал не проигрывается).
-			task.defer(function()
-				if part.Parent then
-					part:Destroy()
-				end
-			end)
-		end
+	for _, part in ipairs(killedParts) do
+		part:SetAttribute("Cut", true)
+		part:Destroy()
 	end
 end
 
-function PlayerWeaponHitboxManager:StartPlayerLoop(player)
-	lastAttackTime[player.UserId] = nil
+function PlayerWeaponHitboxManager:ApplyDamage(rockState, part, damage): boolean
+	rockState.hp = rockState.hp - damage
+	part:SetAttribute("Hp", rockState.hp)
 
+	local isLethal = rockState.hp <= 0
+	if isLethal then
+		rockState.cut = true
+	end
+
+	return isLethal
+end
+
+function PlayerWeaponHitboxManager:StartPlayerLoop(player)
 	PlayerManagerService.PlayerThreads[player.UserId] = task.spawn(function()
 		while player.Parent do
-			-- pcall: разовая ошибка в проверке хитов не должна убивать поток
-			-- навсегда — иначе игрок до конца сессии не может ломать камни.
-			local ok, err = pcall(self.CheckHitsForPlayer, self, player)
-
-			if not ok then
-				warn(
-					("[PlayerWeaponHitboxManager] CheckHitsForPlayer failed for %s: %s"):format(
-						player.Name,
-						tostring(err)
-					)
-				)
-			end
-
-			task.wait(HITBOX_CHECK_INTERVAL)
+			self:ApplyHit(player)
+			task.wait(PlayerManagerService:GetPlayerStatsValues(player).AttackCooldown)
 		end
 	end)
 end
@@ -210,7 +173,7 @@ function PlayerWeaponHitboxManager.Start() end
 
 function PlayerWeaponHitboxManager.Init()
 	PlayerManagerService = Knit.GetService("PlayerManagerService")
-	RockService = Knit.GetService("RockService")
+	ClickerService = Knit.GetService("ClickerService")
 end
 
 return PlayerWeaponHitboxManager

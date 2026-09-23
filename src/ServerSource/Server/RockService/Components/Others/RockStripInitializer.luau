@@ -2,12 +2,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RockStripInitializer = {}
 
 local RockConfig = require(ReplicatedStorage.SharedSource.Datas.RockConfig)
-local RockGeometry = require(ReplicatedStorage.SharedSource.Objects.RockGeometry)
-local Strip = require(ReplicatedStorage.SharedSource.Objects.Strip)
+local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
+local Strip = require(ReplicatedStorage.SharedSource.Object.Strip)
 local markersFolder = workspace:WaitForChild("StripMarkers")
-
--- ТЕСТ: одинаковое ХП всем камням вместо RockConfig[section].MaxHp. nil — брать из RockConfig.
-local TEST_ROCK_MAX_HP = 20
 
 ---- Knit Services
 
@@ -28,7 +25,7 @@ function RockStripInitializer:InitRockStripData()
 				marker.Position.Z,
 				section,
 				RockGeometry.GetMetrics(section).count,
-				TEST_ROCK_MAX_HP or RockConfig[section].MaxHp
+				RockConfig[section].MaxHp
 			)
 		)
 		marker:Destroy()

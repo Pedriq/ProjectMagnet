@@ -5,15 +5,6 @@ local RockService = Knit.CreateService({
 	Name = "RockService",
 	StripData = {},
 	ActiveStrips = {},
-	-- [userId] = стоит ли игрок сейчас в зоне майнинга — пишет и держит
-	-- актуальным Components.RockZoneWatcher (true = игрок ВНУТРИ Workspace.RockZone,
-	-- реальная зона ZonePlus). НЕ дистанция до StripMarkers (та годится только
-	-- как грубый предфильтр для подгрузки хитбоксов, см. KnitStart ниже).
-	PlayerInZone = {},
-	Client = {
-		-- (player, inZone: boolean) — состояние сменилось.
-		ZoneChanged = Knit.CreateSignal(),
-	},
 })
 
 ---- Components
@@ -67,7 +58,6 @@ function RockService:KnitInit()
 
 	Players.PlayerRemoving:Connect(function(player)
 		self.Components.RockHitboxManager:CleanupPlayer(player)
-		self.PlayerInZone[player.UserId] = nil
 	end)
 end
 
