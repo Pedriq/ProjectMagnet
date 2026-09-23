@@ -80,6 +80,72 @@ local function HandlePlayerRemoving(player)
 	end
 end
 
+function ProfileService:GetData(player, redirectories)
+	local profile, profileData = ProfileService:GetProfile(player)
+
+	if not profileData then
+		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		return nil
+	end
+
+	local directData = profileData
+
+	for i = 1, #redirectories do
+		if directData[redirectories[i]] == nil then
+			return nil
+		end
+
+		directData = directData[redirectories[i]]
+	end
+
+	return directData
+end
+
+-- function ProfileService:ChangeData(player, redirectories, newValue)
+-- 	local profile, profileData = ProfileService:GetProfile(player)
+
+-- 	if not profileData then
+-- 		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+-- 		return
+-- 	end
+
+-- 	local directData = profileData
+
+-- 	-- Navigate through the redirectories path
+-- 	for i = 1, #redirectories do
+-- 		if not directData[redirectories[i]] and i ~= #redirectories then
+-- 			local redirectoriesPath = "profileData"
+-- 			for j = 1, i do
+-- 				redirectoriesPath = redirectoriesPath .. "." .. redirectories[j]
+-- 			end
+-- 			error(
+-- 				"'"
+-- 					.. redirectoriesPath
+-- 					.. "' table does not exist. ALWAYS PREVENT THIS BY MAKING TABLES INSIDE PROFILETEMPLATE."
+-- 			)
+-- 			return
+-- 		end
+
+-- 		if i ~= #redirectories then
+-- 			directData = directData[redirectories[i]]
+-- 		end
+-- 	end
+
+-- 	-- Set the new value
+-- 	directData[redirectories[#redirectories]] = newValue
+
+-- 	-- Синхронизация leaderstats: если путь совпал с одним из зарегистрированных -
+-- 	-- сразу обновляем видимое значение, без ожидания следующего входа игрока
+-- 	local statName = matchLeaderstatPath(redirectories)
+-- 	if statName then
+-- 		syncLeaderstat(player, statName, newValue)
+-- 	end
+
+-- 	-- Fire update signals
+-- 	ProfileService.Client.UpdateSpecificData:Fire(player, redirectories, newValue)
+-- 	ProfileService.UpdateSpecificData:Fire(player, redirectories, newValue)
+-- end
+
 function ProfileService:WaitUntilProfileLoaded(player)
 	repeat
 		task.wait(2)
