@@ -5,7 +5,7 @@ local LEVEL_PER_REBIRTH = 25
 
 local RebirthConfig = {
 	CashMultiplierPerRebirth = 0.2,
-	StrengthMultiplierPerRebirth = 0.5,
+	MagnetismMultiplierPerRebirth = 0.5,
 }
 
 -- rebirths — сколько реберсов уже пройдено. Возвращает требуемый уровень для следующего.

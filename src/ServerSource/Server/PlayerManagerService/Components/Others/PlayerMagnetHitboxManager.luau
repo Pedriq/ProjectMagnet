@@ -8,9 +8,9 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
-local PlayerWeaponHitboxManager = {}
+local PlayerMagnetHitboxManager = {}
 
-local WEAPON_HITBOX_FRONT_GAP = 1 -- зазор от игрока до ближней грани хитбокса (студы)
+local MAGNET_HITBOX_FRONT_GAP = 1 -- зазор от игрока до ближней грани хитбокса (студы)
 
 ---- Utilities
 local utilsFolder = ReplicatedStorage.SharedSource.Utilities
@@ -20,11 +20,11 @@ local PlayerManagerService
 local ClickerService
 
 ---- Datas
-local WeaponData = require(ReplicatedStorage.SharedSource.Datas.WeaponData)
+local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 
 ---- Assets
-function PlayerWeaponHitboxManager:CreateWeaponHitbox(player, weaponName)
-	print("In create weapon hitbox")
+function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
+	print("In create magnet hitbox")
 	local character = player.Character or player.CharacterAdded:Wait()
 	local root = character:FindFirstChild("HumanoidRootPart")
 
@@ -33,19 +33,19 @@ function PlayerWeaponHitboxManager:CreateWeaponHitbox(player, weaponName)
 		return
 	end
 
-	if not WeaponData[weaponName] then
-		warn("Weapon data not found for weapon: " .. weaponName)
+	if not MagnetData[magnetName] then
+		warn("Magnet data not found for magnet: " .. magnetName)
 		return
 	end
 
-	if character:FindFirstChild("WeaponHitbox") then
-		character:FindFirstChild("WeaponHitbox"):Destroy()
+	if character:FindFirstChild("MagnetHitbox") then
+		character:FindFirstChild("MagnetHitbox"):Destroy()
 	end
 
 	local size = PlayerManagerService:GetPlayerStatsValues(player).AttackRange
 
 	local hitbox = Instance.new("Part")
-	hitbox.Name = "WeaponHitbox"
+	hitbox.Name = "MagnetHitbox"
 	hitbox.Size = size
 	hitbox.Transparency = 0.9
 	hitbox.CanCollide = false
@@ -60,18 +60,18 @@ function PlayerWeaponHitboxManager:CreateWeaponHitbox(player, weaponName)
 	weld.Part1 = hitbox
 	weld.Parent = hitbox
 
-	-- Ближняя грань хитбокса всегда в WEAPON_HITBOX_FRONT_GAP студ перед игроком,
+	-- Ближняя грань хитбокса всегда в MAGNET_HITBOX_FRONT_GAP студ перед игроком,
 	-- дальше он растёт только вперёд (а не растягиваясь наполовину игроку за спину).
-	hitbox.CFrame = root.CFrame * CFrame.new(0, 0, -(WEAPON_HITBOX_FRONT_GAP + size.Z / 2))
+	hitbox.CFrame = root.CFrame * CFrame.new(0, 0, -(MAGNET_HITBOX_FRONT_GAP + size.Z / 2))
 	hitbox.Parent = character
 end
 
-function PlayerWeaponHitboxManager:CollectTargets(player)
+function PlayerMagnetHitboxManager:CollectTargets(player)
 	local OverlapParams = OverlapParams.new()
 	OverlapParams.FilterType = Enum.RaycastFilterType.Exclude
 	OverlapParams.FilterDescendantsInstances = {}
 
-	local hitbox = player.Character and player.Character:FindFirstChild("WeaponHitbox")
+	local hitbox = player.Character and player.Character:FindFirstChild("MagnetHitbox")
 
 	if not hitbox then
 		return {}
@@ -105,15 +105,15 @@ end
 -- Один тик StartPlayerLoop (раз в AttackCooldown) = один удар: начисление, урон
 -- и визуальные эффекты (ShakeRock/FlashRock, попап силы) идут разом — не за
 -- каждый задетый камень.
-function PlayerWeaponHitboxManager:ApplyHit(player)
+function PlayerMagnetHitboxManager:ApplyHit(player)
 	local targets = self:CollectTargets(player)
 	if #targets == 0 then
 		return
 	end
 
-	-- Урон по камню = общая накопленная сила игрока (Stats.Strength) ДО начисления за этот взмах.
-	local totalStrength = EtNum.convert(ClickerService:GetPlayerStrength(player))
-	local damage = math.max(1, math.floor(EtNum.toNumber(totalStrength) + 0.5))
+	-- Урон по камню = общая накопленная сила игрока (Stats.Magnetism) ДО начисления за этот взмах.
+	local totalMagnetism = EtNum.convert(ClickerService:GetPlayerMagnetism(player))
+	local damage = math.max(1, math.floor(EtNum.toNumber(totalMagnetism) + 0.5))
 
 	ClickerService:Click(player)
 	-- Ровно 1 раз за взмах — UI-попап прироста силы слушает именно этот сигнал,
@@ -148,7 +148,7 @@ function PlayerWeaponHitboxManager:ApplyHit(player)
 	end
 end
 
-function PlayerWeaponHitboxManager:ApplyDamage(rockState, part, damage): boolean
+function PlayerMagnetHitboxManager:ApplyDamage(rockState, part, damage): boolean
 	rockState.hp = rockState.hp - damage
 	part:SetAttribute("Hp", rockState.hp)
 
@@ -160,7 +160,7 @@ function PlayerWeaponHitboxManager:ApplyDamage(rockState, part, damage): boolean
 	return isLethal
 end
 
-function PlayerWeaponHitboxManager:StartPlayerLoop(player)
+function PlayerMagnetHitboxManager:StartPlayerLoop(player)
 	PlayerManagerService.PlayerThreads[player.UserId] = task.spawn(function()
 		while player.Parent do
 			self:ApplyHit(player)
@@ -169,11 +169,11 @@ function PlayerWeaponHitboxManager:StartPlayerLoop(player)
 	end)
 end
 
-function PlayerWeaponHitboxManager.Start() end
+function PlayerMagnetHitboxManager.Start() end
 
-function PlayerWeaponHitboxManager.Init()
+function PlayerMagnetHitboxManager.Init()
 	PlayerManagerService = Knit.GetService("PlayerManagerService")
 	ClickerService = Knit.GetService("ClickerService")
 end
 
-return PlayerWeaponHitboxManager
+return PlayerMagnetHitboxManager

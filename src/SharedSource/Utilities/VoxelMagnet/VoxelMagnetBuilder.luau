@@ -1,5 +1,5 @@
 --[[
-	VoxelWeaponBuilder — собирает воксельную модель оружия в стиле Trove
+	VoxelMagnetBuilder — собирает воксельную модель оружия в стиле Trove
 	из плоского «чертежа» (вид сбоку).
 
 	Соседние воксели одного символа сливаются в один Part (greedy-меш) —
@@ -8,8 +8,8 @@
 	Результат: Model
 	  • невидимый Handle (PrimaryPart) в центре хвата
 	  • все части сварены к Handle (WeldConstraint), не заякорены
-	  • тег "Weapon"
-	Кладётся в ReplicatedStorage.Assets.Weapons и работает с текущим WeaponHandler.
+	  • тег "Magnet"
+	Кладётся в ReplicatedStorage.Assets.Magnets и работает с текущим MagnetHandler.
 
 	Система координат чертежа:
 	  строка 1 (верхняя) -> максимальный Y, символ 1 (левый) -> минимальный X.
@@ -41,7 +41,7 @@ export type Blueprint = {
 -- символы, которые считаются пустотой
 local EMPTY = { [" "] = true, ["."] = true, ["_"] = true }
 
-local VoxelWeaponBuilder = {}
+local VoxelMagnetBuilder = {}
 
 local function key(x: number, y: number, z: number): string
 	return x .. "," .. y .. "," .. z
@@ -61,7 +61,7 @@ local function rasterize(bp: Blueprint)
 			local sym = string.sub(row, c, c)
 			if not EMPTY[sym] then
 				local entry = bp.Palette[sym]
-				assert(entry, `VoxelWeapon "{bp.Name}": в палитре нет символа "{sym}"`)
+				assert(entry, `VoxelMagnet "{bp.Name}": в палитре нет символа "{sym}"`)
 
 				local depth = entry.Depth or baseDepth
 				local z0 = -math.floor(depth / 2)
@@ -174,12 +174,12 @@ local function gripBounds(bp: Blueprint, voxels: { [string]: string })
 		end
 	end
 
-	assert(min and max, `VoxelWeapon "{bp.Name}": ни один воксель не помечен как Grip`)
+	assert(min and max, `VoxelMagnet "{bp.Name}": ни один воксель не помечен как Grip`)
 	max += Vector3.one -- воксель i занимает [i, i + 1)
 	return (min + max) / 2, max - min
 end
 
-function VoxelWeaponBuilder.Build(bp: Blueprint): Model
+function VoxelMagnetBuilder.Build(bp: Blueprint): Model
 	local voxel = bp.Voxel or 0.16
 	local handleCF = bp.HandleCFrame or CFrame.identity
 
@@ -190,7 +190,7 @@ function VoxelWeaponBuilder.Build(bp: Blueprint): Model
 	local model = Instance.new("Model")
 	model.Name = bp.Name
 
-	-- невидимый Handle в центре хвата: к нему всё сваривается и его берёт WeaponHandler
+	-- невидимый Handle в центре хвата: к нему всё сваривается и его берёт MagnetHandler
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = gripSize * voxel
@@ -245,8 +245,8 @@ function VoxelWeaponBuilder.Build(bp: Blueprint): Model
 		part.Parent = model
 	end
 
-	CollectionService:AddTag(model, "Weapon")
+	CollectionService:AddTag(model, "Magnet")
 	return model
 end
 
-return VoxelWeaponBuilder
+return VoxelMagnetBuilder

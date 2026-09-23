@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
 --[[
-	BuffHandler — временные баффы к множителям (Strength / Money), см. BuffConfig.
+	BuffHandler — временные баффы к множителям (Magnetism / Money), см. BuffConfig.
 
 	Кэшируется в памяти (PlayerManagerService.PlayerBuffs[userId][buffType]) для
 	быстрого чтения в GetBonus, но ИСТОЧНИК ПРАВДЫ — profile.Buffs (ProfileService):
@@ -98,7 +98,7 @@ function BuffHandler:GetActiveBuffs(player: Player): { [string]: { ExpiresAt: nu
 end
 
 -- Текущий бонус к множителю этого типа (0, если баффа нет/истёк) — складывается
--- с базовым множителем за ребёрс в GetPlayer{Strength,Cash}Multiplier.
+-- с базовым множителем за ребёрс в GetPlayer{Magnetism,Cash}Multiplier.
 function BuffHandler:GetBonus(player: Player, buffType: string): number
 	local buffs = PlayerManagerService.PlayerBuffs[player.UserId]
 	local buff = buffs and buffs[buffType]

@@ -18,7 +18,7 @@ local asset = Format.asset
 	  ┌─ Rebirth ───────────────────────────── [✕] ┐
 	  │  [ x8.5 ]  ▶  [ x9 ]        (сила, оранж.)  │
 	  │  [ x4   ]  ▶  [ x4.2 ]      (деньги, зел.)  │
-	  │        Rebirth resets your Strength!        │
+	  │        Rebirth resets your Magnetism!        │
 	  │  ┌───────── Level 7 / 10 ───────────────┐   │  ← полоса прогресса уровня
 	  │  [   Rebirth   ]        [    Skip    ]       │
 	  └────────────────────────────────────────────┘
@@ -39,11 +39,11 @@ export type Props = {
 }
 
 local RED = Color3.fromRGB(255, 64, 72)
-local STRENGTH = Color3.fromRGB(255, 208, 1)
+local MAGNETISM = Color3.fromRGB(255, 208, 1)
 local MONEY = Color3.fromRGB(56, 240, 72)
 local GOLD = Color3.fromRGB(255, 198, 56)
 
-local perStr = RebirthConfig.StrengthMultiplierPerRebirth
+local perMagnetism = RebirthConfig.MagnetismMultiplierPerRebirth
 local perCash = RebirthConfig.CashMultiplierPerRebirth
 
 local function reqLevel(): number
@@ -60,10 +60,10 @@ end
 
 local function RebirthPanel(props: Props)
 	local function strFrom()
-		return fmtMult(1 + Data.rebirths() * perStr)
+		return fmtMult(1 + Data.rebirths() * perMagnetism)
 	end
 	local function strTo()
-		return fmtMult(1 + (Data.rebirths() + 1) * perStr)
+		return fmtMult(1 + (Data.rebirths() + 1) * perMagnetism)
 	end
 	local function cashFrom()
 		return fmtMult(1 + Data.rebirths() * perCash)
@@ -111,7 +111,7 @@ local function RebirthPanel(props: Props)
 
 			MultiplierRow({
 				LayoutOrder = 1,
-				Color = STRENGTH,
+				Color = MAGNETISM,
 				From = strFrom,
 				To = strTo,
 				Icon = "96772289336842",
@@ -132,7 +132,7 @@ local function RebirthPanel(props: Props)
 				Font = Enum.Font.GothamBlack,
 				TextSize = 20,
 				TextColor3 = Color3.fromRGB(245, 245, 240),
-				Text = "Rebirth resets your Strength!",
+				Text = "Rebirth resets your Magnetism!",
 
 				create("UIStroke")({
 					Thickness = 2,

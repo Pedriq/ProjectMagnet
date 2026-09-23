@@ -5,7 +5,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local source = vide.source
 
 --[[
-	rarityFx — общий «мотор» анимаций для эффектов редких мечей (RarityText / WeaponCard).
+	rarityFx — общий «мотор» анимаций для эффектов редких мечей (RarityText / MagnetCard).
 
 	`clock` — Vide-источник с монотонным временем в секундах, обновляется каждый
 	Heartbeat. Читай его внутри биндинга свойства (`Offset = function() ... clock() ... end`)

@@ -31,12 +31,12 @@ function ClickerService:Click(player, multiplier: number?)
 	self.Components.ClickHandler:Click(player, multiplier)
 end
 
-function ClickerService:GetPlayerStrength(player)
-	return ProfileService:GetData(player, { "Stats", "Strength" })
+function ClickerService:GetPlayerMagnetism(player)
+	return ProfileService:GetData(player, { "Stats", "Magnetism" })
 end
 
-function ClickerService:ChangePlayerStrength(player, strength)
-	return ProfileService:ChangeData(player, { "Stats", "Strength" }, strength)
+function ClickerService:ChangePlayerMagnetism(player, magnetism)
+	return ProfileService:ChangeData(player, { "Stats", "Magnetism" }, magnetism)
 end
 
 function ClickerService:GetPlayerLevel(player)

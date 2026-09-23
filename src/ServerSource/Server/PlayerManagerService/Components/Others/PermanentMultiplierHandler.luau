@@ -22,7 +22,7 @@ end
 
 -- Бонус к итоговому множителю от текущей купленной ступени (0, если ничего не
 -- куплено) — складывается с rebirth-множителем и бонусом временного баффа в
--- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerStrengthMultiplier.
+-- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier.
 function PermanentMultiplierHandler:GetBonus(player: Player, buffType: string): number
 	local owned = self:GetOwnedMultiplier(player, buffType)
 	return owned > 0 and (owned - 1) or 0

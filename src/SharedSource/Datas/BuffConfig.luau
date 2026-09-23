@@ -3,14 +3,14 @@
 	Единый источник для сервера (BuffPurchaseHandler/BuffHandler) и клиента
 	(ShopPanel/BoostCard, ActiveBuffsBar).
 
-	Type — какой множитель баффает: "Strength" (сила за клин) или "Money"
+	Type — какой множитель баффает: "Magnetism" (сила за клин) или "Money"
 	(деньги за продажу). Bonus — НА СКОЛЬКО добавляется к множителю на время
 	баффа (складывается с множителем за ребёрс, см. RebirthConfig): x2 -> +1,
 	т.к. итоговый множитель = rebirthMultiplier + Bonus.
 ]]
 
 export type BuffEntry = {
-	Type: "Strength" | "Money",
+	Type: "Magnetism" | "Money",
 	Title: string,
 	Minutes: number,
 	Bonus: number,
@@ -22,8 +22,8 @@ export type BuffEntry = {
 local BuffConfig = {}
 
 BuffConfig.Boosts = {
-	{ Type = "Strength", Title = "2x Strength", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "96772289336842" },
-	{ Type = "Strength", Title = "2x Strength", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "96772289336842" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "96772289336842" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "96772289336842" },
 	{ Type = "Money", Title = "2x Money", Minutes = 10, Bonus = 1, Price = 39, ProductId = 3713418304, Icon = "117287387544386" },
 } :: { BuffEntry }
 

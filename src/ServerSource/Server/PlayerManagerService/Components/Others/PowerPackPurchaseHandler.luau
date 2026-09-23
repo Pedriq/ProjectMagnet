@@ -13,7 +13,7 @@ local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilitie
 	PermanentMultiplierPurchaseHandler).
 
 	В отличие от PermanentMultiplierPurchaseHandler — тут нет ступеней/owned:
-	каждая покупка просто добавляет PowerPackConfig.Packs[i].StrengthGrant к
+	каждая покупка просто добавляет PowerPackConfig.Packs[i].MagnetismGrant к
 	текущей силе, БЕЗ множителей (rebirth/бафф/донат) — так попросил заказчик.
 ]]
 local PowerPackPurchaseHandler = {}
@@ -32,14 +32,14 @@ end
 
 -- Начислить пак: сложение + левел-ап при пересечении порога — та же логика,
 -- что ClickHandler:Click (продублирована намеренно: тут нет ни оружия, ни
--- множителя, только прибавление готовой суммы StrengthGrant).
+-- множителя, только прибавление готовой суммы MagnetismGrant).
 function PowerPackPurchaseHandler:Grant(player: Player, pack: PowerPackConfig.Pack)
-	local str = ClickerService:GetPlayerStrength(player) or "0"
-	local newStr = EtNum.add(str, pack.StrengthGrant)
+	local magnetism = ClickerService:GetPlayerMagnetism(player) or "0"
+	local newMagnetism = EtNum.add(magnetism, pack.MagnetismGrant)
 
 	local currentLevel = ClickerService:GetPlayerLevel(player)
 	local leveledUp = false
-	while EtNum.meeq(newStr, LevelCurve.TotalForLevel(currentLevel + 1)) do
+	while EtNum.meeq(newMagnetism, LevelCurve.TotalForLevel(currentLevel + 1)) do
 		currentLevel += 1
 		leveledUp = true
 	end
@@ -47,7 +47,7 @@ function PowerPackPurchaseHandler:Grant(player: Player, pack: PowerPackConfig.Pa
 		ClickerService:ChangePlayerLevel(player, currentLevel)
 	end
 
-	ClickerService:ChangePlayerStrength(player, EtNum.toString(newStr))
+	ClickerService:ChangePlayerMagnetism(player, EtNum.toString(newMagnetism))
 end
 
 function PowerPackPurchaseHandler.Start()

@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Vide = require(ReplicatedStorage.Packages.Vide)
-local WeaponCard = require(ReplicatedStorage.ClientSource.UI.components.WeaponCard)
+local MagnetCard = require(ReplicatedStorage.ClientSource.UI.components.MagnetCard)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 
 local create = Vide.create
@@ -14,7 +14,7 @@ local story = {
 		local equippedName = source("Saber")
 
 		local function card(props)
-			return WeaponCard(props)
+			return MagnetCard(props)
 		end
 
 		return create("Frame")({
@@ -32,7 +32,7 @@ local story = {
 				Display = "Sword Saw",
 				Rarity = "Legendary",
 				RarityColor = RarityColors.get("Legendary"),
-				StrengthText = "+267K Strength",
+				MagnetismText = "+267K Magnetism",
 				Icon = "",
 				Purchasable = true,
 				Owned = function()
@@ -65,7 +65,7 @@ local story = {
 				Display = "Axe",
 				Rarity = "Mythic",
 				RarityColor = RarityColors.get("Mythic"),
-				StrengthText = "+558K Strength",
+				MagnetismText = "+558K Magnetism",
 				Icon = "",
 				Purchasable = true,
 				Owned = ownedSaber,
@@ -93,7 +93,7 @@ local story = {
 				Display = "Reaper",
 				Rarity = "Secret",
 				RarityColor = RarityColors.get("Secret"),
-				StrengthText = "+8M Strength",
+				MagnetismText = "+8M Magnetism",
 				Icon = "",
 				Purchasable = true,
 				Owned = function()
@@ -120,7 +120,7 @@ local story = {
 				Display = "Saber",
 				Rarity = "Divine",
 				RarityColor = RarityColors.get("Divine"),
-				StrengthText = "+1.1M Strength",
+				MagnetismText = "+1.1M Magnetism",
 				Icon = "",
 				Purchasable = true,
 				Owned = function()

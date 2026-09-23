@@ -14,12 +14,12 @@ local asset = Format.asset
 local clock = rarityFx.clock
 
 --[[
-	WeaponCard — толстая карточка меча в панели «Cutters» (по макету):
+	MagnetCard — толстая карточка меча в панели «Cutters» (по макету):
 
 	  ┌──────────────────────────────────────────────────────┐
 	  │ ┌─────┐  Sword Saw                     [   $280M   ]  │
 	  │ │ img │  Legendary                     [   R$ 799  ]  │
-	  │ └─────┘  💪 +267K Strength                            │
+	  │ └─────┘  💪 +267K Magnetism                            │
 	  └──────────────────────────────────────────────────────┘
 
 	Правая часть зависит от состояния:
@@ -29,7 +29,7 @@ local clock = rarityFx.clock
 
 	До Mythic (CardEffect = 0) фон карточки — цвет редкости.
 
-	Эффекты (Mythic и выше), TextEffect/CardEffect из WeaponData.effectsFor():
+	Эффекты (Mythic и выше), TextEffect/CardEffect из MagnetData.effectsFor():
 	  Текст (лейбл редкости) — см. components/RarityText.
 	  Карта (CardEffect), каждый — самостоятельный, не комбинируется:
 	    1 — фон пульсирует светлее<->темнее (оттенок редкости)
@@ -42,7 +42,7 @@ export type Props = {
 	Display: string | () -> string,
 	Rarity: string,
 	RarityColor: Color3,
-	StrengthText: string | () -> string,
+	MagnetismText: string | () -> string,
 	Model: Instance?, -- модель меча для 3D-превью в карточке
 
 	Purchasable: boolean, -- false у стартового Stick (только Equip/Equipped)
@@ -69,14 +69,14 @@ local ICON_PAD = 12
 local BUTTONS_WIDTH = 150
 
 local NAME_COLOR = Color3.fromRGB(250, 252, 245)
-local STRENGTH_COLOR = Color3.fromRGB(250, 252, 245)
+local MAGNETISM_COLOR = Color3.fromRGB(250, 252, 245)
 local MONEY_COLOR = Color3.fromRGB(70, 200, 64)
 local ROBUX_COLOR = Color3.fromRGB(255, 190, 62)
 local EQUIP_COLOR = Color3.fromRGB(70, 200, 64)
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 
-local STRENGTH_ICON = "96772289336842" -- та же иконка «силы», что в MultiplierRow
+local MAGNETISM_ICON = "96772289336842" -- та же иконка «силы», что в MultiplierRow
 
 local function textStroke(thickness: number?)
 	return create("UIStroke")({
@@ -112,7 +112,7 @@ local function shineBar(phase: number, width: number, transparency: number)
 	})
 end
 
-local function WeaponCard(props: Props)
+local function MagnetCard(props: Props)
 	local radius = UDim.new(0, 6)
 	local infoLeft = ICON_PAD + ICON_SIZE + ICON_PAD
 	local cardEffect = props.CardEffect or 0
@@ -265,7 +265,7 @@ local function WeaponCard(props: Props)
 	end
 
 	return create("Frame")({
-		Name = "WeaponCard",
+		Name = "MagnetCard",
 		LayoutOrder = props.LayoutOrder,
 		Size = UDim2.new(1, -6, 0, CARD_HEIGHT),
 		BackgroundColor3 = props.RarityColor,
@@ -353,7 +353,7 @@ local function WeaponCard(props: Props)
 			}),
 
 			create("Frame")({
-				Name = "StrengthRow",
+				Name = "MagnetismRow",
 				LayoutOrder = 3,
 				BackgroundTransparency = 1,
 				Size = UDim2.new(1, 0, 0, 24),
@@ -370,7 +370,7 @@ local function WeaponCard(props: Props)
 					BackgroundTransparency = 1,
 					Size = UDim2.fromOffset(22, 22),
 					ScaleType = Enum.ScaleType.Fit,
-					Image = asset(STRENGTH_ICON),
+					Image = asset(MAGNETISM_ICON),
 				}),
 				create("TextLabel")({
 					Name = "Value",
@@ -380,9 +380,9 @@ local function WeaponCard(props: Props)
 					Size = UDim2.new(0, 0, 1, 0),
 					Font = Enum.Font.GothamBlack,
 					TextSize = 20,
-					TextColor3 = STRENGTH_COLOR,
+					TextColor3 = MAGNETISM_COLOR,
 					TextXAlignment = Enum.TextXAlignment.Left,
-					Text = props.StrengthText,
+					Text = props.MagnetismText,
 
 					textStroke(2),
 				}),
@@ -413,4 +413,4 @@ local function WeaponCard(props: Props)
 	})
 end
 
-return WeaponCard
+return MagnetCard

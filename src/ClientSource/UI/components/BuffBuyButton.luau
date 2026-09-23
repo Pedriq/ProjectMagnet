@@ -23,10 +23,10 @@ local asset = Format.asset
 	см. коммент там). Так весь блок предсказуемо держит свою долю экрана на
 	любом разрешении, вместо того чтобы зависеть от текста/аспекта картинки.
 
-	Стиль: цветной фон (жёлто-оранжевый для Strength, зелёный для Money), крупная
+	Стиль: цветной фон (жёлто-оранжевый для Magnetism, зелёный для Money), крупная
 	иконка по центру — специально БОЛЬШЕ высоты кнопки по Y, обрезается кнопкой
 	(ClipsDescendants), поэтому не вылезает за верхнюю/нижнюю кромку. Снизу —
-	тёмная полоска на всю ширину с названием ("x2 Strength" / "x2 Money"). Сверху,
+	тёмная полоска на всю ширину с названием ("x2 Magnetism" / "x2 Money"). Сверху,
 	уже вне кнопки — цена зелёным текстом с иконкой робуксов ("Only <R$>3").
 ]]
 
@@ -36,13 +36,13 @@ local GREEN_PRICE_COLOR = Color3.fromRGB(95, 247, 95)
 local DEFAULT_TEXTURE = "137638295200351"
 
 local COLORS = {
-	Strength = { Color = Color3.fromRGB(255, 158, 25), Light = Color3.fromRGB(255, 214, 130) },
+	Magnetism = { Color = Color3.fromRGB(255, 158, 25), Light = Color3.fromRGB(255, 214, 130) },
 	Money = { Color = Color3.fromRGB(48, 199, 60), Light = Color3.fromRGB(170, 255, 150) },
 }
 
 export type Props = {
-	Type: "Strength" | "Money",
-	Title: string | (() -> string), -- "x2 Strength" / "x2 Money" (реактивно — следующая ступень)
+	Type: "Magnetism" | "Money",
+	Title: string | (() -> string), -- "x2 Magnetism" / "x2 Money" (реактивно — следующая ступень)
 	Icon: string, -- rbxassetid картинки силы/денег
 	Price: (number | (() -> number))?, -- по умолч. 3 (Robux), реактивно — следующая ступень
 
@@ -53,7 +53,7 @@ export type Props = {
 
 local function BuffBuyButton(props: Props)
 	local heightScale = props.HeightScale or 0.2
-	local palette = COLORS[props.Type] or COLORS.Strength
+	local palette = COLORS[props.Type] or COLORS.Magnetism
 
 	local pressed = source(false)
 	local hovered = source(false)

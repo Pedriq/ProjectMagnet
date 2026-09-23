@@ -22,7 +22,7 @@ local story = {
 		end)
 		task.spawn(function()
 			while alive do
-				Data.strength(tostring(math.random(0, 900)))
+				Data.magnetism(tostring(math.random(0, 900)))
 				task.wait(1.2)
 			end
 		end)

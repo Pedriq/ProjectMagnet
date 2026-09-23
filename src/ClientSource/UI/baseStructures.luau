@@ -10,7 +10,7 @@ local Workspace = game:GetService("Workspace")
 	такой же структурой — промпты заработают без правок кода.
 
 		Постройка   Окно (ключ switch(openPanel) в screens/HUD)
-		Buy      -> weapons   (магазин кастеров)
+		Buy      -> magnets   (магазин кастеров)
 		Upgrade  -> upgrades  (прокачка статов)
 		Sell     -> sell      (продажа лута)
 
@@ -20,7 +20,7 @@ local BaseStructures = {}
 
 -- Имя постройки (или NPC внутри неё) -> ключ окна.
 BaseStructures.PANEL_BY_BUILDING = {
-	Buy = "weapons",
+	Buy = "magnets",
 	Upgrade = "upgrades",
 	Sell = "sell",
 } :: { [string]: string }

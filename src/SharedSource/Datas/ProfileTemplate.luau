@@ -1,12 +1,12 @@
 local ProfileTemplate = {
-	Weapon = {
+	Magnet = {
 		Name = "Stick",
-		Strength = 1,
+		Magnetism = 1,
 	},
 
-	-- какими мечами игрок владеет: map[weaponName] = true (см. WeaponData / WeaponShopHandler).
+	-- какими мечами игрок владеет: map[magnetName] = true (см. MagnetData / MagnetShopHandler).
 	-- стартовый Stick доступен всегда.
-	OwnedWeapons = {
+	OwnedMagnets = {
 		Stick = true,
 	},
 
@@ -17,7 +17,7 @@ local ProfileTemplate = {
 		Mobility = 1,
 
 		Level = 1,
-		Strength = "0",
+		Magnetism = "0",
 		Rebirth = 0,
 
 		Money = "140",
@@ -33,7 +33,7 @@ local ProfileTemplate = {
 
 	Multipliers = {
 		Cash = "1",
-		Strength = "1",
+		Magnetism = "1",
 	},
 
 	-- Активные временные баффы (панель Shop -> Boosts): map[buffType] = { ExpiresAt, Bonus }.
@@ -44,11 +44,11 @@ local ProfileTemplate = {
 	-- Постоянные множители за донат (HUD -> BuffBuyButton): 0 = ещё не куплен,
 	-- иначе — текущий купленный множитель (2/4/8/...). Каждая следующая ступень
 	-- ЗАМЕНЯЕТ предыдущую, см. PermanentMultiplierConfig/PermanentMultiplierHandler.
-	-- Ключи те же, что у BuffConfig.Type/BuffHandler ("Strength"/"Money") — НЕ
+	-- Ключи те же, что у BuffConfig.Type/BuffHandler ("Magnetism"/"Money") — НЕ
 	-- "Cash" (так исторически называется только базовый множитель за ребёрс,
 	-- см. Multipliers.Cash выше).
 	PermanentMultipliers = {
-		Strength = 0,
+		Magnetism = 0,
 		Money = 0,
 	},
 }

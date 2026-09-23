@@ -3,29 +3,29 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
 local BoostCard = require(ReplicatedStorage.ClientSource.UI.components.BoostCard)
 local BuffConfig = require(ReplicatedStorage.SharedSource.Datas.BuffConfig)
-local WeaponData = require(ReplicatedStorage.SharedSource.Datas.WeaponData)
+local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 
-local OPSwordCard = require(ReplicatedStorage.ClientSource.UI.components.OPSwordCard)
+local OPMagnetCard = require(ReplicatedStorage.ClientSource.UI.components.OPMagnetCard)
 
 local create = vide.create
 
 export type Props = {
 	OnClose: () -> (),
 	OnBuyBoost: ((productId: number) -> ())?,
-	-- weaponKey — внутренний ключ WeaponData (WeaponData.Wraithflame/.WarringWingblade),
-	-- не отображаемое имя (OPSwordCard.Props.Name может содержать пробелы).
-	OnBuyOPSword: ((weaponKey: string) -> ())?,
-	OnEquipOPSword: ((weaponKey: string) -> ())?,
+	-- magnetKey — внутренний ключ MagnetData (MagnetData.Wraithflame/.WarringWingblade),
+	-- не отображаемое имя (OPMagnetCard.Props.Name может содержать пробелы).
+	OnBuyOPMagnet: ((magnetKey: string) -> ())?,
+	OnEquipOPMagnet: ((magnetKey: string) -> ())?,
 }
 
-local function opSwordOwned(weaponKey: string): boolean
-	return Data.ownedWeapons()[weaponKey] == true
+local function opMagnetOwned(magnetKey: string): boolean
+	return Data.ownedMagnets()[magnetKey] == true
 end
 
-local function opSwordEquipped(weaponKey: string): boolean
-	local w = Data.weapon()
-	return type(w) == "table" and WeaponData.resolveKey(w.Name) == weaponKey
+local function opMagnetEquipped(magnetKey: string): boolean
+	local w = Data.magnet()
+	return type(w) == "table" and MagnetData.resolveKey(w.Name) == magnetKey
 end
 
 local function category(title: string, order: number, cards: { Instance })
@@ -98,7 +98,7 @@ local function ShopPanel(props: Props)
 			-- (почти невидимо) — текстура технически рисовалась, но на глаз не
 			-- читалась. Убрал TileSize (берёт дефолт Panel.luau — плитка размером
 			-- с полоску тайтла, как везде) и выровнял прозрачность по остальным
-			-- панелям (Sell/Rebirth/Upgrades/WeaponShop — везде 0.6).
+			-- панелям (Sell/Rebirth/Upgrades/MagnetShop — везде 0.6).
 			TitleImage = "137638295200351",
 			TitleImageTransparency = 0.6,
 			BodyColor = Color3.fromRGB(30, 22, 20),
@@ -129,49 +129,49 @@ local function ShopPanel(props: Props)
 					Padding = UDim.new(0.01, 0),
 				}),
 				category("Boosts", 1, cards),
-				category("OP Swords", 2, {
-					OPSwordCard({
+				category("OP Magnets", 2, {
+					OPMagnetCard({
 						Name = "Wraithflame",
 						Bonus = 100,
 						Price = 499,
 						LayoutOrder = 1,
 						Owned = function()
-							return opSwordOwned("Wraithflame")
+							return opMagnetOwned("Wraithflame")
 						end,
 						Equipped = function()
-							return opSwordEquipped("Wraithflame")
+							return opMagnetEquipped("Wraithflame")
 						end,
 						OnBuy = function()
-							if props.OnBuyOPSword then
-								props.OnBuyOPSword("Wraithflame")
+							if props.OnBuyOPMagnet then
+								props.OnBuyOPMagnet("Wraithflame")
 							end
 						end,
 						OnEquip = function()
-							if props.OnEquipOPSword then
-								props.OnEquipOPSword("Wraithflame")
+							if props.OnEquipOPMagnet then
+								props.OnEquipOPMagnet("Wraithflame")
 							end
 						end,
 					}),
-					OPSwordCard({
+					OPMagnetCard({
 						Name = "Warring Wingblade",
 						Bonus = 300,
 						Price = 1499,
 						Red = true,
 						LayoutOrder = 2,
 						Owned = function()
-							return opSwordOwned("WarringWingblade")
+							return opMagnetOwned("WarringWingblade")
 						end,
 						Equipped = function()
-							return opSwordEquipped("WarringWingblade")
+							return opMagnetEquipped("WarringWingblade")
 						end,
 						OnBuy = function()
-							if props.OnBuyOPSword then
-								props.OnBuyOPSword("WarringWingblade")
+							if props.OnBuyOPMagnet then
+								props.OnBuyOPMagnet("WarringWingblade")
 							end
 						end,
 						OnEquip = function()
-							if props.OnEquipOPSword then
-								props.OnEquipOPSword("WarringWingblade")
+							if props.OnEquipOPMagnet then
+								props.OnEquipOPMagnet("WarringWingblade")
 							end
 						end,
 					}),

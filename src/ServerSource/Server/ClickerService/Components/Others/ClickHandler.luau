@@ -24,25 +24,25 @@ local TotalXPForLevel = LevelCurve.TotalForLevel
 function ClickHandler:Click(player, extraMultiplier: number?)
 	extraMultiplier = extraMultiplier or 1
 
-	local str = ClickerService:GetPlayerStrength(player)
-	local weaponStr = PlayerManagerService:GetPlayerWeapon(player).Strength
-	if not str or not weaponStr then
+	local magnetism = ClickerService:GetPlayerMagnetism(player)
+	local magnetMagnetism = PlayerManagerService:GetPlayerMagnet(player).Magnetism
+	if not magnetism or not magnetMagnetism then
 		return
 	end
 
 	-- множитель силы за ребёрсы: применяется к приросту силы за один клик
-	local strengthMultiplier = PlayerManagerService:GetPlayerStrengthMultiplier(player) or 1
+	local magnetismMultiplier = PlayerManagerService:GetPlayerMagnetismMultiplier(player) or 1
 	-- бонус за друзей в сессии: +5% за каждого друга (см. FriendBonusHandler)
 	local friendBonusMultiplier = PlayerManagerService:GetFriendBonusMultiplier(player) or 1
-	local strGain =
-		EtNum.mul(EtNum.mul(EtNum.mul(weaponStr, strengthMultiplier), extraMultiplier), friendBonusMultiplier)
+	local magnetismGain =
+		EtNum.mul(EtNum.mul(EtNum.mul(magnetMagnetism, magnetismMultiplier), extraMultiplier), friendBonusMultiplier)
 
-	local newStr = EtNum.add(str, strGain)
+	local newMagnetism = EtNum.add(magnetism, magnetismGain)
 
 	local currentLevel = ClickerService:GetPlayerLevel(player)
 	local leveledUp = false
 
-	while EtNum.meeq(newStr, TotalXPForLevel(currentLevel + 1)) do
+	while EtNum.meeq(newMagnetism, TotalXPForLevel(currentLevel + 1)) do
 		currentLevel += 1
 		leveledUp = true
 	end
@@ -52,7 +52,7 @@ function ClickHandler:Click(player, extraMultiplier: number?)
 		-- Ивент на сервер для эффектов и прочей хуйни
 	end
 
-	ClickerService:ChangePlayerStrength(player, EtNum.toString(newStr))
+	ClickerService:ChangePlayerMagnetism(player, EtNum.toString(newMagnetism))
 	print(PlayerManagerService:GetAllPlayerData(player))
 end
 

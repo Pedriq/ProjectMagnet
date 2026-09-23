@@ -1,6 +1,6 @@
 --[[
 	PermanentMultiplierConfig — постоянные (на весь аккаунт, навсегда) множители
-	за донат: панель HUD -> BuffBuyButton ("x2 Strength" / "x2 Money").
+	за донат: панель HUD -> BuffBuyButton ("x2 Magnetism" / "x2 Money").
 
 	В отличие от BuffConfig (временные баффы, складываются друг с другом по
 	времени), здесь ступени ПОСЛЕДОВАТЕЛЬНЫЕ и каждая следующая ЗАМЕНЯЕТ
@@ -9,7 +9,7 @@
 
 	Bonus — на сколько текущая ступень добавляет к итоговому множителю
 	(складывается с rebirth-множителем и бонусом временного баффа, см.
-	PlayerManagerService:GetPlayerCashMultiplier/GetPlayerStrengthMultiplier):
+	PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier):
 	x2 -> +1, т.к. итоговый множитель = rebirthMultiplier + tempBuffBonus + Bonus
 	(тот же принцип, что у BuffConfig.Bonus).
 
@@ -27,7 +27,7 @@ export type Tier = {
 local PermanentMultiplierConfig = {}
 
 PermanentMultiplierConfig.Tiers = {
-	Strength = {
+	Magnetism = {
 		{ Multiplier = 2, Bonus = 1, Price = 2, ProductId = 3713994531 },
 		{ Multiplier = 4, Bonus = 3, Price = 8, ProductId = 3713994566 },
 		{ Multiplier = 8, Bonus = 7, Price = 29, ProductId = 3713994603 },

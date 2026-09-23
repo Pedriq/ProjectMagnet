@@ -2,14 +2,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
 local Surface = require(ReplicatedStorage.ClientSource.UI.components.Surface)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
-local WeaponViewport = require(ReplicatedStorage.ClientSource.UI.components.WeaponViewport)
+local MagnetViewport = require(ReplicatedStorage.ClientSource.UI.components.MagnetViewport)
 
 local create = vide.create
 local switch = vide.switch
 
 --[[
-	Кнопка внизу карточки зависит от состояния (как у WeaponCard):
-	  не куплен → цена за Robux (покупка Game Pass, см. ShopPanel/WeaponGamePassPurchaseHandler)
+	Кнопка внизу карточки зависит от состояния (как у MagnetCard):
+	  не куплен → цена за Robux (покупка Game Pass, см. ShopPanel/MagnetGamePassPurchaseHandler)
 	  куплен    → Equip
 	  надет     → Equipped (погашенная)
 ]]
@@ -25,7 +25,7 @@ export type Props = {
 	OnEquip: (() -> ())?,
 }
 
-local function OPSwordCard(props: Props)
+local function OPMagnetCard(props: Props)
 	local function stroke()
 		return create("UIStroke")({ Thickness = 2, Color = Color3.new(0, 0, 0) })
 	end
@@ -62,7 +62,7 @@ local function OPSwordCard(props: Props)
 			BackgroundTransparency = 1,
 			Position = UDim2.fromScale(0.025, 0.23),
 			Size = UDim2.fromScale(0.42, 0.73),
-			WeaponViewport(props.Name),
+			MagnetViewport(props.Name),
 		}),
 		create("TextLabel")({
 			Name = "Bonus",
@@ -137,4 +137,4 @@ local function OPSwordCard(props: Props)
 	})
 end
 
-return OPSwordCard
+return OPMagnetCard

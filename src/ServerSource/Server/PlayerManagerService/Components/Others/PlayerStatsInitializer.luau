@@ -38,9 +38,9 @@ function PlayerStatsInitializer:InitPlayerStats(player)
 	player:GetAttributeChangedSignal("RangeLevel"):Connect(function()
 		stats:UpdateRange(player:GetAttribute("RangeLevel"))
 
-		PlayerManagerService:CreateWeaponHitbox(player)
+		PlayerManagerService:CreateMagnetHitbox(player)
 		-- пересоздаёт модель оружия с масштабом под новый уровень (RangeScale.Multiplier)
-		PlayerManagerService:GiveWeapon(player)
+		PlayerManagerService:GiveMagnet(player)
 	end)
 
 	player:GetAttributeChangedSignal("CapacityLevel"):Connect(function()

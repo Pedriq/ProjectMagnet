@@ -31,7 +31,7 @@ function ClickerController:isClickInput(input)
 end
 
 function ClickerController:KnitStart()
-	-- AttackHit стреляет ровно 1 раз за удар оружия (см. PlayerWeaponHitboxManager:ApplyHit).
+	-- AttackHit стреляет ровно 1 раз за удар оружия (см. PlayerMagnetHitboxManager:ApplyHit).
 	PlayerManagerService.AttackHit:Connect(function()
 		sfx.play("Smash")
 	end)

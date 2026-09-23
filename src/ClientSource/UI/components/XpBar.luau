@@ -253,7 +253,7 @@ local function XpBar(props: Props)
 		}),
 
 		--======================================================================
-		-- ОБЩАЯ СИЛА: "<число> Strength" на подложке, размытой с двух сторон.
+		-- ОБЩАЯ СИЛА: "<число> Magnetism" на подложке, размытой с двух сторон.
 		--
 		-- Корень — ImageLabel (это и есть подложка): его фон + текстура + UIGradient
 		-- сами занимают весь элемент, без дочерних Frame'ов со Scale-размером.
@@ -303,7 +303,7 @@ local function XpBar(props: Props)
 				TextColor3 = textColor,
 				TextYAlignment = Enum.TextYAlignment.Bottom,
 				Text = function()
-					return Format.short(read(props.Total)) .. " Strength"
+					return Format.short(read(props.Total)) .. " Magnetism"
 				end,
 
 				textStroke(),

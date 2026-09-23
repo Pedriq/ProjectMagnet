@@ -21,12 +21,12 @@ local cleanup = vide.cleanup
 
 	  1) обычный клик/тап мимо UI — в точке клика (с кольцом).
 	  2) авто-удар оружия по камню (PlayerManagerService.HitRock,
-	     PlayerWeaponHitboxManager:ApplyHit — срабатывает по таймеру
+	     PlayerMagnetHitboxManager:ApplyHit — срабатывает по таймеру
 	     хитбокса, без привязки к экрану) — в случайной точке экрана.
 
 	Прирост считается на клиенте по той же формуле, что и сервер (ClickHandler):
-	  оружие * Data.fullStrengthMultiplier() * extraMultiplier
-	Data.fullStrengthMultiplier() — rebirth-множитель + бонус активного
+	  оружие * Data.fullMagnetismMultiplier() * extraMultiplier
+	Data.fullMagnetismMultiplier() — rebirth-множитель + бонус активного
 	временного баффа + бонус постоянного донат-множителя (см. data.luau).
 	Это лишь превью для UI — авторитетное значение считает сервер.
 ]]
@@ -43,7 +43,7 @@ local GAIN_TEXT_SIZE = 20
 -- поэтому глаз должен цеплять их сам
 local GAIN_ICON_SIZE_LARGE = 48
 local GAIN_TEXT_SIZE_LARGE = 32
-local GAIN_COLOR = Color3.fromRGB(255, 208, 1) -- как STRENGTH в RebirthPanel
+local GAIN_COLOR = Color3.fromRGB(255, 208, 1) -- как MAGNETISM в RebirthPanel
 local GAIN_RISE = 46 -- на сколько пикселей всплывает вверх
 local GAIN_TIME = 0.7
 local GAIN_GAP = RIPPLE_SIZE / 2 + 8 -- отступ пилюли над точкой/кольцом
@@ -58,8 +58,8 @@ local function isPointerClick(input: InputObject)
 end
 
 local function computeGainText(multiplier: number?): string
-	local weapon = Data.weapon()
-	local gain = EtNum.mul(weapon.Strength, Data.fullStrengthMultiplier() * (multiplier or 1))
+	local magnet = Data.magnet()
+	local gain = EtNum.mul(magnet.Magnetism, Data.fullMagnetismMultiplier() * (multiplier or 1))
 	return "+" .. Format.short(gain)
 end
 

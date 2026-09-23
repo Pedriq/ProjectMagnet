@@ -21,7 +21,7 @@ local ShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.ShopPanel)
 local RebirthPanel = require(ReplicatedStorage.ClientSource.UI.screens.RebirthPanel)
 local UpgradesPanel = require(ReplicatedStorage.ClientSource.UI.screens.UpgradesPanel)
 local SellPanel = require(ReplicatedStorage.ClientSource.UI.screens.SellPanel)
-local WeaponShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.WeaponShopPanel)
+local MagnetShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.MagnetShopPanel)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
 local BaseStructures = require(ReplicatedStorage.ClientSource.UI.baseStructures)
@@ -52,7 +52,7 @@ local PANEL_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirecti
 
 -- === производные XP-бара из силы + уровня ===
 local function xpInLevel() -- EtNum: сколько силы набрано внутри текущего уровня
-	return EtNum.sub(Data.strength(), LevelCurve.TotalForLevel(Data.level()))
+	return EtNum.sub(Data.magnetism(), LevelCurve.TotalForLevel(Data.level()))
 end
 
 local function xpRequired(): number -- сколько нужно набрать за уровень
@@ -113,7 +113,7 @@ local function inviteBadgeColor(): Color3
 	return Data.friendBonusPercent() > 0 and BADGE_ACCENT_COLOR or BADGE_NORMAL_COLOR
 end
 
--- === постоянные донат-множители (BuffBuyButton: "x2 Strength" / "x2 Money") ===
+-- === постоянные донат-множители (BuffBuyButton: "x2 Magnetism" / "x2 Money") ===
 -- Следующая непройденная ступень для текущего купленного множителя игрока;
 -- nil, если все ступени уже куплены (см. PermanentMultiplierConfig.NextTier).
 local function nextPermanentTier(buffType: string): PermanentMultiplierConfig.Tier?
@@ -174,14 +174,14 @@ local function onInviteActivated()
 end
 
 local function HUD()
-	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "weapons" | nil
+	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | nil
 	local openPanel = source(nil :: string?)
 	local function closePanel()
 		openPanel(nil)
 	end
 
 	--=== NPC-триггеры окон ===================================================
-	-- Окна weapons / upgrades / sell открываются не кнопками HUD, а ProximityPrompt'ами
+	-- Окна magnets / upgrades / sell открываются не кнопками HUD, а ProximityPrompt'ами
 	-- у NPC внутри построек базы мира (Buy / Upgrade / Sell в *BazeZone).
 	-- Маппинг построек и разбор промпта — в UI.baseStructures (работает для всех миров).
 	local promptConn = ProximityPromptService.PromptTriggered:Connect(function(prompt)
@@ -268,7 +268,7 @@ local function HUD()
 						Icon = "", -- сюда rbxassetid бицепса
 						Large = true,
 						Level = Data.level,
-						Total = Data.strength, -- общая сила под полоской
+						Total = Data.magnetism, -- общая сила под полоской
 						Progress = xpProgress,
 						Current = xpCurrent,
 						Required = xpRequired,
@@ -337,7 +337,7 @@ local function HUD()
 						openPanel("rebirth")
 					end,
 				}),
-				-- weapons / upgrades / sell кнопок в HUD нет: их окна открывает
+				-- magnets / upgrades / sell кнопок в HUD нет: их окна открывает
 				-- ProximityPrompt у NPC на базе мира (см. подписку PromptTriggered выше
 				-- и UI.baseStructures).
 				ActionButton({
@@ -423,13 +423,13 @@ local function HUD()
 						Knit.GetService("PlayerManagerService"):PromptBuffPurchase(productId):catch(warn)
 					end,
 					-- Донат-мечи (Wraithflame, Warring Wingblade) — Game Pass, не дев-продукт.
-					-- Владение подтвердит сам Roblox (WeaponGamePassPurchaseHandler),
-					-- Data.ownedWeapons/Data.weapon прилетят через ProfileService.UpdateSpecificData.
-					OnBuyOPSword = function(weaponKey)
-						Knit.GetService("PlayerManagerService"):PromptWeaponRobuxPurchase(weaponKey):catch(warn)
+					-- Владение подтвердит сам Roblox (MagnetGamePassPurchaseHandler),
+					-- Data.ownedMagnets/Data.magnet прилетят через ProfileService.UpdateSpecificData.
+					OnBuyOPMagnet = function(magnetKey)
+						Knit.GetService("PlayerManagerService"):PromptMagnetRobuxPurchase(magnetKey):catch(warn)
 					end,
-					OnEquipOPSword = function(weaponKey)
-						Knit.GetService("PlayerManagerService"):EquipWeapon(weaponKey):catch(warn)
+					OnEquipOPMagnet = function(magnetKey)
+						Knit.GetService("PlayerManagerService"):EquipMagnet(magnetKey):catch(warn)
 					end,
 				}),
 				rebirth = RebirthPanel({
@@ -454,26 +454,26 @@ local function HUD()
 						Knit.GetService("PlayerManagerService"):PromptStatRobuxUpgrade(statKey):catch(warn)
 					end,
 				}),
-				weapons = WeaponShopPanel({
+				magnets = MagnetShopPanel({
 					OnClose = closePanel,
 					-- Покупку за Money и экипировку считает сервер
-					-- (PlayerManagerService:BuyWeapon / :EquipWeapon); Data.weapon и
-					-- Data.ownedWeapons прилетят через ProfileService.UpdateSpecificData.
-					OnBuyMoney = function(weaponName)
+					-- (PlayerManagerService:BuyMagnet / :EquipMagnet); Data.magnet и
+					-- Data.ownedMagnets прилетят через ProfileService.UpdateSpecificData.
+					OnBuyMoney = function(magnetName)
 						sfx.play("Buy")
-						Knit.GetService("PlayerManagerService"):BuyWeapon(weaponName):catch(warn)
+						Knit.GetService("PlayerManagerService"):BuyMagnet(magnetName):catch(warn)
 					end,
 					-- Обычный меч за Robux, в обход цены Money (дев-продукт,
-					-- WeaponData[name].RobuxProductId) — не путать с OP Swords
-					-- (те покупаются за Game Pass через PromptWeaponRobuxPurchase).
+					-- MagnetData[name].RobuxProductId) — не путать с OP Magnets
+					-- (те покупаются за Game Pass через PromptMagnetRobuxPurchase).
 					-- Выдача + экипировка — через MarketplaceReceiptRouter
-					-- (WeaponRobuxPurchaseHandler), Data.ownedWeapons/Data.weapon
+					-- (MagnetRobuxPurchaseHandler), Data.ownedMagnets/Data.magnet
 					-- прилетят через ProfileService.UpdateSpecificData.
-					OnBuyRobux = function(weaponName)
-						Knit.GetService("PlayerManagerService"):PromptWeaponDevProductPurchase(weaponName):catch(warn)
+					OnBuyRobux = function(magnetName)
+						Knit.GetService("PlayerManagerService"):PromptMagnetDevProductPurchase(magnetName):catch(warn)
 					end,
-					OnEquip = function(weaponName)
-						Knit.GetService("PlayerManagerService"):EquipWeapon(weaponName):catch(warn)
+					OnEquip = function(magnetName)
+						Knit.GetService("PlayerManagerService"):EquipMagnet(magnetName):catch(warn)
 					end,
 				}),
 				sell = SellPanel({
@@ -530,22 +530,22 @@ local function HUD()
 			}),
 
 			-- Постоянный донат-множитель силы: кнопка скрывается сама, когда
-			-- куплена последняя ступень (PermanentMultiplierConfig.Tiers.Strength).
+			-- куплена последняя ступень (PermanentMultiplierConfig.Tiers.Magnetism).
 			show(function()
-				return hasNextPermanentTier("Strength")
+				return hasNextPermanentTier("Magnetism")
 			end, function()
 				return BuffBuyButton({
 					LayoutOrder = 1,
-					Type = "Strength",
+					Type = "Magnetism",
 					Title = function()
-						return permanentTierTitle("Strength", "Strength")
+						return permanentTierTitle("Magnetism", "Magnetism")
 					end,
 					Icon = "96772289336842",
 					Price = function()
-						return permanentTierPrice("Strength")
+						return permanentTierPrice("Magnetism")
 					end,
 					OnActivated = function()
-						onPermanentTierActivated("Strength")
+						onPermanentTierActivated("Magnetism")
 					end,
 				})
 			end),

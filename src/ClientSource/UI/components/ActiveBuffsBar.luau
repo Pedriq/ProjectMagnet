@@ -22,7 +22,7 @@ local cleanup = vide.cleanup
 
 -- порядок и цвет плиток по типу баффа (те же акценты, что у BoostCard в Shop)
 local ORDER = {
-	{ Type = "Strength", Color = Color3.fromRGB(255, 195, 35) },
+	{ Type = "Magnetism", Color = Color3.fromRGB(255, 195, 35) },
 	{ Type = "Money", Color = Color3.fromRGB(76, 242, 0) },
 }
 

@@ -1,5 +1,5 @@
 -- Кривая опыта/уровней. Единый источник для сервера (ClickHandler) и клиента (HUD).
--- Опыт = сила (Strength).
+-- Опыт = сила (Magnetism).
 
 local BASE_XP = 45
 local MULTIPLIER = 1.09176

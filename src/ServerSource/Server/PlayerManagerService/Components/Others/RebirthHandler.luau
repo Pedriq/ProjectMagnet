@@ -35,12 +35,12 @@ function RebirthHandler:Rebirth(player)
 	playerRebirths += 1
 
 	PlayerManagerService:ChangePlayerLevel(player, 1)
-	PlayerManagerService:ChangePlayerStrength(player, 0)
+	PlayerManagerService:ChangePlayerMagnetism(player, 0)
 	PlayerManagerService:ChangePlayerRebirths(player, playerRebirths)
 	PlayerManagerService:ChangePlayerCashMultiplier(player, 1 + playerRebirths * RebirthConfig.CashMultiplierPerRebirth)
-	PlayerManagerService:ChangePlayerStrengthMultiplier(
+	PlayerManagerService:ChangePlayerMagnetismMultiplier(
 		player,
-		1 + playerRebirths * RebirthConfig.StrengthMultiplierPerRebirth
+		1 + playerRebirths * RebirthConfig.MagnetismMultiplierPerRebirth
 	)
 end
 

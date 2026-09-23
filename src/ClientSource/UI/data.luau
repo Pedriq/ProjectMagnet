@@ -22,7 +22,7 @@ local source = vide.source
 ]]
 local Data = {}
 
-Data.strength = source("0") -- EtNum-строка
+Data.magnetism = source("0") -- EtNum-строка
 Data.money = source("0") -- EtNum-строка
 Data.rebirths = source(0)
 Data.level = source(1)
@@ -31,12 +31,12 @@ Data.carryCapacity = source(1) -- вместимость переноса
 Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прокачиваемых статов (Range/Agility/Capacity/Mobility)
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
-Data.weapon = source({ Name = "Stick", Strength = 5 }) -- текущий меч { Name, Strength }
-Data.ownedWeapons = source({}) -- купленные мечи: map[weaponName] = true
+Data.magnet = source({ Name = "Stick", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
+Data.ownedMagnets = source({}) -- купленные мечи: map[magnetName] = true
 Data.ready = source(false) -- пришёл ли первый снапшот профиля
 Data.friendBonusPercent = source(0) -- бонус к силе за клик от друзей в сессии, в процентах
 Data.buffs = source({}) -- активные временные баффы: map[buffType] = { ExpiresAt: number, Bonus: number }
-Data.permanentMultipliers = source({ Strength = 0, Money = 0 }) -- постоянные донат-множители (HUD -> BuffBuyButton): 0 = не куплен, иначе текущая купленная ступень
+Data.permanentMultipliers = source({ Magnetism = 0, Money = 0 }) -- постоянные донат-множители (HUD -> BuffBuyButton): 0 = не куплен, иначе текущая купленная ступень
 Data.lockedItems = source({}) -- заблокированные от продажи имена предметов (панель Sell Loot, кнопка Lock): map[itemName] = true.
 
 local started = false
@@ -45,7 +45,7 @@ local UPGRADE_STATS = { "Range", "Agility", "Capacity", "Mobility" }
 
 -- === полные множители (для ПРЕВЬЮ на клиенте — попап прироста силы при клике/
 -- ударе/автозоне, цены в панели Sell) === Сервер — источник правды (см.
--- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerStrengthMultiplier),
+-- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier),
 -- тут та же формула: base (ребёрс) + бонус активного временного баффа + бонус
 -- постоянного донат-множителя. Раньше превью считало только ребёрс-множитель,
 -- игнорируя баффы и донат-множитель — показывало заниженное число.
@@ -66,10 +66,10 @@ local function permanentBonus(buffType: string): number
 end
 
 -- Множитель силы за клик/удар/автозону: тот же rebirth-множитель, что считает
--- RebirthHandler (1 + rebirths * StrengthMultiplierPerRebirth), + баффы.
-function Data.fullStrengthMultiplier(): number
-	local base = 1 + Data.rebirths() * RebirthConfig.StrengthMultiplierPerRebirth
-	return base + activeBuffBonus("Strength") + permanentBonus("Strength")
+-- RebirthHandler (1 + rebirths * MagnetismMultiplierPerRebirth), + баффы.
+function Data.fullMagnetismMultiplier(): number
+	local base = 1 + Data.rebirths() * RebirthConfig.MagnetismMultiplierPerRebirth
+	return base + activeBuffBonus("Magnetism") + permanentBonus("Magnetism")
 end
 
 -- Множитель денег: base читаем из профиля напрямую (Multipliers.Cash, его
@@ -80,8 +80,8 @@ function Data.fullCashMultiplier(): number
 end
 
 local function applyStats(stats: { [string]: any })
-	if stats.Strength ~= nil then
-		Data.strength(stats.Strength)
+	if stats.Magnetism ~= nil then
+		Data.magnetism(stats.Magnetism)
 	end
 	if stats.Money ~= nil then
 		Data.money(stats.Money)
@@ -127,14 +127,14 @@ function Data.start()
 		end
 		if profile.PermanentMultipliers then
 			Data.permanentMultipliers({
-				Strength = profile.PermanentMultipliers.Strength or 0,
+				Magnetism = profile.PermanentMultipliers.Magnetism or 0,
 				Money = profile.PermanentMultipliers.Money or 0,
 			})
 		end
-		if profile.Weapon then
-			Data.weapon(profile.Weapon)
+		if profile.Magnet then
+			Data.magnet(profile.Magnet)
 		end
-		Data.ownedWeapons(profile.OwnedWeapons or {})
+		Data.ownedMagnets(profile.OwnedMagnets or {})
 		Data.items(profile.Items or {})
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ready(true)
@@ -169,12 +169,12 @@ function Data.start()
 			local t = table.clone(Data.lockedItems())
 			t[path[2]] = a
 			Data.lockedItems(t)
-		elseif path[1] == "Weapon" and path[2] == nil then
-			Data.weapon(a)
-		elseif path[1] == "OwnedWeapons" and path[2] ~= nil then
-			local t = table.clone(Data.ownedWeapons())
+		elseif path[1] == "Magnet" and path[2] == nil then
+			Data.magnet(a)
+		elseif path[1] == "OwnedMagnets" and path[2] ~= nil then
+			local t = table.clone(Data.ownedMagnets())
 			t[path[2]] = a
-			Data.ownedWeapons(t)
+			Data.ownedMagnets(t)
 		end
 	end)
 

@@ -86,7 +86,7 @@ local function BoostCard(props: Props)
 		-- 2) TileSize 0.085x0.075 давал плитку ~11x10px — на карточке ~132x140
 		--    это 12x13 повторов, узор рассыпался в мелкий шум. 0.33x0.33 — плитка
 		--    ~1/3 карточки, 3x3 повтора, тот же по ощущению масштаб, что у
-		--    остальных карточек в проекте (SellItemCard/WeaponCard/UpgradeCard —
+		--    остальных карточек в проекте (SellItemCard/MagnetCard/UpgradeCard —
 		--    там плитка размером с саму карточку по высоте).
 		table.unpack(Surface({
 			Radius = UDim.new(0.008, 0),

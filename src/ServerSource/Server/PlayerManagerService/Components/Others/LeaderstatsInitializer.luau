@@ -12,17 +12,17 @@ local ProfileService
 ---- Datas
 
 ---- Assets
--- лидерстаты: Folder "leaderstats" с двумя StringValue (Strength/Money) — их видит
+-- лидерстаты: Folder "leaderstats" с двумя StringValue (Magnetism/Money) — их видит
 -- стандартная таблица игроков Roblox. Значения = Format.short (то же короткое
--- представление, что в HUD), т.к. Stats.Strength/Money — EtNum-строки произвольной точности.
+-- представление, что в HUD), т.к. Stats.Magnetism/Money — EtNum-строки произвольной точности.
 function LeaderstatsInitializer:InitLeaderstats(player: Player)
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
 
-	local strength = Instance.new("StringValue")
-	strength.Name = "Strength"
-	strength.Value = Format.short(ProfileService:GetData(player, { "Stats", "Strength" }) or "0")
-	strength.Parent = leaderstats
+	local magnetism = Instance.new("StringValue")
+	magnetism.Name = "Magnetism"
+	magnetism.Value = Format.short(ProfileService:GetData(player, { "Stats", "Magnetism" }) or "0")
+	magnetism.Parent = leaderstats
 
 	local money = Instance.new("StringValue")
 	money.Name = "Money"
@@ -39,8 +39,8 @@ function LeaderstatsInitializer:InitLeaderstats(player: Player)
 				return
 			end
 
-			if redirectories[2] == "Strength" then
-				strength.Value = Format.short(newValue)
+			if redirectories[2] == "Magnetism" then
+				magnetism.Value = Format.short(newValue)
 			elseif redirectories[2] == "Money" then
 				money.Value = Format.short(newValue)
 			end

@@ -284,7 +284,7 @@ local function Panel(props: Props)
 			-- (Rotation) детей обычный Frame.ClipsDescendants обрезает не всегда
 			-- пиксель-в-пиксель — концы полосок чуть протыкали верх/низ полоски
 			-- тайтла. CanvasGroup рендерит детей в офscreen-канвас и обрезает уже
-			-- его — тот же приём, что у WeaponCard.lightBars (CardEffect 2).
+			-- его — тот же приём, что у MagnetCard.lightBars (CardEffect 2).
 			create("CanvasGroup")({
 				Name = "Shine",
 				ZIndex = 2,

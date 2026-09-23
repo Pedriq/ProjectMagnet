@@ -4,12 +4,12 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 
 local create = vide.create
 
--- Clones only the display model; never changes the equipped weapon or its template.
-local function WeaponViewport(name: string)
+-- Clones only the display model; never changes the equipped magnet or its template.
+local function MagnetViewport(name: string)
 	local camera = create("Camera")({ FieldOfView = 35 })
 	local world = create("WorldModel")({ Name = "PreviewWorld" })
 	local viewport = create("ViewportFrame")({
-		Name = "WeaponViewport",
+		Name = "MagnetViewport",
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		Ambient = Color3.fromRGB(210, 210, 210),
@@ -37,8 +37,8 @@ local function WeaponViewport(name: string)
 			return
 		end
 		local assets = ReplicatedStorage:FindFirstChild("Assets")
-		local weapons = assets and assets:FindFirstChild("Weapons")
-		local template = weapons and weapons:FindFirstChild(name)
+		local magnets = assets and assets:FindFirstChild("Magnets")
+		local template = magnets and magnets:FindFirstChild(name)
 		if not template or not template:IsA("Model") then
 			return
 		end
@@ -83,7 +83,7 @@ local function WeaponViewport(name: string)
 	end
 	local resize = viewport:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	local added = ReplicatedStorage.DescendantAdded:Connect(function(item)
-		if item.Name == name or item.Name == "Weapons" or item.Name == "Assets" then
+		if item.Name == name or item.Name == "Magnets" or item.Name == "Assets" then
 			loadModel()
 		end
 	end)
@@ -102,4 +102,4 @@ local function WeaponViewport(name: string)
 	return viewport
 end
 
-return WeaponViewport
+return MagnetViewport

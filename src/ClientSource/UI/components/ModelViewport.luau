@@ -11,7 +11,7 @@ local clock = rarityFx.clock
 
 --[[
 	ModelViewport — 3D-превью модели (меч/предмет) вместо плоской иконки в
-	карточках (WeaponCard/SellItemCard). Клонирует Model в свой WorldModel,
+	карточках (MagnetCard/SellItemCard). Клонирует Model в свой WorldModel,
 	наводит камеру по боксу модели и медленно крутит её для "живости".
 
 	Model может быть реактивным (function): в SellPanel карточки переиспользуются

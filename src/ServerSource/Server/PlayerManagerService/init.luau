@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
-local WeaponData = require(ReplicatedStorage.SharedSource.Datas.WeaponData)
+local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local PlayerManagerService = Knit.CreateService({
 	Name = "PlayerManagerService",
 	PlayerStripData = {},
@@ -17,7 +17,7 @@ local PlayerManagerService = Knit.CreateService({
 		-- Fire(player, stripId, rockIndex, maxHp, newHp) — за КАЖДЫЙ задетый камень
 		-- (для визуала конкретного камня — ShakeRock/FlashRock в RockController).
 		HitRock = Knit.CreateSignal(),
-		-- Fire(player) — ровно 1 раз за взмах (см. PlayerWeaponHitboxManager),
+		-- Fire(player) — ровно 1 раз за взмах (см. PlayerMagnetHitboxManager),
 		-- даже если этим взмахом задето сразу несколько стеблей.
 		-- Для UI-фидбека начисления силы (ClickEffect) — не привязан к конкретному камню.
 		AttackHit = Knit.CreateSignal(),
@@ -63,58 +63,58 @@ function PlayerManagerService:ResetPlayerRock(player)
 	RockService:ResetPlayerHitboxes(player)
 end
 
-function PlayerManagerService:ChangeWeapon(player, weaponData)
-	ProfileService:ChangeData(player, { "Weapon" }, weaponData)
+function PlayerManagerService:ChangeMagnet(player, magnetData)
+	ProfileService:ChangeData(player, { "Magnet" }, magnetData)
 end
 
--- Мечи, которыми игрок владеет: map[weaponName] = true (см. WeaponData / WeaponShopHandler).
-function PlayerManagerService:GetPlayerOwnedWeapons(player)
-	return ProfileService:GetData(player, { "OwnedWeapons" }) or {}
+-- Мечи, которыми игрок владеет: map[magnetName] = true (см. MagnetData / MagnetShopHandler).
+function PlayerManagerService:GetPlayerOwnedMagnets(player)
+	return ProfileService:GetData(player, { "OwnedMagnets" }) or {}
 end
 
-function PlayerManagerService:SetWeaponOwned(player, weaponName)
-	ProfileService:ChangeData(player, { "OwnedWeapons", weaponName }, true)
+function PlayerManagerService:SetMagnetOwned(player, magnetName)
+	ProfileService:ChangeData(player, { "OwnedMagnets", magnetName }, true)
 end
 
 -- Панель мечей: купить меч за Money (сразу экипируется). Сервер сам считает цену.
-function PlayerManagerService:BuyWeapon(player, weaponName)
-	return self.Components.WeaponShopHandler:BuyWithMoney(player, weaponName)
+function PlayerManagerService:BuyMagnet(player, magnetName)
+	return self.Components.MagnetShopHandler:BuyWithMoney(player, magnetName)
 end
 
 -- Панель мечей: экипировать уже купленный меч.
-function PlayerManagerService:EquipWeapon(player, weaponName)
-	return self.Components.WeaponShopHandler:EquipWeapon(player, weaponName)
+function PlayerManagerService:EquipMagnet(player, magnetName)
+	return self.Components.MagnetShopHandler:EquipMagnet(player, magnetName)
 end
 
-function PlayerManagerService.Client:BuyWeapon(player, weaponName)
-	return self.Server:BuyWeapon(player, weaponName)
+function PlayerManagerService.Client:BuyMagnet(player, magnetName)
+	return self.Server:BuyMagnet(player, magnetName)
 end
 
-function PlayerManagerService.Client:EquipWeapon(player, weaponName)
-	return self.Server:EquipWeapon(player, weaponName)
+function PlayerManagerService.Client:EquipMagnet(player, magnetName)
+	return self.Server:EquipMagnet(player, magnetName)
 end
 
--- Донат-меч (Game Pass, WeaponData[name].GamePassId): открыть окно покупки.
--- Владение обработает WeaponGamePassPurchaseHandler (PromptGamePassPurchaseFinished),
--- Data.ownedWeapons/Data.weapon прилетят через ProfileService.UpdateSpecificData.
-function PlayerManagerService:PromptWeaponRobuxPurchase(player, weaponName)
-	self.Components.WeaponGamePassPurchaseHandler:PromptPurchase(player, weaponName)
+-- Донат-меч (Game Pass, MagnetData[name].GamePassId): открыть окно покупки.
+-- Владение обработает MagnetGamePassPurchaseHandler (PromptGamePassPurchaseFinished),
+-- Data.ownedMagnets/Data.magnet прилетят через ProfileService.UpdateSpecificData.
+function PlayerManagerService:PromptMagnetRobuxPurchase(player, magnetName)
+	self.Components.MagnetGamePassPurchaseHandler:PromptPurchase(player, magnetName)
 end
 
-function PlayerManagerService.Client:PromptWeaponRobuxPurchase(player, weaponName)
-	return self.Server:PromptWeaponRobuxPurchase(player, weaponName)
+function PlayerManagerService.Client:PromptMagnetRobuxPurchase(player, magnetName)
+	return self.Server:PromptMagnetRobuxPurchase(player, magnetName)
 end
 
--- Обычный меч «Cutters» за Robux (WeaponData[name].RobuxProductId) — в обход
--- цены Money, НЕ донат-меч. Не путать с PromptWeaponRobuxPurchase выше (та —
--- для Game Pass'ов OP Swords). Владение обработает WeaponRobuxPurchaseHandler
+-- Обычный меч «Cutters» за Robux (MagnetData[name].RobuxProductId) — в обход
+-- цены Money, НЕ донат-меч. Не путать с PromptMagnetRobuxPurchase выше (та —
+-- для Game Pass'ов OP Magnets). Владение обработает MagnetRobuxPurchaseHandler
 -- через MarketplaceReceiptRouter (дев-продукт, не Game Pass).
-function PlayerManagerService:PromptWeaponDevProductPurchase(player, weaponName)
-	self.Components.WeaponRobuxPurchaseHandler:PromptPurchase(player, weaponName)
+function PlayerManagerService:PromptMagnetDevProductPurchase(player, magnetName)
+	self.Components.MagnetRobuxPurchaseHandler:PromptPurchase(player, magnetName)
 end
 
-function PlayerManagerService.Client:PromptWeaponDevProductPurchase(player, weaponName)
-	return self.Server:PromptWeaponDevProductPurchase(player, weaponName)
+function PlayerManagerService.Client:PromptMagnetDevProductPurchase(player, magnetName)
+	return self.Server:PromptMagnetDevProductPurchase(player, magnetName)
 end
 
 function PlayerManagerService:ChangePlayerMoney(player, money)
@@ -165,12 +165,12 @@ function PlayerManagerService.Client:ToggleItemLock(player, itemName)
 	return self.Server:ToggleItemLock(player, itemName)
 end
 
-function PlayerManagerService:GetPlayerWeapon(player)
-	return ProfileService:GetData(player, { "Weapon" })
+function PlayerManagerService:GetPlayerMagnet(player)
+	return ProfileService:GetData(player, { "Magnet" })
 end
 
-function PlayerManagerService:ChangePlayerStrength(player, strength)
-	ProfileService:ChangeData(player, { "Stats", "Strength" }, strength)
+function PlayerManagerService:ChangePlayerMagnetism(player, magnetism)
+	ProfileService:ChangeData(player, { "Stats", "Magnetism" }, magnetism)
 end
 
 -- Множитель денег за ребёрс + бонус активного временного баффа + бонус
@@ -190,15 +190,15 @@ end
 -- Множитель силы за ребёрс + бонус активного временного баффа + бонус
 -- постоянного донат-множителя (все складываются, см. BuffHandler:GetBonus /
 -- BuffConfig, PermanentMultiplierHandler:GetBonus / PermanentMultiplierConfig).
-function PlayerManagerService:GetPlayerStrengthMultiplier(player)
-	local base = tonumber(ProfileService:GetData(player, { "Multipliers", "Strength" })) or 1
+function PlayerManagerService:GetPlayerMagnetismMultiplier(player)
+	local base = tonumber(ProfileService:GetData(player, { "Multipliers", "Magnetism" })) or 1
 	return base
-		+ self.Components.BuffHandler:GetBonus(player, "Strength")
-		+ self.Components.PermanentMultiplierHandler:GetBonus(player, "Strength")
+		+ self.Components.BuffHandler:GetBonus(player, "Magnetism")
+		+ self.Components.PermanentMultiplierHandler:GetBonus(player, "Magnetism")
 end
 
-function PlayerManagerService:ChangePlayerStrengthMultiplier(player, multiplier)
-	ProfileService:ChangeData(player, { "Multipliers", "Strength" }, multiplier)
+function PlayerManagerService:ChangePlayerMagnetismMultiplier(player, multiplier)
+	ProfileService:ChangeData(player, { "Multipliers", "Magnetism" }, multiplier)
 end
 
 -- Клиент жмёт «купить» на карточке буста (панель Shop): промпт покупки
@@ -323,16 +323,16 @@ function PlayerManagerService:GetPlayerStatsValues(player)
 	return self.PlayerStats[player.UserId]
 end
 
-function PlayerManagerService:CreateWeaponHitbox(player)
-	-- resolveKey — на случай старых профилей, у которых в Weapon.Name осело
-	-- отображаемое имя вместо ключа (баг WeaponShopHandler:EquipWeapon, уже
+function PlayerManagerService:CreateMagnetHitbox(player)
+	-- resolveKey — на случай старых профилей, у которых в Magnet.Name осело
+	-- отображаемое имя вместо ключа (баг MagnetShopHandler:EquipMagnet, уже
 	-- пофикшен для новых записей, но старые сохранёнки сами себя не чинят).
-	local weaponKey = WeaponData.resolveKey(self:GetPlayerWeapon(player).Name) or "Stick"
-	self.Components.PlayerWeaponHitboxManager:CreateWeaponHitbox(player, weaponKey)
+	local magnetKey = MagnetData.resolveKey(self:GetPlayerMagnet(player).Name) or "Stick"
+	self.Components.PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetKey)
 end
 
-function PlayerManagerService:GiveWeapon(player)
-	self.Components.WeaponHandler:GiveWeapon(player)
+function PlayerManagerService:GiveMagnet(player)
+	self.Components.MagnetHandler:GiveMagnet(player)
 end
 
 function PlayerManagerService:AddTresureToPlayer(player, treasureId, treasureData)
@@ -540,18 +540,18 @@ function PlayerManagerService:KnitInit()
 		end)
 
 		player.CharacterAdded:Connect(function(character)
-			self:GiveWeapon(player)
+			self:GiveMagnet(player)
 
 			self:WaitForPlayerStats(player)
 
-			self:CreateWeaponHitbox(player, self:GetPlayerWeapon(player).Name)
+			self:CreateMagnetHitbox(player, self:GetPlayerMagnet(player).Name)
 
 			self:ApplyWalkSpeed(player)
 		end)
 
 		self:WaitForPlayerStats(player)
 
-		self.Components.PlayerWeaponHitboxManager:StartPlayerLoop(player)
+		self.Components.PlayerMagnetHitboxManager:StartPlayerLoop(player)
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
