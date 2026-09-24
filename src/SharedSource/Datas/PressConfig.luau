@@ -39,10 +39,14 @@ end
 -- === Тайминги визуала. Сервер начисляет деньги через SELL_DELAY после крафта —
 -- ровно когда у клиента предмет падает в Sell, поэтому клиент берёт длительности
 -- анимации отсюда же.
+PressConfig.SLAM_TIME = 0.25 -- головка пресса опускается и бьёт по руде
 PressConfig.PRESS_TIME = 0.35 -- предмет «выдавливается» из PressInventory
 PressConfig.CONVEYOR_TIME = 2.5 -- едет по конвейеру
 PressConfig.FALL_TIME = 0.45 -- падает с конвейера в Sell
-PressConfig.SELL_DELAY = PressConfig.PRESS_TIME + PressConfig.CONVEYOR_TIME + PressConfig.FALL_TIME
+PressConfig.SELL_DELAY = PressConfig.SLAM_TIME
+	+ PressConfig.PRESS_TIME
+	+ PressConfig.CONVEYOR_TIME
+	+ PressConfig.FALL_TIME
 
 -- === Остаток руды (< WEIGHT_PER_ITEM). Когда игрок закончил выгрузку (с последнего
 -- кусочка прошло REMAINDER_DELAY сек) и руды на целый предмет не хватает, из остатка

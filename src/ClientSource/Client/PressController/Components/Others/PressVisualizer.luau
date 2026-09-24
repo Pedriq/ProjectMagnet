@@ -10,8 +10,10 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 	PressVisualizer — ЛОКАЛЬНЫЙ визуал пресса: всё создаётся на клиенте, поэтому
 	другие игроки этого не видят.
 
-	  * кусочки руды летят с игрока в PressInventory и копятся там кучкой;
-	  * на крафт из кучки исчезает WEIGHT_PER_ITEM / PieceWeight кусочков этой руды,
+	  * кусочки руды летят с игрока в PressInventory и ложатся ровными слоями
+	    (сетка, до PILE_MAX_HEIGHT); рама пресса (PressFrame) поднимается над кучкой;
+	  * на крафт головка пресса бьёт по руде, из кучки исчезает
+	    weight / PieceWeight кусочков этой руды, остальные оседают на свои ячейки,
 	    из PressInventory «выдавливается» предмет, едет по Conveyor и падает в Sell;
 	  * над PressInventory — табличка прогресса «руда: вес / WEIGHT_PER_ITEM».
 
@@ -22,6 +24,8 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 ]]
 local PressVisualizer = {}
 
+local PressFrame = require(script.Parent.PressFrame)
+
 local player = Players.LocalPlayer
 
 ---- Datas
@@ -29,13 +33,14 @@ local CONVEYOR_NAMES = { "Conveyor", "\u{421}onveyor" } -- второе — с �
 
 local FLY_TIME = 0.5 -- полёт кусочка руды с игрока в пресс
 local FLY_ARC = 4 -- высота дуги полёта
--- Кучка загруженной руды в PressInventory. Пока выключена: кусочки долетают
--- до пресса и исчезают. true — вернуть кучку.
-local SHOW_PILE = false
-local PILE_MAX = 60 -- больше кусочков в кучке не рисуем
-local PILE_INSET = 0.2 -- отступ кучки от краёв PressInventory (доля размера)
-local PILE_LAYER_HEIGHT = 0.3 -- насколько кучка растёт вверх за каждые PILE_PER_LAYER кусочков
-local PILE_PER_LAYER = 12
+-- Кучка руды: ровная сетка слоями над PressInventory (снизу вверх), до PILE_MAX_HEIGHT.
+-- Что не влезло — не рисуется, но учитывается (hidden) и дорисуется, когда место освободится.
+local PILE_CELL = 1.2 -- шаг сетки, studs (кусочек подгоняется под ячейку)
+local PILE_PIECE_FILL = 0.95 -- доля ячейки, которую занимает кусочек
+local PILE_LAYER_HEIGHT = 0.9 -- высота одного слоя, studs
+local PILE_MAX_HEIGHT = 5 -- максимальная высота кучки, studs
+local PILE_INSET = 0.1 -- отступ сетки от краёв PressInventory (доля размера)
+local PILE_SETTLE_TIME = 0.25 -- кусочки «оседают» на новые места после крафта
 local PIECE_FALLBACK_SIZE = 0.7
 local PIECE_VANISH_TIME = 0.2
 
@@ -47,9 +52,20 @@ local MONEY_POPUP_TIME = 1.2
 ---- State
 local press: Model? = nil
 local visualsFolder: Folder? = nil
-local pile: { [string]: { Model } } = {} -- [oreId] = кусочки в кучке
-local pileCount = 0
+type PileEntry = {
+	OreId: string,
+	Model: Model,
+	Yaw: CFrame, -- поворот кусочка на 0/90/180/270° — чтобы слои не выглядели клонами
+	Target: CFrame, -- место в сетке (обновляется при перераскладке)
+	Flying: boolean, -- ещё летит с игрока (сам догоняет Target)
+}
+type Grid = { Origin: CFrame, Cols: number, Rows: number, PerLayer: number, Capacity: number }
+
+local pileList: { PileEntry } = {} -- порядок = номер ячейки (снизу вверх, слой за слоем)
+local hidden: { [string]: number } = {} -- [oreId] = кусочков сверх вместимости (не нарисованы)
+local grid: Grid? = nil
 local progressLabel: TextLabel? = nil
+local lastProgress: { [string]: number } = {}
 
 ---- Helpers
 local function getBox(inst: Instance): (CFrame, Vector3)
@@ -231,67 +247,201 @@ local function createItem(itemName: string, rarity: string): Model
 	return model :: Model
 end
 
--- Где лежит следующий кусочек кучки: луч сверху вниз в случайную точку
--- PressInventory — попадёт в дно/пол пресса (невидимые зоны без коллизии пропускаются).
-function PressVisualizer:_NextPileCFrame(pieceHeight: number): CFrame
+-- Сетка кучки: основание — ВЕРХНЯЯ грань PressInventory (мировая Y), руда растёт
+-- вверх. Без лучей: раньше луч вниз пролетал сквозь PressInventory без коллизии
+-- и кучка строилась на земле. Деталь может быть повёрнута — берём её ось,
+-- которая смотрит вверх, а две другие (выровненные по горизонтали) — оси сетки.
+local function buildGrid(): Grid?
 	local inventory = findPart("PressInventory")
 	if not inventory then
-		return CFrame.new()
+		return nil
 	end
 
 	local cf, size = getBox(inventory)
-	local half = size * (0.5 - PILE_INSET)
-	local offset = Vector3.new((math.random() * 2 - 1) * half.X, 0, (math.random() * 2 - 1) * half.Z)
-	local top = cf:PointToWorldSpace(Vector3.new(offset.X, size.Y / 2 + 0.5, offset.Z))
+	local axes = {
+		{ Dir = cf.RightVector, Len = size.X },
+		{ Dir = cf.UpVector, Len = size.Y },
+		{ Dir = cf.LookVector, Len = size.Z },
+	}
+	table.sort(axes, function(a, b)
+		return math.abs(a.Dir.Y) > math.abs(b.Dir.Y)
+	end)
+	local vertical, axisA, axisB = axes[1], axes[2], axes[3]
 
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { visualsFolder, player.Character }
-	params.RespectCanCollide = true
+	local topY = cf.Position.Y + math.abs(vertical.Dir.Y) * vertical.Len / 2
+	local flat = axisA.Dir * Vector3.new(1, 0, 1)
+	local flatA = if flat.Magnitude > 0.01 then flat.Unit else Vector3.xAxis
+	local base = Vector3.new(cf.Position.X, topY, cf.Position.Z)
 
-	local hit = workspace:Raycast(top, -cf.UpVector * (size.Y + 20), params)
-	local floor = if hit then hit.Position else top - cf.UpVector * 0.5
-	local layer = math.floor(pileCount / PILE_PER_LAYER)
-	local position = floor + cf.UpVector * (pieceHeight / 2 + layer * PILE_LAYER_HEIGHT)
+	local cols = math.max(1, math.floor(axisA.Len * (1 - PILE_INSET * 2) / PILE_CELL))
+	local rows = math.max(1, math.floor(axisB.Len * (1 - PILE_INSET * 2) / PILE_CELL))
+	local layers = math.max(1, math.floor(PILE_MAX_HEIGHT / PILE_LAYER_HEIGHT))
 
-	return CFrame.new(position) * CFrame.Angles(math.random() * math.pi * 2, math.random() * math.pi * 2, 0)
+	return {
+		-- X сетки — вдоль axisA, Y — мировой верх, Z — вдоль axisB
+		Origin = CFrame.fromMatrix(base, flatA, Vector3.yAxis),
+		Cols = cols,
+		Rows = rows,
+		PerLayer = cols * rows,
+		Capacity = cols * rows * layers,
+	}
 end
 
-function PressVisualizer:_AddToPile(oreId: string, model: Model)
-	pile[oreId] = pile[oreId] or {}
-	table.insert(pile[oreId], model)
-	pileCount += 1
+-- Ячейка №index (1..Capacity): слой за слоем, в слое — ряд за рядом.
+local function slotCFrame(index: number, yaw: CFrame): CFrame
+	local g = grid :: Grid
+	local i = index - 1
+	local layer = i // g.PerLayer
+	local k = i % g.PerLayer
+	local col, row = k % g.Cols, k // g.Cols
+	local offset = Vector3.new(
+		(col - (g.Cols - 1) / 2) * PILE_CELL,
+		layer * PILE_LAYER_HEIGHT + PILE_LAYER_HEIGHT / 2,
+		(row - (g.Rows - 1) / 2) * PILE_CELL
+	)
+	return g.Origin * CFrame.new(offset) * yaw
 end
 
--- Кусочек сразу лежит в кучке (снапшот при старте).
-function PressVisualizer:_SpawnPiled(oreId: string)
-	if not SHOW_PILE or pileCount >= PILE_MAX or not visualsFolder then
-		return
+-- Верх кучки (мировой Y): по числу занятых слоёв.
+local function pileTopY(): number
+	if not grid then
+		return 0
+	end
+	local layers = math.ceil(#pileList / grid.PerLayer)
+	return grid.Origin.Position.Y + layers * PILE_LAYER_HEIGHT
+end
+
+local function randomYaw(): CFrame
+	return CFrame.Angles(0, math.rad(90 * math.random(0, 3)), 0)
+end
+
+local function vanish(model: Model)
+	task.spawn(function()
+		local baseScale = model:GetScale()
+		animate(PIECE_VANISH_TIME, function(alpha)
+			if model.Parent then
+				safeScale(model, baseScale * (1 - alpha))
+			end
+		end)
+		model:Destroy()
+	end)
+end
+
+-- Кусочек под размер ячейки.
+local function fitToCell(model: Model)
+	local extents = model:GetExtentsSize()
+	local biggest = math.max(extents.X, extents.Y, extents.Z)
+	if biggest > 0 then
+		safeScale(model, model:GetScale() * PILE_CELL * PILE_PIECE_FILL / biggest)
+	end
+end
+
+-- Раме пресса — новый верх кучки.
+local function updateFrame()
+	if grid then
+		PressFrame:SetPile(grid.Origin.Position.Y, pileTopY())
+	end
+end
+
+-- Новая запись в конец кучки (следующая свободная ячейка).
+local function appendEntry(oreId: string, model: Model, flying: boolean): PileEntry
+	local yaw = randomYaw()
+	local entry: PileEntry = {
+		OreId = oreId,
+		Model = model,
+		Yaw = yaw,
+		Target = slotCFrame(#pileList + 1, yaw),
+		Flying = flying,
+	}
+	table.insert(pileList, entry)
+	return entry
+end
+
+-- Кусочек сразу лежит в кучке (снапшот при старте / дорисовка скрытых).
+local function spawnPiled(oreId: string): boolean
+	if not grid or not visualsFolder or #pileList >= grid.Capacity then
+		return false
 	end
 	local model = createOrePiece(oreId)
-	model:PivotTo(self:_NextPileCFrame(model:GetExtentsSize().Y))
+	fitToCell(model)
+	local entry = appendEntry(oreId, model, false)
+	model:PivotTo(entry.Target)
 	model.Parent = visualsFolder
-	self:_AddToPile(oreId, model)
+	return true
 end
 
--- Кусочек руды летит с игрока в пресс.
+-- После удаления кусочков: все сдвигаются на свои ячейки (слои снова ровные),
+-- свободные места сверху занимают скрытые кусочки.
+function PressVisualizer:_Relayout()
+	if not grid then
+		return
+	end
+
+	for _, oreId in ipairs(OreConfig.Order) do
+		while (hidden[oreId] or 0) > 0 and #pileList < grid.Capacity do
+			hidden[oreId] -= 1
+			spawnPiled(oreId)
+		end
+	end
+
+	local moving = {}
+	for index, entry in ipairs(pileList) do
+		local target = slotCFrame(index, entry.Yaw)
+		if target ~= entry.Target then
+			entry.Target = target
+			if not entry.Flying then
+				table.insert(moving, { Entry = entry, From = entry.Model:GetPivot() })
+			end
+		end
+	end
+
+	if #moving > 0 then
+		task.spawn(function()
+			animate(PILE_SETTLE_TIME, function(alpha)
+				local eased = 1 - (1 - alpha) ^ 2
+				for _, m in ipairs(moving) do
+					if m.Entry.Model.Parent and not m.Entry.Flying then
+						m.Entry.Model:PivotTo(m.From:Lerp(m.Entry.Target, eased))
+					end
+				end
+			end)
+		end)
+	end
+
+	updateFrame()
+end
+
+-- Кусочек руды летит с игрока в пресс и ложится в следующую ячейку.
 function PressVisualizer:OreUnloaded(oreId: string)
 	if not press or not visualsFolder then
+		return
+	end
+	self:_EnsureReady()
+	if not grid then
+		-- PressInventory ещё не пришла к клиенту: запоминаем, нарисуем, когда появится
+		hidden[oreId] = (hidden[oreId] or 0) + 1
 		return
 	end
 
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local model = createOrePiece(oreId)
-	local target = self:_NextPileCFrame(model:GetExtentsSize().Y)
-	local start = if root then (root :: BasePart).Position else target.Position + Vector3.new(0, 5, 0)
+	fitToCell(model)
 
-	-- место в кучке занимаем сразу, чтобы следующие кусочки ложились выше
-	local toPile = SHOW_PILE and pileCount < PILE_MAX
-	if toPile then
-		self:_AddToPile(oreId, model)
+	local entry: PileEntry? = nil
+	if #pileList < grid.Capacity then
+		entry = appendEntry(oreId, model, true)
+		updateFrame()
+	else
+		-- кучка до потолка: кусочек долетает до верха и тает, учитываем как скрытый
+		hidden[oreId] = (hidden[oreId] or 0) + 1
 	end
 
-	local control = (start + target.Position) / 2 + Vector3.new(0, FLY_ARC + (start - target.Position).Magnitude * 0.2, 0)
+	local topTarget = CFrame.new(grid.Origin.Position + Vector3.new(0, PILE_MAX_HEIGHT, 0))
+	local function target(): CFrame
+		return if entry then entry.Target else topTarget
+	end
+
+	local start = if root then (root :: BasePart).Position else target().Position + Vector3.new(0, 5, 0)
 	local spin = CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6)
 
 	model:PivotTo(CFrame.new(start))
@@ -302,44 +452,45 @@ function PressVisualizer:OreUnloaded(oreId: string)
 			if not model.Parent then
 				return
 			end
-			local position = bezier(start, control, target.Position, alpha)
-			local rotation = target.Rotation:Lerp(spin, 1 - alpha)
-			model:PivotTo(CFrame.new(position) * rotation)
+			-- цель читается каждый кадр: пока кусочек летит, кучка могла перестроиться
+			local finish = target()
+			local control = (start + finish.Position) / 2
+				+ Vector3.new(0, FLY_ARC + (start - finish.Position).Magnitude * 0.2, 0)
+			local position = bezier(start, control, finish.Position, alpha)
+			model:PivotTo(CFrame.new(position) * finish.Rotation:Lerp(spin, 1 - alpha))
 		end)
 
-		if not toPile then
-			-- в кучку не попал — тает в прессе
-			local baseScale = model:GetScale()
-			animate(PIECE_VANISH_TIME, function(alpha)
-				if model.Parent then
-					safeScale(model, baseScale * (1 - alpha))
-				end
-			end)
-			model:Destroy()
+		if entry then
+			entry.Flying = false
+			if model.Parent then
+				model:PivotTo(entry.Target)
+			end
+		else
+			vanish(model)
 		end
 	end)
 end
 
--- Убрать из кучки `count` кусочков руды oreId (ушли на предмет).
+-- Убрать из кучки `count` кусочков руды oreId (ушли на предмет): сначала скрытые,
+-- потом нарисованные — с верха кучки.
 function PressVisualizer:_ConsumeFromPile(oreId: string, count: number)
-	local pieces = pile[oreId]
-	if not pieces then
-		return
+	local fromHidden = math.min(hidden[oreId] or 0, count)
+	hidden[oreId] = (hidden[oreId] or 0) - fromHidden
+	count -= fromHidden
+
+	for index = #pileList, 1, -1 do
+		if count <= 0 then
+			break
+		end
+		local entry = pileList[index]
+		if entry.OreId == oreId then
+			table.remove(pileList, index)
+			vanish(entry.Model)
+			count -= 1
+		end
 	end
 
-	for _ = 1, math.min(count, #pieces) do
-		local model = table.remove(pieces)
-		pileCount -= 1
-		task.spawn(function()
-			local baseScale = model:GetScale()
-			animate(PIECE_VANISH_TIME, function(alpha)
-				if model.Parent then
-					safeScale(model, baseScale * (1 - alpha))
-				end
-			end)
-			model:Destroy()
-		end)
-	end
+	self:_Relayout()
 end
 
 -- Точки конвейера: начало (ближе к PressInventory) и конец (ближе к Sell).
@@ -424,14 +575,24 @@ function PressVisualizer:ItemCrafted(oreId: string, weight: number, itemName: st
 		return
 	end
 
+	self:_EnsureReady()
+	task.spawn(self._PlayCraft, self, oreId, weight, itemName, rarity, payout)
+end
+
+function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: string?, rarity: string?, payout: string?)
+	-- 0) удар: Middle + Press опускаются до руды, в момент удара кусочки уходят
+	local inventory = findPart("PressInventory")
+	local floorY = if grid then grid.Origin.Position.Y elseif inventory then topCenter(inventory).Y else 0
+	local hitY = if #pileList > 0 then pileTopY() else floorY
+	PressFrame:SlamAsync(hitY, PressConfig.SLAM_TIME)
+
 	local ore = OreConfig.Get(oreId)
 	if ore then
 		self:_ConsumeFromPile(oreId, math.ceil(weight / ore.PieceWeight))
 	end
 
-	local inventory = findPart("PressInventory")
 	local sell = findPart("Sell")
-	if not inventory or not itemName or not rarity or not payout then
+	if not inventory or not itemName or not rarity or not payout or not visualsFolder then
 		return
 	end
 
@@ -439,7 +600,10 @@ function PressVisualizer:ItemCrafted(oreId: string, weight: number, itemName: st
 	local baseScale = model:GetScale()
 	local halfHeight = model:GetExtentsSize().Y / 2
 
-	local startPos = topCenter(inventory) + Vector3.new(0, halfHeight, 0)
+	-- предмет появляется на месте удара — над остатком кучки
+	local startPos = if grid
+		then Vector3.new(grid.Origin.Position.X, math.max(pileTopY(), floorY) + halfHeight, grid.Origin.Position.Z)
+		else topCenter(inventory) + Vector3.new(0, halfHeight, 0)
 	local convStart, convEnd = conveyorPath(halfHeight)
 	convStart = convStart or startPos
 	convEnd = convEnd or convStart
@@ -503,6 +667,7 @@ end
 
 -- Табличка прогресса над PressInventory: «руда: вес / WEIGHT_PER_ITEM».
 function PressVisualizer:UpdateProgress(ores: { [string]: number })
+	lastProgress = ores -- табличка может появиться позже (стриминг) — покажет последнее
 	if not progressLabel then
 		return
 	end
@@ -539,8 +704,101 @@ function PressVisualizer:BuildPile(ores: { [string]: number })
 		local weight = ores[oreId]
 		if ore and weight and weight > 0 then
 			for _ = 1, math.floor(weight / ore.PieceWeight) do
-				self:_SpawnPiled(oreId)
+				if not spawnPiled(oreId) then
+					hidden[oreId] = (hidden[oreId] or 0) + 1
+				end
 			end
+		end
+	end
+	updateFrame()
+end
+
+-- Табличка прогресса: на невидимом локальном якоре над PressInventory (сама деталь
+-- может выгрузиться стримингом — якорь нет).
+function PressVisualizer:_CreateProgressBillboard(inventory: Instance)
+	local cf, size = getBox(inventory)
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "ProgressAnchor"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one * 0.1
+	anchor.CFrame = CFrame.new(cf.Position + Vector3.new(0, size.Y / 2 + 3, 0))
+	anchor.Parent = visualsFolder
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PressProgress"
+	billboard.ResetOnSpawn = false
+	billboard.Size = UDim2.fromScale(6, 2.5)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 80
+	billboard.Enabled = false
+	billboard.Adornee = anchor
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.RichText = true
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.3
+	label.Parent = billboard
+	billboard.Parent = player:WaitForChild("PlayerGui")
+	progressLabel = label
+	self:UpdateProgress(lastProgress)
+end
+
+local warnedFrame = false
+
+-- Досоздать то, для чего уже появились детали. При StreamingEnabled у клиента
+-- сначала есть только пустая модель HydraulicPress, а PressInventory / рама
+-- приходят, когда игрок подходит ближе, — поэтому вызывается многократно.
+function PressVisualizer:_EnsureReady()
+	if not press or not visualsFolder then
+		return
+	end
+
+	if not grid then
+		grid = buildGrid()
+		if grid then
+			print(
+				string.format(
+					"[Press] сетка кучки: %dx%d, %d слоёв, вместимость %d кусочков, основание Y=%.2f",
+					grid.Cols,
+					grid.Rows,
+					grid.Capacity // grid.PerLayer,
+					grid.Capacity,
+					grid.Origin.Position.Y
+				)
+			)
+			-- руда, пришедшая до появления сетки, лежит в hidden — дорисуется здесь
+			self:_Relayout()
+		end
+	end
+
+	if not progressLabel then
+		local inventory = findPart("PressInventory")
+		if inventory then
+			self:_CreateProgressBillboard(inventory)
+		end
+	end
+
+	if grid and not PressFrame:IsReady() then
+		local frame = findPart("Press")
+		-- ошибка в раме не должна ломать остальной визуал пресса
+		local ok, result = pcall(PressFrame.Setup, PressFrame, frame)
+		if not ok then
+			warn("[Press] рама пресса не запустилась:", result)
+		elseif result then
+			updateFrame()
+		elseif frame and #frame:GetChildren() > 0 and not warnedFrame then
+			warnedFrame = true
+			warn("[Press] в HydraulicPress.Press нужны детали Left, Right, Middle, Press (Part/MeshPart)")
 		end
 	end
 end
@@ -553,45 +811,13 @@ function PressVisualizer:Setup(pressModel: Model)
 	folder.Parent = workspace
 	visualsFolder = folder
 
-	local inventory = findPart("PressInventory")
-	if inventory then
-		local _, size = getBox(inventory)
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "PressProgress"
-		billboard.ResetOnSpawn = false
-		billboard.Size = UDim2.fromScale(6, 2.5)
-		billboard.StudsOffsetWorldSpace = Vector3.new(0, size.Y / 2 + 3, 0)
-		billboard.AlwaysOnTop = true
-		billboard.LightInfluence = 0
-		billboard.MaxDistance = 80
-		billboard.Enabled = false
-		billboard.Adornee = if inventory:IsA("BasePart") then inventory else (inventory :: Model).PrimaryPart
-		if not billboard.Adornee then
-			-- Model без PrimaryPart: невидимый якорь в центре
-			local anchor = Instance.new("Part")
-			anchor.Anchored = true
-			anchor.CanCollide = false
-			anchor.CanQuery = false
-			anchor.CanTouch = false
-			anchor.Transparency = 1
-			anchor.Size = Vector3.one * 0.1
-			anchor.CFrame = getBox(inventory)
-			anchor.Parent = folder
-			billboard.Adornee = anchor
+	self:_EnsureReady()
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			self:_EnsureReady()
 		end
-
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.RichText = true
-		label.TextScaled = true
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.TextStrokeTransparency = 0.3
-		label.Parent = billboard
-		billboard.Parent = player:WaitForChild("PlayerGui")
-		progressLabel = label
-	end
+	end)
 end
 
 function PressVisualizer.Start() end
