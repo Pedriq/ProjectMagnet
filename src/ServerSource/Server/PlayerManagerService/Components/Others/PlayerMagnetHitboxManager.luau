@@ -8,6 +8,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PlayerMagnetHitboxManager = {}
 
 local MAGNET_HITBOX_FRONT_GAP = 1 -- зазор от игрока до ближней грани хитбокса (студы)
@@ -106,6 +107,12 @@ end
 -- и визуальные эффекты (ShakeRock/FlashRock, попап силы) идут разом — не за
 -- каждый задетый камень.
 function PlayerMagnetHitboxManager:ApplyHit(player)
+	-- Инвентарь полон — магнит не бьёт камни, пока игрок не сохранит руду на базе
+	-- (иначе отколотые кусочки пропадали бы впустую, а камни — ломались зря).
+	if PlayerManagerService:IsCarryFull(player) then
+		return
+	end
+
 	local targets = self:CollectTargets(player)
 	if #targets == 0 then
 		return
@@ -127,7 +134,7 @@ function PlayerMagnetHitboxManager:ApplyHit(player)
 	local killedParts = {}
 
 	for _, target in ipairs(targets) do
-		local isLethal = self:ApplyDamage(target.rockState, target.part, damage)
+		local isLethal = self:ApplyDamage(player, target.rockState, target.part, damage)
 
 		PlayerManagerService.Client.HitRock:Fire(
 			player,
@@ -148,9 +155,20 @@ function PlayerMagnetHitboxManager:ApplyHit(player)
 	end
 end
 
-function PlayerMagnetHitboxManager:ApplyDamage(rockState, part, damage): boolean
+function PlayerMagnetHitboxManager:ApplyDamage(player, rockState, part, damage): boolean
+	local maxHp = part:GetAttribute("MaxHp")
+	local brokenBefore = OreConfig.PiecesBroken(rockState.hp, maxHp)
+
 	rockState.hp = rockState.hp - damage
 	part:SetAttribute("Hp", rockState.hp)
+
+	-- Кусочки, отколотые этим ударом, — в инвентарь переноски. Формула та же,
+	-- по которой клиент откалывает сегменты модели (OreConfig.PiecesBroken).
+	-- Section хитбокса = Id руды (см. RockHitboxManager / OreConfig).
+	local newPieces = OreConfig.PiecesBroken(rockState.hp, maxHp) - brokenBefore
+	if newPieces > 0 then
+		PlayerManagerService:AddOrePieces(player, part:GetAttribute("Section"), newPieces)
+	end
 
 	local isLethal = rockState.hp <= 0
 	if isLethal then

@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local RockGeometry = {}
 
 -- Length (Z) of a StripMarker; a strip's rocks are laid out along this span.
@@ -9,7 +10,7 @@ local ROCK_GAP = 0.3
 -- Rock hitboxes rest their bottom face here (StripMarker Y varies and isn't reliable).
 local GROUND_Y = -1
 
-local rockTemplates = ReplicatedStorage.Assets.Rock
+local rockTemplates = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Rock")
 local cache = {}
 
 -- Per-section metrics (hitbox size, spacing, how many fit in a strip),
@@ -22,7 +23,9 @@ function RockGeometry.GetMetrics(section)
 		return cached
 	end
 
-	local template = rockTemplates:FindFirstChild(tostring(section) .. "Rock")
+	-- Имя модели руды берётся из OreConfig (section = OreConfig Id).
+	local ore = OreConfig.Get(section)
+	local template = ore and rockTemplates:FindFirstChild(ore.Model)
 
 	if not template then
 		error("RockGeometry: no rock model found for section " .. tostring(section))

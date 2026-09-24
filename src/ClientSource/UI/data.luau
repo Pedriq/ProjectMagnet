@@ -26,10 +26,11 @@ Data.magnetism = source("0") -- EtNum-строка
 Data.money = source("0") -- EtNum-строка
 Data.rebirths = source(0)
 Data.level = source(1)
-Data.carryCount = source(0) -- собрано предметов для переноса
-Data.carryCapacity = source(1) -- вместимость переноса
+Data.carryCount = source(0) -- суммарный вес руды, которую игрок несёт (ещё не сохранена)
+Data.carryCapacity = source(1) -- вместимость переноски, в единицах веса
 Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прокачиваемых статов (Range/Agility/Capacity/Mobility)
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
+Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
 Data.magnet = source({ Name = "Stick", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
 Data.ownedMagnets = source({}) -- купленные мечи: map[magnetName] = true
@@ -38,6 +39,20 @@ Data.friendBonusPercent = source(0) -- бонус к силе за клик от
 Data.buffs = source({}) -- активные временные баффы: map[buffType] = { ExpiresAt: number, Bonus: number }
 Data.permanentMultipliers = source({ Magnetism = 0, Money = 0 }) -- постоянные донат-множители (HUD -> BuffBuyButton): 0 = не куплен, иначе текущая купленная ступень
 Data.lockedItems = source({}) -- заблокированные от продажи имена предметов (панель Sell Loot, кнопка Lock): map[itemName] = true.
+
+-- Только числовые записи руда = вес: в старых профилях под Ores могут лежать
+-- чужие поля (TotalWeight/Items из первого прототипа).
+local function savedOres(ores: any): { [string]: number }
+	local result = {}
+	if type(ores) == "table" then
+		for oreId, weight in pairs(ores) do
+			if type(weight) == "number" then
+				result[oreId] = weight
+			end
+		end
+	end
+	return result
+end
 
 local started = false
 
@@ -136,6 +151,7 @@ function Data.start()
 		end
 		Data.ownedMagnets(profile.OwnedMagnets or {})
 		Data.items(profile.Items or {})
+		Data.ores(savedOres(profile.Ores))
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ready(true)
 	end)
@@ -169,6 +185,10 @@ function Data.start()
 			local t = table.clone(Data.lockedItems())
 			t[path[2]] = a
 			Data.lockedItems(t)
+		elseif path[1] == "Ores" and path[2] ~= nil then
+			local t = table.clone(Data.ores())
+			t[path[2]] = if type(a) == "number" then a else nil
+			Data.ores(t)
 		elseif path[1] == "Magnet" and path[2] == nil then
 			Data.magnet(a)
 		elseif path[1] == "OwnedMagnets" and path[2] ~= nil then

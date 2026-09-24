@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 
 local RockVisualizer = {}
 
@@ -41,7 +42,8 @@ function RockVisualizer:CreateRockVisual(rock)
 		return
 	end
 
-	local rockTemplate = rockTemplates:FindFirstChild(tostring(section) .. "Rock")
+	local ore = OreConfig.Get(section)
+	local rockTemplate = ore and rockTemplates:FindFirstChild(ore.Model)
 
 	if not rockTemplate then
 		warn("Rock template not found:", section)
@@ -111,19 +113,14 @@ function RockVisualizer:UpdateRockDamage(hp, maxHp, visualData, animate)
 		return
 	end
 
-	local MAX_SEGMENTS = 8
-
-	local hpPercent = math.clamp(hp / maxHp, 0, 1)
-
-	local targetRemaining = math.ceil(MAX_SEGMENTS * hpPercent)
-
-	local targetBroken = MAX_SEGMENTS - targetRemaining
+	-- Та же формула, по которой сервер начисляет руду за отколотые кусочки.
+	local targetBroken = OreConfig.PiecesBroken(hp, maxHp)
 
 	if targetBroken <= visualData.BrokenSegments then
 		return
 	end
 
-	for segmentIndex = MAX_SEGMENTS, 1, -1 do
+	for segmentIndex = OreConfig.PIECES_PER_ROCK, 1, -1 do
 		if visualData.BrokenSegments >= targetBroken then
 			break
 		end

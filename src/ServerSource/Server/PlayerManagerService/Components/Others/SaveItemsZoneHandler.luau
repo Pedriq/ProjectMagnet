@@ -28,9 +28,9 @@ local watching = false
 local entranceDebounce = {} -- [userId] = os.clock()
 
 ---- Assets
--- Сохранить принесённые предметы игрока и вернуть ему срубленный камень.
+-- Сохранить принесённую руду в профиль и вернуть игроку разбитые камни.
 function SaveItemsZoneHandler:_ProcessPlayer(player: Player)
-	PlayerManagerService:SaveTresuresToPlayer(player)
+	PlayerManagerService:SaveCarriedOres(player)
 	PlayerManagerService:ResetPlayerRock(player)
 end
 

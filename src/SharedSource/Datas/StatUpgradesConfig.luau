@@ -60,7 +60,7 @@ StatUpgradesConfig.Stats = {
 	},
 	Capacity = {
 		Title = "Capacity",
-		Bonus = "+1 Slot Space",
+		Bonus = "+100 Capacity", -- = BaseStatsValues.CapacityPerLevel
 		Icon = "15507675979",
 		BaseCost = "130000",
 		MaxLevel = 200,

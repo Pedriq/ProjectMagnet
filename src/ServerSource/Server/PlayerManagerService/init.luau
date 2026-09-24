@@ -335,20 +335,28 @@ function PlayerManagerService:GiveMagnet(player)
 	self.Components.MagnetHandler:GiveMagnet(player)
 end
 
-function PlayerManagerService:AddTresureToPlayer(player, treasureId, treasureData)
-	self.Components.PlayerTreasureManager:AddTresureToPlayer(player, treasureId, treasureData)
+-- Руда, которую игрок несёт (см. PlayerOreInventory). Возвращает, сколько
+-- кусочков реально влезло.
+function PlayerManagerService:AddOrePieces(player, oreId, pieces)
+	return self.Components.PlayerOreInventory:AddPieces(player, oreId, pieces)
 end
 
-function PlayerManagerService:IsFreeSpace(player)
-	return self.Components.PlayerTreasureManager:IsFreeSpace(player)
+function PlayerManagerService:IsCarryFull(player)
+	return self.Components.PlayerOreInventory:IsFull(player)
 end
 
--- Текущий инвентарь ДЛЯ ПЕРЕНОСА (сколько собрано / вместимость)
+-- Сохранить несомую руду в профиль (Save-зона на базе).
+function PlayerManagerService:SaveCarriedOres(player)
+	self.Components.PlayerOreInventory:SaveToProfile(player)
+end
+
+-- Текущий инвентарь ДЛЯ ПЕРЕНОСА: Count — суммарный вес несомой руды,
+-- Capacity — вместимость (в единицах веса).
 function PlayerManagerService:GetCarryInfo(player)
 	local stats = self.PlayerStats[player.UserId] or self:WaitForPlayerStats(player)
 	local inv = self.PlayersInventories[player.UserId]
 	return {
-		Count = (inv and inv.ItemsCount) or 0,
+		Count = (inv and inv.TotalWeight) or 0,
 		Capacity = (stats and stats.Capacity) or BaseStatsValues.InvetoryCapacity,
 	}
 end
@@ -376,10 +384,6 @@ end
 
 function PlayerManagerService:ClearTresuresToPlayer(player)
 	return ProfileService:ClearItems(player)
-end
-
-function PlayerManagerService:SaveTresuresToPlayer(player)
-	self.Components.PlayerTreasureManager:SaveTresuresToPlayer(player)
 end
 
 function PlayerManagerService:SellItem(player, itemId)

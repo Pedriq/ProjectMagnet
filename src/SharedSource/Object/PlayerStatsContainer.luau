@@ -44,9 +44,9 @@ function PlayerStatsContainer:CalculateAttackRadius(level)
 end
 
 -- Уровни статов начинаются с 1 (см. ProfileTemplate.Stats), поэтому на стартовом
--- уровне вместимость = базовой, а каждый следующий уровень даёт +1 слот.
+-- уровне вместимость = базовой, каждый следующий даёт +CapacityPerLevel веса.
 function PlayerStatsContainer:CalculateCapacity(level)
-	return BaseStatsValues.InvetoryCapacity + (level - 1)
+	return BaseStatsValues.InvetoryCapacity + (math.max(level, 1) - 1) * BaseStatsValues.CapacityPerLevel
 end
 
 function PlayerStatsContainer:CalculateWalkSpeed(level)
