@@ -84,6 +84,34 @@ function PlayerOreInventory:SaveToProfile(player: Player)
 	PlayerManagerService:PushCarryInfo(player)
 end
 
+-- Забрать у игрока один кусочек руды (для пресса): сначала из несомой руды,
+-- потом из сохранённой (profile.Ores). Руды перебираются в порядке OreConfig.Order.
+-- Возвращает oreId, вес — или nil, если руды нет совсем.
+function PlayerOreInventory:TakePiece(player: Player): (string?, number)
+	local inv = getInventory(player)
+	for _, oreId in ipairs(OreConfig.Order) do
+		local weight = inv.Ores[oreId]
+		if weight and weight > 0 then
+			local taken = math.min(weight, OreConfig.Get(oreId).PieceWeight)
+			inv.Ores[oreId] = if weight - taken > 0 then weight - taken else nil
+			inv.TotalWeight = math.max(inv.TotalWeight - taken, 0)
+			PlayerManagerService:PushCarryInfo(player)
+			return oreId, taken
+		end
+	end
+
+	for _, oreId in ipairs(OreConfig.Order) do
+		local weight = tonumber(ProfileService:GetData(player, { "Ores", oreId })) or 0
+		if weight > 0 then
+			local taken = math.min(weight, OreConfig.Get(oreId).PieceWeight)
+			ProfileService:ChangeData(player, { "Ores", oreId }, if weight - taken > 0 then weight - taken else nil)
+			return oreId, taken
+		end
+	end
+
+	return nil, 0
+end
+
 function PlayerOreInventory.Start() end
 
 function PlayerOreInventory.Init()

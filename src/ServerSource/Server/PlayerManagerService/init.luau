@@ -350,6 +350,11 @@ function PlayerManagerService:SaveCarriedOres(player)
 	self.Components.PlayerOreInventory:SaveToProfile(player)
 end
 
+-- Забрать у игрока один кусочек руды (пресс, см. PressService). Возвращает oreId, вес.
+function PlayerManagerService:TakeOrePiece(player)
+	return self.Components.PlayerOreInventory:TakePiece(player)
+end
+
 -- Текущий инвентарь ДЛЯ ПЕРЕНОСА: Count — суммарный вес несомой руды,
 -- Capacity — вместимость (в единицах веса).
 function PlayerManagerService:GetCarryInfo(player)

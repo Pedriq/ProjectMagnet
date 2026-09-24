@@ -7,6 +7,9 @@
 	Model — имя модели камня в ReplicatedStorage.Assets.Rock.
 	MaxHp — HP одного камня.
 	PieceWeight — вес одного отколотого кусочка (сегмента модели), идёт в инвентарь.
+	Rarity — редкость предметов, которые пресс делает из этой руды (ключ TreasuresConfig).
+	  По умолчанию = Id; при переименовании руды (Common -> Copper) указать явно.
+	Кусочки руды для визуала пресса — ReplicatedStorage.Assets.Ores.<Model>.
 
 	Чтобы заменить руды (CommonRock -> Copper и т.п.): поменять Id/Model здесь,
 	атрибуты Section на маркерах и имена моделей в Assets.Rock. Код больше нигде
@@ -19,6 +22,7 @@ export type Ore = {
 	Model: string,
 	MaxHp: number,
 	PieceWeight: number,
+	Rarity: string,
 }
 
 -- Сколько кусочков (сегментов "1".."N" в модели камня) отваливается за весь камень.
@@ -30,7 +34,7 @@ local DEFAULT_PIECE_WEIGHT = 10
 local BASE_HP = 10
 local RATIO = 6.4
 
-local List: { { Id: string, Model: string, MaxHp: number?, PieceWeight: number? } } = {
+local List: { { Id: string, Model: string, MaxHp: number?, PieceWeight: number?, Rarity: string? } } = {
 	{ Id = "Common", Model = "CommonRock" },
 	{ Id = "Uncommon", Model = "UncommonRock" },
 	{ Id = "Rare", Model = "RareRock" },
@@ -61,6 +65,7 @@ for index, entry in ipairs(List) do
 		Model = entry.Model,
 		MaxHp = entry.MaxHp or math.floor(BASE_HP * RATIO ^ (index - 1) + 0.5),
 		PieceWeight = entry.PieceWeight or DEFAULT_PIECE_WEIGHT,
+		Rarity = entry.Rarity or entry.Id,
 	}
 	table.insert(OreConfig.Order, entry.Id)
 end

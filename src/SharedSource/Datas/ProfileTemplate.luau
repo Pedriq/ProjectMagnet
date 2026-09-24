@@ -29,6 +29,15 @@ local ProfileTemplate = {
 	-- Пополняется на базе из инвентаря переноски, см. PlayerOreInventory.
 	Ores = {},
 
+	-- Гидравлический пресс (см. PressService / PressConfig):
+	--   Ores — руда, выгруженная в пресс и ещё не переплавленная: map[oreId] = вес;
+	--   UnloadSpeed / CraftSpeed — уровни характеристик пресса (прокачка — позже).
+	Press = {
+		Ores = {},
+		UnloadSpeed = 1,
+		CraftSpeed = 1,
+	},
+
 	-- Имена предметов, заблокированные от продажи (панель Sell Loot, кнопка
 	-- Lock): map[itemName] = true. Блокировка — по ИМЕНИ (вся стопка сразу,
 	-- как она и группируется в панели), а не по конкретному id — так же
