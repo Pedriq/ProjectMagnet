@@ -1,4 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 
@@ -10,19 +12,25 @@ local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 	конвейере) рисует PressController ТОЛЬКО у игрока, которому пришёл сигнал.
 
 	Компоненты:
-	  PressUnloadHandler — игрок стоит на Unloading -> руда по кусочку в пресс;
-	  PressCraftHandler  — каждые WEIGHT_PER_ITEM веса -> предмет -> продажа.
+	  PressUnloadHandler — игрок встал на Unloading -> вся руда разом в пресс;
+	  PressCraftHandler  — каждые OreConfig.WeightPerItem веса -> предмет -> продажа;
+	                       деньги копятся в profile.Press.Unclaimed;
+	  PressCollectHandler — игрок встал на Collect -> Unclaimed зачисляется в Money.
 ]]
 local PressService = Knit.CreateService({
 	Name = "PressService",
 	Client = {
-		-- Fire(player, oreId, weight) — кусочек руды выгружен с игрока в пресс.
+		-- Fire(player, ores) — вся руда разом выгружена с игрока в пресс,
+		-- ores = map[oreId] = вес.
 		OreUnloaded = Knit.CreateSignal(),
 		-- Fire(player, oreId, weight, itemName?, rarity?, payout?) — пресс переработал
 		-- `weight` руды oreId в предмет редкости rarity; деньги (payout, EtNum-строка)
 		-- начислятся через PressConfig.SELL_DELAY. itemName == nil — остаток руды
 		-- сгорел без предмета (см. PressConfig.RollRemainderRarity).
 		ItemCrafted = Knit.CreateSignal(),
+		-- Fire(player, amount) — игрок наступил на Collect и забрал накопленные
+		-- деньги (amount — EtNum-строка). Сам остаток — profile.Press.Unclaimed.
+		MoneyCollected = Knit.CreateSignal(),
 	},
 })
 
@@ -58,6 +66,87 @@ function PressService:AddPressOre(player, oreId, weight)
 	ProfileService:ChangeData(player, { "Press", "Ores", oreId }, if newWeight > 0 then newWeight else nil)
 end
 
+-- Деньги за проданные прессом предметы, ещё не забранные на Collect (EtNum-строка).
+function PressService:GetUnclaimed(player)
+	return ProfileService:GetData(player, { "Press", "Unclaimed" }) or "0"
+end
+
+function PressService:SetUnclaimed(player, amount: string)
+	ProfileService:ChangeData(player, { "Press", "Unclaimed" }, amount)
+end
+
+function PressService:AddUnclaimed(player, amount)
+	self:SetUnclaimed(player, EtNum.toString(EtNum.add(amount, self:GetUnclaimed(player))))
+end
+
+-- Все BasePart'ы детей HydraulicPress с именем из `names` (сама деталь или
+-- части модели с таким именем).
+function PressService:GetPadParts(names: { string }): { BasePart }
+	local press = workspace:FindFirstChild(PressConfig.PRESS_NAME)
+	local parts = {}
+	if not press then
+		return parts
+	end
+
+	for _, child in ipairs(press:GetChildren()) do
+		if table.find(names, child.Name) then
+			if child:IsA("BasePart") then
+				table.insert(parts, child)
+			else
+				for _, d in ipairs(child:GetDescendants()) do
+					if d:IsA("BasePart") then
+						table.insert(parts, d)
+					end
+				end
+			end
+		end
+	end
+	return parts
+end
+
+-- Игроки (с загруженным профилем), чей HumanoidRootPart сейчас над площадкой
+-- с именем из `names`.
+function PressService:GetPlayersOnPads(names: { string }): { [Player]: boolean }
+	local onPad = {}
+	local pads = self:GetPadParts(names)
+	if #pads == 0 then
+		return onPad
+	end
+
+	local roots = {}
+	local rootToPlayer = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and self:IsProfileLoaded(player) then
+			table.insert(roots, root)
+			rootToPlayer[root] = player
+		end
+	end
+	if #roots == 0 then
+		return onPad
+	end
+
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = roots
+
+	for _, pad in ipairs(pads) do
+		-- Площадка обычно плоская плита на полу, а HumanoidRootPart висит ~3 studs
+		-- над ней и с самой плитой не пересекается — поэтому проверяем объём,
+		-- вытянутый вверх от плиты на PAD_CHECK_HEIGHT.
+		local height = PressConfig.PAD_CHECK_HEIGHT
+		local boxCFrame = pad.CFrame * CFrame.new(0, height / 2, 0)
+		local boxSize = Vector3.new(pad.Size.X, pad.Size.Y + height, pad.Size.Z)
+		for _, part in ipairs(workspace:GetPartBoundsInBox(boxCFrame, boxSize, params)) do
+			local player = rootToPlayer[part]
+			if player then
+				onPad[player] = true
+			end
+		end
+	end
+	return onPad
+end
+
 -- Уровень характеристики пресса: "UnloadSpeed" | "CraftSpeed".
 function PressService:GetPressLevel(player, stat)
 	return tonumber(ProfileService:GetData(player, { "Press", stat })) or 1
@@ -75,6 +164,7 @@ function PressService:GetState(player)
 	local craftLevel = self:GetPressLevel(player, "CraftSpeed")
 	return {
 		Ores = ores,
+		Unclaimed = self:GetUnclaimed(player),
 		UnloadSpeed = unloadLevel,
 		CraftSpeed = craftLevel,
 		UnloadInterval = PressConfig.GetUnloadInterval(unloadLevel),
@@ -90,6 +180,7 @@ end
 function PressService:KnitStart()
 	self.Components.PressUnloadHandler:StartWatching()
 	self.Components.PressCraftHandler:StartCrafting()
+	self.Components.PressCollectHandler:StartWatching()
 end
 
 function PressService:KnitInit()

@@ -32,6 +32,7 @@ local entranceDebounce = {} -- [userId] = os.clock()
 function SaveItemsZoneHandler:_ProcessPlayer(player: Player)
 	PlayerManagerService:SaveCarriedOres(player)
 	PlayerManagerService:ResetPlayerRock(player)
+	PlayerManagerService:ResetCheckpoints(player)
 end
 
 -- HRP игроков, у которых стоит флаг READY_ATTR, + обратная карта part -> player.

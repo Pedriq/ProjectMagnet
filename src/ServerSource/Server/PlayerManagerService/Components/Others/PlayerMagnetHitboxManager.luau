@@ -113,7 +113,14 @@ function PlayerMagnetHitboxManager:ApplyHit(player)
 		return
 	end
 
-	local targets = self:CollectTargets(player)
+	-- Камни, чей кусочек не влезает в свободное место, не бьём: у руд разный вес
+	-- кусочка, и при остатке меньше него удар ломал бы камень, а руда пропадала бы.
+	local targets = {}
+	for _, target in ipairs(self:CollectTargets(player)) do
+		if PlayerManagerService:CanCarryOrePiece(player, target.part:GetAttribute("Section")) then
+			table.insert(targets, target)
+		end
+	end
 	if #targets == 0 then
 		return
 	end

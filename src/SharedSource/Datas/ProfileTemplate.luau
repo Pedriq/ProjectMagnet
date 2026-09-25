@@ -31,9 +31,12 @@ local ProfileTemplate = {
 
 	-- Гидравлический пресс (см. PressService / PressConfig):
 	--   Ores — руда, выгруженная в пресс и ещё не переплавленная: map[oreId] = вес;
-	--   UnloadSpeed / CraftSpeed — уровни характеристик пресса (прокачка — позже).
+	--   UnloadSpeed / CraftSpeed — уровни характеристик пресса (прокачка — позже);
+	--   Unclaimed — деньги за проданные прессом предметы (EtNum-строка), ждут,
+	--   пока игрок наступит на HydraulicPress.Collect (см. PressCollectHandler).
 	Press = {
 		Ores = {},
+		Unclaimed = "0",
 		UnloadSpeed = 1,
 		CraftSpeed = 1,
 	},

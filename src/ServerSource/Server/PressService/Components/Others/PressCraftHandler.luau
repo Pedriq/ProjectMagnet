@@ -10,11 +10,12 @@ local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresCo
 	PressCraftHandler — крафт предметов из руды в прессе и их продажа.
 
 	На каждого игрока свой поток: как только какой-то руды в прессе набралось
-	PressConfig.WEIGHT_PER_ITEM, ждём GetCraftInterval(CraftSpeed), списываем
+	PressConfig.GetWeightPerItem(руда), ждём GetCraftInterval(CraftSpeed), списываем
 	вес и делаем случайный предмет редкости руды (OreConfig.Rarity -> TreasuresConfig).
 	Цена = Price * множитель денег (как в PlayerTreasureManager). Деньги
-	начисляются через PressConfig.SELL_DELAY — когда у клиента предмет упадёт в Sell.
-	Остаток руды меньше WEIGHT_PER_ITEM крафтится с шансом, когда выгрузка закончена
+	копятся в profile.Press.Unclaimed через PressConfig.SELL_DELAY — когда у клиента
+	предмет упадёт в Sell; в Money они уходят на Collect (PressCollectHandler).
+	Остаток руды меньше веса на предмет крафтится с шансом, когда выгрузка закончена
 	(см. PressConfig.RollRemainderRarity).
 ]]
 local PressCraftHandler = {}
@@ -34,16 +35,17 @@ local pending = {} -- [player] = { [craftId] = payout (EtNum) }
 local nextCraftId = 0
 
 -- Что крафтить следующим: oreId и вес, который уйдёт на предмет.
--- Сначала — руда, которой хватает на целый предмет (WEIGHT_PER_ITEM). Если такой
--- нет и игрок закончил выгрузку (REMAINDER_DELAY с последнего кусочка) — остаток
--- (< WEIGHT_PER_ITEM) любой руды, см. PressConfig.RollRemainderRarity.
+-- Сначала — руда, которой хватает на целый предмет (PressConfig.GetWeightPerItem).
+-- Если такой нет и игрок закончил выгрузку (REMAINDER_DELAY с последнего кусочка) —
+-- остаток (< веса на предмет) любой руды, см. PressConfig.RollRemainderRarity.
 local function findCraftableOre(player: Player): (string?, number)
 	local ores = PressService:GetPressOres(player)
 	for _, oreId in ipairs(OreConfig.Order) do
 		local weight = tonumber(ores[oreId]) or 0
+		local perItem = PressConfig.GetWeightPerItem(oreId)
 		local items = TreasuresConfig[OreConfig.Get(oreId).Rarity]
-		if weight >= PressConfig.WEIGHT_PER_ITEM and items and #items > 0 then
-			return oreId, PressConfig.WEIGHT_PER_ITEM
+		if weight >= perItem and items and #items > 0 then
+			return oreId, perItem
 		end
 	end
 
@@ -55,7 +57,7 @@ local function findCraftableOre(player: Player): (string?, number)
 	for _, oreId in ipairs(OreConfig.Order) do
 		local weight = tonumber(ores[oreId]) or 0
 		if weight > 0 then
-			return oreId, math.min(weight, PressConfig.WEIGHT_PER_ITEM)
+			return oreId, math.min(weight, PressConfig.GetWeightPerItem(oreId))
 		end
 	end
 	return nil, 0
@@ -70,12 +72,10 @@ local function describePress(player: Player): string
 	return if #parts > 0 then table.concat(parts, ", ") else "пусто"
 end
 
+-- Деньги не зачисляются сразу: копятся в profile.Press.Unclaimed, игрок
+-- забирает их на Collect (см. PressCollectHandler).
 local function payOut(player: Player, payout)
-	local money = PlayerManagerService:GetPlayerMoney(player)
-	if not money then
-		return
-	end
-	PlayerManagerService:ChangePlayerMoney(player, EtNum.toString(EtNum.add(payout, money)))
+	PressService:AddUnclaimed(player, payout)
 end
 
 function PressCraftHandler:_Sell(player: Player, craftId: number)
@@ -91,9 +91,9 @@ end
 
 function PressCraftHandler:_Craft(player: Player, oreId: string, weight: number)
 	local ore = OreConfig.Get(oreId)
-	local rarity = if weight >= PressConfig.WEIGHT_PER_ITEM
+	local rarity = if weight >= ore.WeightPerItem
 		then ore.Rarity
-		else PressConfig.RollRemainderRarity(ore.Rarity, weight)
+		else PressConfig.RollRemainderRarity(ore.Rarity, weight, ore.WeightPerItem)
 	local item = rarity and PressConfig.RollItem(rarity)
 
 	PressService:AddPressOre(player, oreId, -weight)
@@ -181,7 +181,7 @@ function PressCraftHandler:_StopPlayer(player: Player)
 		task.cancel(thread)
 	end
 
-	-- предметы, которые ещё ехали по конвейеру, продаём сразу, пока профиль жив
+	-- предметы, которые ещё ехали по конвейеру, — сразу в Unclaimed, пока профиль жив
 	local playerPending = pending[player]
 	pending[player] = nil
 	if playerPending then

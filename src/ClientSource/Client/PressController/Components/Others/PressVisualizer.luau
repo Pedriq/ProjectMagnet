@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
@@ -10,12 +11,13 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 	PressVisualizer — ЛОКАЛЬНЫЙ визуал пресса: всё создаётся на клиенте, поэтому
 	другие игроки этого не видят.
 
-	  * кусочки руды летят с игрока в PressInventory и ложатся ровными слоями
+	  * руда выгружается разом: по несколько кусочков каждой руды летят с игрока
+	    в PressInventory, остальные по одному падают в кучку; кусочки ложатся ровными слоями
 	    (сетка, до PILE_MAX_HEIGHT); рама пресса (PressFrame) поднимается над кучкой;
 	  * на крафт головка пресса бьёт по руде, из кучки исчезает
 	    weight / PieceWeight кусочков этой руды, остальные оседают на свои ячейки,
 	    из PressInventory «выдавливается» предмет, едет по Conveyor и падает в Sell;
-	  * над PressInventory — табличка прогресса «руда: вес / WEIGHT_PER_ITEM».
+	  * над PressInventory — табличка прогресса «руда: вес / вес на предмет».
 
 	Модели:
 	  кусочки руды — ReplicatedStorage.Assets.Ores.<OreConfig.Model> (случайный ребёнок);
@@ -31,8 +33,17 @@ local player = Players.LocalPlayer
 ---- Datas
 local CONVEYOR_NAMES = { "Conveyor", "\u{421}onveyor" } -- второе — с кириллической «С»
 
-local FLY_TIME = 0.5 -- полёт кусочка руды с игрока в пресс
-local FLY_ARC = 4 -- высота дуги полёта
+local FLY_TIME = 0.8 -- полёт кусочка руды с игрока в пресс
+local FLY_ARC = 5 -- высота дуги полёта
+-- Выгрузка разом: в полёте показывается только несколько кусочков каждой руды,
+-- остальные «достраивают» кучку (см. BUILD_* ниже).
+local FLY_PIECES_PER_ORE = 6
+local FLY_STAGGER = 0.1 -- пауза между вылетами кусочков
+-- «Стройка» кучки: не долетевшие кусочки по одному падают в свои ячейки.
+local BUILD_TIME = 1.2 -- за сколько достраивается кучка (сколько бы кусочков ни было)
+local BUILD_MAX_STEP = 0.06 -- пауза между кусочками не больше этой (если их мало)
+local DROP_TIME = 0.25 -- падение одного кусочка в ячейку
+local DROP_HEIGHT = 2.5 -- с какой высоты над ячейкой он падает
 -- Кучка руды: ровная сетка слоями над PressInventory (снизу вверх), до PILE_MAX_HEIGHT.
 -- Что не влезло — не рисуется, но учитывается (hidden) и дорисуется, когда место освободится.
 local PILE_CELL = 1.2 -- шаг сетки, studs (кусочек подгоняется под ячейку)
@@ -66,6 +77,9 @@ local hidden: { [string]: number } = {} -- [oreId] = кусочков сверх
 local grid: Grid? = nil
 local progressLabel: TextLabel? = nil
 local lastProgress: { [string]: number } = {}
+local collectAnchor: BasePart? = nil
+local collectLabel: TextLabel? = nil
+local lastUnclaimed = "0"
 
 ---- Helpers
 local function getBox(inst: Instance): (CFrame, Vector3)
@@ -210,7 +224,7 @@ local function findItemTemplate(itemName: string): Instance?
 	return nil
 end
 
-local function createItem(itemName: string, rarity: string): Model
+local function createItem(itemName: string, rarity: string, payout: string): Model
 	local template = findItemTemplate(itemName)
 	local model = template and toModel(template)
 
@@ -226,15 +240,31 @@ local function createItem(itemName: string, rarity: string): Model
 
 	makeVisual(model :: Model)
 
-	-- подпись с именем предмета (цвет редкости)
+	-- Якорь подписи — невидимая точка над центром модели. PrimaryPart у моделей
+	-- часто не по центру, и подпись от него уезжала вбок. Якорь внутри модели,
+	-- поэтому двигается и масштабируется вместе с ней (PivotTo / ScaleTo).
+	local boxCFrame, boxSize = (model :: Model):GetBoundingBox()
+	local anchor = Instance.new("Part")
+	anchor.Name = "LabelAnchor"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Massless = true
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one * 0.05
+	anchor.CFrame = CFrame.new(boxCFrame.Position + Vector3.new(0, boxSize.Y / 2, 0))
+	anchor.Parent = model
+
+	-- подпись: имя предмета (цвет редкости), под ним — цена
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromScale(4, 0.8)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, ITEM_SIZE * 0.9, 0)
+	billboard.Size = UDim2.fromScale(4, 1.4)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 1, 0)
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
-	billboard.Adornee = (model :: Model).PrimaryPart
+	billboard.Adornee = anchor
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
+	label.Size = UDim2.fromScale(1, 0.55)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
@@ -242,6 +272,16 @@ local function createItem(itemName: string, rarity: string): Model
 	label.TextColor3 = RarityColors.get(rarity)
 	label.TextStrokeTransparency = 0.3
 	label.Parent = billboard
+	local priceLabel = Instance.new("TextLabel")
+	priceLabel.Position = UDim2.fromScale(0, 0.55)
+	priceLabel.Size = UDim2.fromScale(1, 0.45)
+	priceLabel.BackgroundTransparency = 1
+	priceLabel.Font = Enum.Font.FredokaOne
+	priceLabel.TextScaled = true
+	priceLabel.Text = "$" .. Format.short(payout)
+	priceLabel.TextColor3 = Color3.fromRGB(60, 255, 90)
+	priceLabel.TextStrokeTransparency = 0.3
+	priceLabel.Parent = billboard
 	billboard.Parent = model
 
 	return model :: Model
@@ -370,6 +410,82 @@ local function spawnPiled(oreId: string): boolean
 	return true
 end
 
+-- Кусочек падает сверху в следующую ячейку, вырастая из маленького.
+local function dropPiled(oreId: string)
+	if not grid or not visualsFolder or #pileList >= grid.Capacity then
+		return
+	end
+	local model = createOrePiece(oreId)
+	fitToCell(model)
+	local baseScale = model:GetScale()
+	local entry = appendEntry(oreId, model, true)
+
+	safeScale(model, baseScale * 0.3)
+	model:PivotTo(entry.Target + Vector3.new(0, DROP_HEIGHT, 0))
+	model.Parent = visualsFolder
+
+	task.spawn(function()
+		animate(DROP_TIME, function(alpha)
+			if not model.Parent then
+				return
+			end
+			-- цель читается каждый кадр: кучка могла перестроиться (крафт)
+			safeScale(model, baseScale * (0.3 + 0.7 * alpha))
+			model:PivotTo(entry.Target + Vector3.new(0, DROP_HEIGHT * (1 - alpha * alpha), 0))
+		end)
+		entry.Flying = false
+		if model.Parent then
+			model:PivotTo(entry.Target)
+		end
+	end)
+end
+
+local building = false -- идёт «стройка» кучки (см. _BuildHidden)
+
+-- Скрытые кусочки по одному падают в свободные ячейки, пока есть место.
+-- Вся стройка укладывается примерно в BUILD_TIME.
+function PressVisualizer:_BuildHidden()
+	if building or not grid then
+		return
+	end
+	building = true
+
+	task.spawn(function()
+		local total = 0
+		for _, count in pairs(hidden) do
+			total += math.max(count, 0)
+		end
+		total = math.min(total, (grid :: Grid).Capacity - #pileList)
+		local step = math.min(BUILD_MAX_STEP, BUILD_TIME / math.max(total, 1))
+
+		local debt = 0 -- накопленная пауза: если step меньше кадра, за кадр падает несколько
+		while grid and #pileList < grid.Capacity do
+			local nextOre = nil
+			for _, oreId in ipairs(OreConfig.Order) do
+				if (hidden[oreId] or 0) > 0 then
+					nextOre = oreId
+					break
+				end
+			end
+			if not nextOre then
+				break
+			end
+
+			hidden[nextOre] -= 1
+			dropPiled(nextOre)
+
+			debt += step
+			if debt >= 1 / 60 then
+				updateFrame()
+				debt -= task.wait(debt)
+			end
+		end
+
+		building = false
+		updateFrame()
+	end)
+end
+
 -- После удаления кусочков: все сдвигаются на свои ячейки (слои снова ровные),
 -- свободные места сверху занимают скрытые кусочки.
 function PressVisualizer:_Relayout()
@@ -377,10 +493,13 @@ function PressVisualizer:_Relayout()
 		return
 	end
 
-	for _, oreId in ipairs(OreConfig.Order) do
-		while (hidden[oreId] or 0) > 0 and #pileList < grid.Capacity do
-			hidden[oreId] -= 1
-			spawnPiled(oreId)
+	-- во время стройки скрытые дорисовывает она сама, по одному
+	if not building then
+		for _, oreId in ipairs(OreConfig.Order) do
+			while (hidden[oreId] or 0) > 0 and #pileList < grid.Capacity do
+				hidden[oreId] -= 1
+				spawnPiled(oreId)
+			end
 		end
 	end
 
@@ -411,14 +530,57 @@ function PressVisualizer:_Relayout()
 	updateFrame()
 end
 
--- Кусочек руды летит с игрока в пресс и ложится в следующую ячейку.
-function PressVisualizer:OreUnloaded(oreId: string)
+-- С игрока разом выгрузили всю руду (ores = map[oreId] = вес): каждой руды вылетает
+-- до FLY_PIECES_PER_ORE кусочков, остальные по одному падают в кучку (_BuildHidden).
+function PressVisualizer:OreUnloaded(ores: { [string]: number })
 	if not press or not visualsFolder then
 		return
 	end
 	self:_EnsureReady()
-	if not grid then
-		-- PressInventory ещё не пришла к клиенту: запоминаем, нарисуем, когда появится
+
+	local launches: { string } = {}
+	for _, oreId in ipairs(OreConfig.Order) do
+		local ore = OreConfig.Get(oreId)
+		local weight = ores[oreId]
+		if ore and weight and weight > 0 then
+			local pieces = math.ceil(weight / ore.PieceWeight)
+			if not grid then
+				-- PressInventory ещё не пришла к клиенту: запоминаем, нарисуем, когда появится
+				hidden[oreId] = (hidden[oreId] or 0) + pieces
+			else
+				local flying = math.min(pieces, FLY_PIECES_PER_ORE)
+				for _ = 1, flying do
+					table.insert(launches, oreId)
+				end
+				-- остальные сразу считаются скрытыми: если пресс начнёт крафт, пока
+				-- кубики летят, он заберёт сначала их, а не летящие
+				hidden[oreId] = (hidden[oreId] or 0) + pieces - flying
+			end
+		end
+	end
+
+	if #launches == 0 then
+		return
+	end
+
+	-- как только долетел первый кубик — кучка начинает «достраиваться» остальными
+	task.delay(FLY_TIME, function()
+		self:_BuildHidden()
+	end)
+
+	task.spawn(function()
+		for i, oreId in ipairs(launches) do
+			self:_FlyPiece(oreId)
+			if i < #launches then
+				task.wait(FLY_STAGGER)
+			end
+		end
+	end)
+end
+
+-- Кусочек руды летит с игрока в пресс и ложится в следующую ячейку.
+function PressVisualizer:_FlyPiece(oreId: string)
+	if not grid or not visualsFolder then
 		hidden[oreId] = (hidden[oreId] or 0) + 1
 		return
 	end
@@ -596,7 +758,7 @@ function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: str
 		return
 	end
 
-	local model = createItem(itemName, rarity)
+	local model = createItem(itemName, rarity, payout)
 	local baseScale = model:GetScale()
 	local halfHeight = model:GetExtentsSize().Y / 2
 
@@ -655,7 +817,8 @@ function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: str
 			model:PivotTo(CFrame.new(bezier(fallStart, control, sellTop, alpha * alpha)) * facing)
 		end)
 
-		-- 4) продано: деньги (сервер начисляет в этот же момент) и предмет проваливается в Sell
+		-- 4) продано: деньги (сервер в этот же момент добавляет их в Unclaimed — забрать
+		-- на Collect) и предмет проваливается в Sell
 		moneyPopup(sellTop + Vector3.new(0, 1, 0), payout)
 		animate(SELL_SINK_TIME, function(alpha)
 			safeScale(model, baseScale * (1 - alpha))
@@ -665,7 +828,7 @@ function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: str
 	end)
 end
 
--- Табличка прогресса над PressInventory: «руда: вес / WEIGHT_PER_ITEM».
+-- Табличка прогресса над PressInventory: «руда: вес / вес на предмет».
 function PressVisualizer:UpdateProgress(ores: { [string]: number })
 	lastProgress = ores -- табличка может появиться позже (стриминг) — покажет последнее
 	if not progressLabel then
@@ -679,13 +842,14 @@ function PressVisualizer:UpdateProgress(ores: { [string]: number })
 			local ore = OreConfig.Get(oreId)
 			local color = RarityColors.get(ore and ore.Rarity or oreId):ToHex()
 			-- сколько предметов уже в очереди на крафт + прогресс следующего
-			local queued = math.floor(weight / PressConfig.WEIGHT_PER_ITEM)
+			local perItem = PressConfig.GetWeightPerItem(oreId)
+			local queued = math.floor(weight / perItem)
 			local line = string.format(
 				'<font color="#%s">%s</font>: %d / %d',
 				color,
 				oreId,
-				math.floor(weight % PressConfig.WEIGHT_PER_ITEM),
-				PressConfig.WEIGHT_PER_ITEM
+				math.floor(weight % perItem),
+				perItem
 			)
 			if queued > 0 then
 				line ..= string.format("  (x%d)", queued)
@@ -753,6 +917,73 @@ function PressVisualizer:_CreateProgressBillboard(inventory: Instance)
 	self:UpdateProgress(lastProgress)
 end
 
+local function findCollect(): Instance?
+	for _, name in ipairs(PressConfig.COLLECT_NAMES) do
+		local found = findPart(name)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+
+-- Табличка над Collect: сколько денег ждёт сбора (profile.Press.Unclaimed).
+function PressVisualizer:SetUnclaimed(amount: string)
+	lastUnclaimed = amount -- табличка может появиться позже (стриминг) — покажет последнее
+	if not collectLabel then
+		return
+	end
+
+	collectLabel.Text = "$" .. Format.short(amount)
+	collectLabel.Parent.Enabled = EtNum.me(amount, "0")
+end
+
+-- Игрок забрал деньги на Collect.
+function PressVisualizer:MoneyCollected(amount: string)
+	if collectAnchor then
+		moneyPopup(collectAnchor.Position + Vector3.new(0, 1.5, 0), amount)
+	end
+end
+
+function PressVisualizer:_CreateCollectBillboard(collect: Instance)
+	local cf, size = getBox(collect)
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "CollectAnchor"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one * 0.1
+	anchor.CFrame = CFrame.new(cf.Position + Vector3.new(0, size.Y / 2 + 3, 0))
+	anchor.Parent = visualsFolder
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PressCollect"
+	billboard.ResetOnSpawn = false
+	billboard.Size = UDim2.fromScale(5, 1.4)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 80
+	billboard.Enabled = false
+	billboard.Adornee = anchor
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(60, 255, 90)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = billboard
+	billboard.Parent = player:WaitForChild("PlayerGui")
+
+	collectAnchor = anchor
+	collectLabel = label
+	self:SetUnclaimed(lastUnclaimed)
+end
+
 local warnedFrame = false
 
 -- Досоздать то, для чего уже появились детали. При StreamingEnabled у клиента
@@ -785,6 +1016,13 @@ function PressVisualizer:_EnsureReady()
 		local inventory = findPart("PressInventory")
 		if inventory then
 			self:_CreateProgressBillboard(inventory)
+		end
+	end
+
+	if not collectLabel then
+		local collect = findCollect()
+		if collect then
+			self:_CreateCollectBillboard(collect)
 		end
 	end
 

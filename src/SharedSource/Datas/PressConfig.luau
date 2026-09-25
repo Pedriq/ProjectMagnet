@@ -1,24 +1,36 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresConfig)
 
 --[[
 	PressConfig — гидравлический пресс (Workspace.HydraulicPress).
 
-	Игрок стоит на Unloading -> руда из его инвентаря по кусочку улетает в
-	PressInventory. Каждые WEIGHT_PER_ITEM веса одной руды пресс делает предмет
+	Игрок встаёт на Unloading -> вся руда из его инвентаря разом уходит в
+	PressInventory. Каждые GetWeightPerItem(руда) веса одной руды пресс делает предмет
 	редкости этой руды (OreConfig.Rarity -> TreasuresConfig), предмет едет по
 	Conveyor, падает в Sell и продаётся.
 
 	Две характеристики пресса (уровни в profile.Press):
-	  UnloadSpeed — как быстро руда выгружается с игрока;
+	  UnloadSpeed — сейчас не используется (выгрузка мгновенная);
 	  CraftSpeed  — как быстро пресс делает предметы.
 	Прокачки пока нет — уровни всегда 1, формулы ниже уже учитывают уровень.
 ]]
 
 local PressConfig = {}
 
--- Сколько веса одной руды уходит на один предмет.
-PressConfig.WEIGHT_PER_ITEM = 100
+PressConfig.PRESS_NAME = "HydraulicPress"
+-- Площадки внутри HydraulicPress (по имени детали/модели).
+PressConfig.UNLOADING_NAMES = { "Unloading" }
+PressConfig.COLLECT_NAMES = { "Collect", "Cellect" }
+-- Высота зоны над площадкой, в которой должен оказаться HumanoidRootPart.
+PressConfig.PAD_CHECK_HEIGHT = 8
+
+-- Сколько веса руды oreId уходит на один предмет (у каждой руды свой, см.
+-- OreConfig.WeightPerItem: Common — 100, дальше тяжелее).
+function PressConfig.GetWeightPerItem(oreId: string): number
+	local ore = OreConfig.Get(oreId)
+	return if ore then ore.WeightPerItem else math.huge
+end
 
 -- === UnloadSpeed: секунд на один кусочек руды
 local BASE_UNLOAD_INTERVAL = 0.15
@@ -48,9 +60,9 @@ PressConfig.SELL_DELAY = PressConfig.SLAM_TIME
 	+ PressConfig.CONVEYOR_TIME
 	+ PressConfig.FALL_TIME
 
--- === Остаток руды (< WEIGHT_PER_ITEM). Когда игрок закончил выгрузку (с последнего
+-- === Остаток руды (< веса на предмет). Когда игрок закончил выгрузку (с последнего
 -- кусочка прошло REMAINDER_DELAY сек) и руды на целый предмет не хватает, из остатка
--- всё равно делается предмет: с шансом weight / WEIGHT_PER_ITEM — редкости руды,
+-- всё равно делается предмет: с шансом остаток / вес на предмет — редкости руды,
 -- иначе — на одну редкость ниже. Для самой низкой редкости «ниже» нет — остаток
 -- сгорает без предмета (иначе 10 веса Common давали бы столько же, сколько 100).
 PressConfig.REMAINDER_DELAY = 1.5
@@ -72,9 +84,10 @@ PressConfig.RARITY_ORDER = {
 	"Ascendant",
 }
 
--- Редкость предмета из остатка `weight` руды редкости `rarity`; nil — предмета не будет.
-function PressConfig.RollRemainderRarity(rarity: string, weight: number): string?
-	local chance = math.clamp(weight / PressConfig.WEIGHT_PER_ITEM, 0, 1)
+-- Редкость предмета из остатка `weight` руды редкости `rarity` (на целый предмет нужно
+-- `weightPerItem`); nil — предмета не будет.
+function PressConfig.RollRemainderRarity(rarity: string, weight: number, weightPerItem: number): string?
+	local chance = math.clamp(weight / weightPerItem, 0, 1)
 	if math.random() < chance then
 		return rarity
 	end

@@ -29,6 +29,11 @@ local PlayerManagerService = Knit.CreateService({
 		-- Fire(player, buffType, expiresAt, bonus) — временный бафф куплен/продлён
 		-- (см. BuffHandler). expiresAt — workspace:GetServerTimeNow() момент истечения.
 		BuffChanged = Knit.CreateSignal(),
+		-- Fire(player, checkpointPart) — игрок прошёл чекпоинт, руда сохранена
+		-- (см. CheckpointHandler). Клиент делает этот парт прозрачным.
+		CheckpointPassed = Knit.CreateSignal(),
+		-- Fire(player) — ресет чекпоинтов после Entrance -> Save: вернуть видимость.
+		CheckpointsReset = Knit.CreateSignal(),
 	},
 })
 
@@ -341,6 +346,11 @@ function PlayerManagerService:AddOrePieces(player, oreId, pieces)
 	return self.Components.PlayerOreInventory:AddPieces(player, oreId, pieces)
 end
 
+-- Влезет ли кусочек руды oreId (у руд разный вес кусочка, см. OreConfig.PieceWeight).
+function PlayerManagerService:CanCarryOrePiece(player, oreId)
+	return self.Components.PlayerOreInventory:CanFitPiece(player, oreId)
+end
+
 function PlayerManagerService:IsCarryFull(player)
 	return self.Components.PlayerOreInventory:IsFull(player)
 end
@@ -350,9 +360,15 @@ function PlayerManagerService:SaveCarriedOres(player)
 	self.Components.PlayerOreInventory:SaveToProfile(player)
 end
 
--- Забрать у игрока один кусочек руды (пресс, см. PressService). Возвращает oreId, вес.
-function PlayerManagerService:TakeOrePiece(player)
-	return self.Components.PlayerOreInventory:TakePiece(player)
+-- Снова активировать все чекпоинты игрока (после круга Entrance -> Save).
+function PlayerManagerService:ResetCheckpoints(player)
+	self.Components.CheckpointHandler:Reset(player)
+end
+
+-- Забрать у игрока всю руду разом (пресс, см. PressService). Возвращает
+-- map[oreId] = вес или nil, если руды нет.
+function PlayerManagerService:TakeAllOres(player)
+	return self.Components.PlayerOreInventory:TakeAll(player)
 end
 
 -- Текущий инвентарь ДЛЯ ПЕРЕНОСА: Count — суммарный вес несомой руды,
@@ -506,6 +522,8 @@ function PlayerManagerService:KnitStart()
 	-- следит за зонами с тегом "SaveItemsZone": сохраняет принесённые предметы
 	-- игроков в зоне и возвращает им срубленный камень
 	self.Components.SaveItemsZoneHandler:StartWatching()
+	-- парты Workspace.Checkpoints: разовое сохранение руды до ресета на Save
+	self.Components.CheckpointHandler:StartWatching()
 
 	-- ==== For test
 	-- local testSellpart = workspace:WaitForChild("TestSellOne") :: BasePart

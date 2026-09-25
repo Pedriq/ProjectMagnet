@@ -43,6 +43,12 @@ function PlayerOreInventory:IsFull(player: Player): boolean
 	return self:GetTotalWeight(player) >= self:GetCapacity(player)
 end
 
+-- Влезет ли ещё хотя бы один кусочек руды `oreId`.
+function PlayerOreInventory:CanFitPiece(player: Player, oreId: string): boolean
+	local ore = OreConfig.Get(oreId)
+	return ore ~= nil and self:GetCapacity(player) - self:GetTotalWeight(player) >= ore.PieceWeight
+end
+
 -- Добавить `pieces` кусочков руды `oreId`. Кладётся только то, что влезает
 -- целыми кусочками; возвращает, сколько кусочков реально добавлено.
 function PlayerOreInventory:AddPieces(player: Player, oreId: string, pieces: number): number
@@ -84,32 +90,32 @@ function PlayerOreInventory:SaveToProfile(player: Player)
 	PlayerManagerService:PushCarryInfo(player)
 end
 
--- Забрать у игрока один кусочек руды (для пресса): сначала из несомой руды,
--- потом из сохранённой (profile.Ores). Руды перебираются в порядке OreConfig.Order.
--- Возвращает oreId, вес — или nil, если руды нет совсем.
-function PlayerOreInventory:TakePiece(player: Player): (string?, number)
+-- Забрать у игрока ВСЮ руду разом (для пресса): и несомую, и сохранённую
+-- (profile.Ores). Возвращает map[oreId] = вес — или nil, если руды нет совсем.
+function PlayerOreInventory:TakeAll(player: Player): { [string]: number }?
 	local inv = getInventory(player)
+	local taken = {}
+	local any = false
+
 	for _, oreId in ipairs(OreConfig.Order) do
-		local weight = inv.Ores[oreId]
-		if weight and weight > 0 then
-			local taken = math.min(weight, OreConfig.Get(oreId).PieceWeight)
-			inv.Ores[oreId] = if weight - taken > 0 then weight - taken else nil
-			inv.TotalWeight = math.max(inv.TotalWeight - taken, 0)
-			PlayerManagerService:PushCarryInfo(player)
-			return oreId, taken
+		local carried = inv.Ores[oreId] or 0
+		local saved = tonumber(ProfileService:GetData(player, { "Ores", oreId })) or 0
+		if saved > 0 then
+			ProfileService:ChangeData(player, { "Ores", oreId }, nil)
+		end
+		if carried + saved > 0 then
+			taken[oreId] = carried + saved
+			any = true
 		end
 	end
 
-	for _, oreId in ipairs(OreConfig.Order) do
-		local weight = tonumber(ProfileService:GetData(player, { "Ores", oreId })) or 0
-		if weight > 0 then
-			local taken = math.min(weight, OreConfig.Get(oreId).PieceWeight)
-			ProfileService:ChangeData(player, { "Ores", oreId }, if weight - taken > 0 then weight - taken else nil)
-			return oreId, taken
-		end
+	if inv.TotalWeight > 0 then
+		inv.Ores = {}
+		inv.TotalWeight = 0
+		PlayerManagerService:PushCarryInfo(player)
 	end
 
-	return nil, 0
+	return if any then taken else nil
 end
 
 function PlayerOreInventory.Start() end

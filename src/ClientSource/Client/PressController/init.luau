@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
+local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 
 --[[
 	PressController — клиентская часть гидравлического пресса (см. PressService).
@@ -29,7 +30,7 @@ local PressService
 local ProfileService
 
 ---- Datas
-local PRESS_NAME = "HydraulicPress"
+local PRESS_NAME = PressConfig.PRESS_NAME
 
 function PressController:_SetOre(oreId, weight)
 	self.PressOres[oreId] = if type(weight) == "number" and weight > 0 then weight else nil
@@ -39,17 +40,25 @@ end
 function PressController:KnitStart()
 	local visualizer = self.Components.PressVisualizer
 
-	PressService.OreUnloaded:Connect(function(oreId)
-		visualizer:OreUnloaded(oreId)
+	PressService.OreUnloaded:Connect(function(ores)
+		if type(ores) == "table" then
+			visualizer:OreUnloaded(ores)
+		end
 	end)
 
 	PressService.ItemCrafted:Connect(function(oreId, weight, itemName, rarity, payout)
 		visualizer:ItemCrafted(oreId, weight, itemName, rarity, payout)
 	end)
 
+	PressService.MoneyCollected:Connect(function(amount)
+		visualizer:MoneyCollected(amount)
+	end)
+
 	ProfileService.UpdateSpecificData:Connect(function(path, value)
 		if path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
 			self:_SetOre(path[3], value)
+		elseif path[1] == "Press" and path[2] == "Unclaimed" then
+			visualizer:SetUnclaimed(tostring(value or "0"))
 		end
 	end)
 
@@ -71,6 +80,7 @@ function PressController:KnitStart()
 				end
 				visualizer:BuildPile(state.Ores)
 				visualizer:UpdateProgress(self.PressOres)
+				visualizer:SetUnclaimed(tostring(state.Unclaimed or "0"))
 			end)
 			:catch(warn)
 	end)

@@ -9,11 +9,14 @@
 	Бонус (`Bonus`) — СТАТИЧНЫЙ текст «за уровень», только для отображения; на
 	реальную формулу стата не влияет (она в PlayerStatsContainer).
 
-	Цена следующего уровня растёт тирами по TIER_SIZE уровней: внутри тира —
-	постоянный темп, на границе каждого тира темп сам увеличивается в
-	TIER_GROWTH раз (это и даёт периодический "рывок" цены). Единственное,
-	что отличает статы друг от друга — BaseCost; форма кривой (темпы, рывки)
-	общая для всех статов.
+	Цена следующего уровня — одна из двух кривых (поле Curve), обе по тирам из
+	TIER_SIZE уровней:
+	  "Tiers" (по умолчанию, старая) — внутри тира постоянный темп, на границе
+	    каждого тира темп сам увеличивается в TIER_GROWTH раз;
+	  "Bumps" — «буграми»: внутри тира цена растёт мягко (x BUMP_GROWTH за уровень),
+	    а на каждом новом тире (11-й, 21-й, ... уровень) — скачок на порядок
+	    (x BUMP_JUMP), и снова мягко. Используется у Capacity.
+	Кроме кривой статы отличаются только BaseCost.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +28,7 @@ export type StatConfig = {
 	Icon: string, -- rbxassetid или "" — иконку вставляет дизайнер позже
 
 	BaseCost: string, -- цена 1-го апгрейда, EtNum-строка
+	Curve: ("Tiers" | "Bumps")?, -- форма роста цены (см. CostFor); по умолчанию "Tiers"
 	MaxLevel: number,
 
 	RobuxProductId: number, -- id дев-продукта для «купить за донат» (0 = не заведён)
@@ -62,7 +66,8 @@ StatUpgradesConfig.Stats = {
 		Title = "Capacity",
 		Bonus = "+100 Capacity", -- = BaseStatsValues.CapacityPerLevel
 		Icon = "15507675979",
-		BaseCost = "130000",
+		BaseCost = "100",
+		Curve = "Bumps",
 		MaxLevel = 200,
 		RobuxProductId = 0,
 		RobuxLevels = 10,
@@ -85,6 +90,10 @@ local TIER_SIZE = 10
 local RATE_START = 1.75 -- темп роста за уровень внутри первого десятка
 local TIER_GROWTH = 1.5 -- во сколько раз сам темп усиливается с каждым следующим десятком
 
+-- кривая "Bumps"
+local BUMP_GROWTH = 1.15 -- +15% за уровень внутри тира
+local BUMP_JUMP = 10 -- скачок цены при переходе в следующий тир
+
 -- Цена перехода `level` -> `level + 1`, EtNum-строка. level >= 1.
 function StatUpgradesConfig.CostFor(statKey: string, level: number): string
 	local cfg = StatUpgradesConfig.Stats[statKey]
@@ -92,6 +101,12 @@ function StatUpgradesConfig.CostFor(statKey: string, level: number): string
 
 	local base = EtNum.convert(cfg.BaseCost)
 	local tier = math.floor((math.max(level, 1) - 1) / TIER_SIZE) -- 0 для 1-10, 1 для 11-20, ...
+
+	if cfg.Curve == "Bumps" then
+		-- base * 1.15^(level-1) * 10^tier
+		local cost = EtNum.mul(base, EtNum.pow(BUMP_GROWTH, math.max(level, 1) - 1))
+		return EtNum.toString(EtNum.mul(cost, EtNum.pow(BUMP_JUMP, tier)))
+	end
 
 	if tier == 0 then
 		return EtNum.toString(EtNum.mul(base, EtNum.pow(RATE_START, level - 1)))
