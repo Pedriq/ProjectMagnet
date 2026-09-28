@@ -7,10 +7,18 @@ local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 	PressUnloadHandler — выгрузка руды в пресс.
 
 	Как только HumanoidRootPart игрока оказывается внутри
-	Workspace.HydraulicPress.Unloading (BasePart или Model; таких детей может быть
-	несколько), с игрока разом снимается ВСЯ руда (PlayerManagerService:TakeAllOres)
-	и кладётся в пресс. Клиенту уходит один OreUnloaded со всей рудой — визуал
-	сам решает, сколько кусочков показать в полёте.
+	Workspace.HydraulicPress.Unloading, с игрока разом снимается ВСЯ руда
+	(PlayerManagerService:TakeAllOres) и кладётся в пресс. Клиенту уходит один
+	OreUnloaded со всей рудой — визуал сам решает, сколько кусочков показать в полёте.
+
+	Unloading — Model с двумя детьми (см. PressService:GetPadParts):
+	  ZoneFloor         — BasePart, ПО НЕЙ идёт детект игрока (единственная часть,
+	                      которая на это влияет).
+	  ZoneDashedOutline — чисто декоративное вращающееся кольцо (Model или
+	                      BasePart), крутится на клиенте (PressVisualizer),
+	                      в детекте не участвует.
+	Старый вариант (просто BasePart без вложенных ZoneFloor/ZoneDashedOutline)
+	по-прежнему поддерживается — см. фолбэк в PressService:GetPadParts.
 ]]
 local PressUnloadHandler = {}
 

@@ -81,6 +81,12 @@ end
 
 -- Все BasePart'ы детей HydraulicPress с именем из `names` (сама деталь или
 -- части модели с таким именем).
+--
+-- Модель зоны (например Unloading: ZoneDashedOutline + ZoneFloor, см. README/
+-- PressUnloadHandler) детектит игрока СТРОГО по ZoneFloor — не по всем BasePart
+-- внутри, иначе в детект попал бы декоративный вращающийся ZoneDashedOutline.
+-- Если ZoneFloor нет (старые/другие зоны без такой структуры) — падаем назад на
+-- поиск по всем BasePart, как раньше.
 function PressService:GetPadParts(names: { string }): { BasePart }
 	local press = workspace:FindFirstChild(PressConfig.PRESS_NAME)
 	local parts = {}
@@ -93,9 +99,14 @@ function PressService:GetPadParts(names: { string }): { BasePart }
 			if child:IsA("BasePart") then
 				table.insert(parts, child)
 			else
-				for _, d in ipairs(child:GetDescendants()) do
-					if d:IsA("BasePart") then
-						table.insert(parts, d)
+				local floor = child:FindFirstChild("ZoneFloor")
+				if floor and floor:IsA("BasePart") then
+					table.insert(parts, floor)
+				else
+					for _, d in ipairs(child:GetDescendants()) do
+						if d:IsA("BasePart") then
+							table.insert(parts, d)
+						end
 					end
 				end
 			end

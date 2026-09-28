@@ -60,9 +60,14 @@ local ITEM_SIZE = 2 -- самая большая сторона предмета
 local SELL_SINK_TIME = 0.3 -- после падения предмет «проваливается» в Sell
 local MONEY_POPUP_TIME = 1.2
 
+-- Unloading.ZoneDashedOutline — декоративное кольцо зоны выгрузки, медленно
+-- крутится вокруг своей оси (детект игрока идёт по ZoneFloor, см. PressService).
+local OUTLINE_SPIN_SPEED = math.rad(15) -- рад/сек
+
 ---- State
 local press: Model? = nil
 local visualsFolder: Folder? = nil
+local outlineSpin: RBXScriptConnection? = nil
 type PileEntry = {
 	OreId: string,
 	Model: Model,
@@ -927,6 +932,43 @@ local function findCollect(): Instance?
 	return nil
 end
 
+local function findUnloading(): Instance?
+	for _, name in ipairs(PressConfig.UNLOADING_NAMES) do
+		local found = findPart(name)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+
+-- Крутит ZoneDashedOutline вокруг своей оси на месте (Model — через PivotTo,
+-- BasePart — через CFrame), не трогая позицию. Останавливается сама, если
+-- outline удалили (например, вместе со всей зоной Unloading).
+local function spinOutline(outline: Instance)
+	local initialPivot = if outline:IsA("Model") then (outline :: Model):GetPivot() else (outline :: BasePart).CFrame
+	local angle = 0
+
+	outlineSpin = RunService.Heartbeat:Connect(function(deltaTime)
+		if not outline.Parent then
+			if outlineSpin then
+				outlineSpin:Disconnect()
+				outlineSpin = nil
+			end
+			return
+		end
+
+		angle = (angle + OUTLINE_SPIN_SPEED * deltaTime) % (2 * math.pi)
+		local spun = initialPivot * CFrame.Angles(0, angle, 0)
+
+		if outline:IsA("Model") then
+			(outline :: Model):PivotTo(spun)
+		else
+			(outline :: BasePart).CFrame = spun
+		end
+	end)
+end
+
 -- Табличка над Collect: сколько денег ждёт сбора (profile.Press.Unclaimed).
 function PressVisualizer:SetUnclaimed(amount: string)
 	lastUnclaimed = amount -- табличка может появиться позже (стриминг) — покажет последнее
@@ -1016,6 +1058,14 @@ function PressVisualizer:_EnsureReady()
 		local inventory = findPart("PressInventory")
 		if inventory then
 			self:_CreateProgressBillboard(inventory)
+		end
+	end
+
+	if not outlineSpin then
+		local unloading = findUnloading()
+		local outline = unloading and unloading:FindFirstChild("ZoneDashedOutline")
+		if outline and (outline:IsA("Model") or outline:IsA("BasePart")) then
+			spinOutline(outline)
 		end
 	end
 
