@@ -81,6 +81,37 @@ function PlayerManagerService:SetMagnetOwned(player, magnetName)
 	ProfileService:ChangeData(player, { "OwnedMagnets", magnetName }, true)
 end
 
+-- Разовая миграция ключей после ребрендинга «мечи -> магниты» (см.
+-- MagnetData.LegacyKeyAliases): у уже сохранённых профилей OwnedMagnets/Magnet.Name
+-- всё ещё хранят СТАРЫЕ ключи (Reconcile() их не переименовывает, только
+-- дозаполняет отсутствующее) — без этого игрок не видит купленные магниты в
+-- магазине (Owns сверяет по новому ключу) и в руке (GiveMagnet не находит
+-- ассет). Идемпотентно: на уже смигрированном профиле ничего не меняет.
+function PlayerManagerService:_MigrateLegacyMagnetKeys(player)
+	local owned = ProfileService:GetData(player, { "OwnedMagnets" }) or {}
+
+	local renames = {}
+	for storedKey in pairs(owned) do
+		local resolved = MagnetData.resolveKey(storedKey)
+		if resolved and resolved ~= storedKey then
+			table.insert(renames, { From = storedKey, To = resolved })
+		end
+	end
+	for _, rename in ipairs(renames) do
+		ProfileService:ChangeData(player, { "OwnedMagnets", rename.To }, true)
+		ProfileService:ChangeData(player, { "OwnedMagnets", rename.From }, nil)
+	end
+
+	local magnet = ProfileService:GetData(player, { "Magnet" })
+	local currentName = magnet and magnet.Name
+	if currentName then
+		local resolved = MagnetData.resolveKey(currentName)
+		if resolved and resolved ~= currentName then
+			ProfileService:ChangeData(player, { "Magnet", "Name" }, resolved)
+		end
+	end
+end
+
 -- Панель мечей: купить меч за Money (сразу экипируется). Сервер сам считает цену.
 function PlayerManagerService:BuyMagnet(player, magnetName)
 	return self.Components.MagnetShopHandler:BuyWithMoney(player, magnetName)
@@ -332,7 +363,7 @@ function PlayerManagerService:CreateMagnetHitbox(player)
 	-- resolveKey — на случай старых профилей, у которых в Magnet.Name осело
 	-- отображаемое имя вместо ключа (баг MagnetShopHandler:EquipMagnet, уже
 	-- пофикшен для новых записей, но старые сохранёнки сами себя не чинят).
-	local magnetKey = MagnetData.resolveKey(self:GetPlayerMagnet(player).Name) or "Stick"
+	local magnetKey = MagnetData.resolveKey(self:GetPlayerMagnet(player).Name) or "FridgeMagnet"
 	self.Components.PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetKey)
 end
 
@@ -554,6 +585,19 @@ function PlayerManagerService:KnitInit()
 
 	-- ==== Player Init ====
 	Players.PlayerAdded:Connect(function(player: Player)
+		-- В фоне, НЕ блокируя остальной PlayerAdded: чинит старые ключи магнитов
+		-- в профиле (см. _MigrateLegacyMagnetKeys). ChangeData/GetData внутри неё
+		-- могут ненадолго заблокироваться (ProfileService:WaitUntilProfileLoaded,
+		-- если профиль ещё грузится) — синхронный вызов здесь сдвинул бы
+		-- player.CharacterAdded:Connect ниже по времени и рисковал пропустить уже
+		-- случившийся спавн персонажа (а с ним — GiveMagnet/CreateMagnetHitbox и
+		-- инициализацию камней). Миграции НЕ обязательно успеть до GiveMagnet —
+		-- resolveKey и так понимает старые ключи через MagnetData.LegacyKeyAliases,
+		-- миграция только один раз приводит сами данные профиля в порядок.
+		task.spawn(function()
+			self:_MigrateLegacyMagnetKeys(player)
+		end)
+
 		self.Components.PlayerStripDataInitializer:InitStripDataForPlayer(player)
 		self.Components.PlayerCollisionInitializer:InitCollisionForPlayer(player)
 		task.spawn(function()

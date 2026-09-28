@@ -35,18 +35,28 @@ function MagnetHandler:GiveMagnet(player: Player)
 		return
 	end
 
-	-- Модели в этой папке названы отображаемым именем меча ("Chef's Favourite"),
-	-- а не внутренним ключом MagnetData ("ChefsFavourite") — несмотря на то, что
-	-- комментарий в MagnetData.luau утверждает обратное. Поэтому ищем по .Name
-	-- конфига в первую очередь, а ключ/сырое значение — как подстраховка на
-	-- случай другого нейминга ассетов.
+	-- Модели в этой папке могут быть названы ЛИБО отображаемым именем ("Chef's
+	-- Favourite"/новым Display "Chefs Magnetic Ladle"), ЛИБО внутренним ключом
+	-- MagnetData ("ChefsMagneticLadle") — заранее неизвестно, как назван ассет
+	-- в Studio, поэтому перебираем все варианты (см. MagnetData.assetNameCandidates).
 	local magnetKey = MagnetData.resolveKey(playerMagnet.Name)
-	local magnetCfg = magnetKey and MagnetData[magnetKey]
-	local magnetTemplate = (magnetCfg and weponFolder:FindFirstChild(magnetCfg.Name))
-		or (magnetKey and weponFolder:FindFirstChild(magnetKey))
-		or weponFolder:FindFirstChild(playerMagnet.Name)
+	local magnetTemplate = nil
+
+	if magnetKey then
+		for _, candidate in ipairs(MagnetData.assetNameCandidates(magnetKey)) do
+			magnetTemplate = weponFolder:FindFirstChild(candidate)
+			if magnetTemplate then
+				break
+			end
+		end
+	end
+
+	magnetTemplate = magnetTemplate or weponFolder:FindFirstChild(playerMagnet.Name)
 
 	if not magnetTemplate then
+		warn(
+			`[MagnetHandler] не нашёл модель магнита в {weponFolder:GetFullName()} для "{tostring(playerMagnet.Name)}" (ключ: {tostring(magnetKey)}) — проверь имя модели в Studio.`
+		)
 		return
 	end
 

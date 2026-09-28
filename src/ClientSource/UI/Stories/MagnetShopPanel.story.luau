@@ -11,7 +11,7 @@ local story = {
 	story = function()
 		Data.money("5e11") -- хватает до Saber включительно, дальше кнопка Money гаснет
 		Data.magnet({ Name = "SwordSaw", Magnetism = 267000 }) -- надет Sword Saw
-		Data.ownedMagnets({ Stick = true, Cleaver = true, Katana = true, SwordSaw = true })
+		Data.ownedMagnets({ FridgeMagnet = true, Cleaver = true, Katana = true, SwordSaw = true })
 
 		return create("Frame")({
 			Size = UDim2.fromOffset(720, 640),

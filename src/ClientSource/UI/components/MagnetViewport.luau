@@ -5,7 +5,11 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local create = vide.create
 
 -- Clones only the display model; never changes the equipped magnet or its template.
-local function MagnetViewport(name: string)
+-- `names` — one name or an ordered list of candidate asset names to try (see
+-- MagnetData.assetNameCandidates); the model's actual name in Studio isn't
+-- guaranteed to match any single one of Display/Name/key.
+local function MagnetViewport(names: string | { string })
+	local nameList: { string } = if type(names) == "table" then names else { names }
 	local camera = create("Camera")({ FieldOfView = 35 })
 	local world = create("WorldModel")({ Name = "PreviewWorld" })
 	local viewport = create("ViewportFrame")({
@@ -38,7 +42,15 @@ local function MagnetViewport(name: string)
 		end
 		local assets = ReplicatedStorage:FindFirstChild("Assets")
 		local magnets = assets and assets:FindFirstChild("Magnets")
-		local template = magnets and magnets:FindFirstChild(name)
+		local template = nil
+		if magnets then
+			for _, candidate in ipairs(nameList) do
+				template = magnets:FindFirstChild(candidate)
+				if template then
+					break
+				end
+			end
+		end
 		if not template or not template:IsA("Model") then
 			return
 		end
@@ -83,7 +95,7 @@ local function MagnetViewport(name: string)
 	end
 	local resize = viewport:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	local added = ReplicatedStorage.DescendantAdded:Connect(function(item)
-		if item.Name == name or item.Name == "Magnets" or item.Name == "Assets" then
+		if item.Name == "Magnets" or item.Name == "Assets" or table.find(nameList, item.Name) then
 			loadModel()
 		end
 	end)

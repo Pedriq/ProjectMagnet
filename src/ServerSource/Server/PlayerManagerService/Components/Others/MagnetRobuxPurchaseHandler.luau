@@ -7,7 +7,7 @@ local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilitie
 --[[
 	MagnetRobuxPurchaseHandler — покупка обычных мечей «Cutters» за Robux, в
 	обход цены Money (MagnetData[key].RobuxProductId). НЕ путать с
-	MagnetGamePassPurchaseHandler: там донат-мечи (Wraithflame/WarringWingblade,
+	MagnetGamePassPurchaseHandler: там донат-мечи (Wraithcoil/WarringWingcoil,
 	"OP Magnets") продаются ТОЛЬКО за Game Pass и вообще не продаются за Money;
 	тут же — обычные мечи из MagnetData.Order, для которых Robux — просто более
 	быстрый путь вместо накопления Money.

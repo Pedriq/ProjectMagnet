@@ -12,7 +12,7 @@ local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 
 	Экипировка: profile.Magnet = { Name, Magnetism } (Magnetism читает ClickHandler
 	за каждый клин), затем перевыдаём модель меча и хитбокс. Для Dynamic-мечей
-	(Wraithflame, Warring Wingblade — см. MagnetData) Magnetism не берётся из
+	(Wraithcoil, Warring Wingcoil — см. MagnetData) Magnetism не берётся из
 	конфига напрямую, а считается заново через MagnetData.effectiveMagnetism —
 	это единственное место, где Dynamic-сила фиксируется в профиль, поэтому она
 	актуальна ровно на момент последней экипировки этого меча.
@@ -22,7 +22,7 @@ local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 	читает Owns/EquipMagnet отсюда). Донат-мечи (GamePassId) покупаются через
 	MagnetGamePassPurchaseHandler — тоже не через этот файл.
 
-	Stick (нет поля Price) не продаётся — он всегда в OwnedMagnets из ProfileTemplate.
+	FridgeMagnet (нет поля Price) не продаётся — он всегда в OwnedMagnets из ProfileTemplate.
 ]]
 
 local MagnetShopHandler = {}
@@ -76,7 +76,7 @@ function MagnetShopHandler:BuyWithMoney(player, name: string): boolean
 	end
 
 	if not cfg.Price then
-		return false -- Stick / меч не продаётся за Money
+		return false -- FridgeMagnet / меч не продаётся за Money
 	end
 
 	local money = PlayerManagerService:GetPlayerMoney(player) or "0"

@@ -12,7 +12,7 @@
 	  Magnetism    — прирост силы за один клин (число), см. ClickHandler.
 	                У Dynamic-мечей отсутствует (сила считается на лету).
 	  Price       — цена за Money, EtNum-строка. НЕТ поля => меч не продаётся
-	                за Money (стартовый Stick, либо GamePassId-меч). "2.8e8" = 280M и т.п.
+	                за Money (стартовый FridgeMagnet, либо GamePassId-меч). "2.8e8" = 280M и т.п.
 	  RobuxPrice  — только для подписи на кнопке Robux (0/nil => "Buy").
 	  RobuxProductId — дев-продукт покупки этого меча за Robux (в обход цены
 	                Money) — см. MagnetRobuxPurchaseHandler. Не путать с
@@ -58,13 +58,15 @@ export type Magnet = {
 }
 
 local Magnets: { [string]: Magnet } = {
-	Stick = {
+	FridgeMagnet = {
 		Name = "Stick",
+		Display = "Fridge Magnet",
 		Rare = "Common",
 		Magnetism = 1,
 	},
-	ChippedSword = {
+	CrackedMagnet = {
 		Name = "Chipped Sword",
+		Display = "Cracked Magnet",
 		Rare = "Common",
 		Magnetism = 3,
 		Price = "150",
@@ -72,8 +74,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714051685,
 		Icon = "",
 	},
-	ChefsFavourite = {
+	ChefsMagneticLadle = {
 		Name = "Chef's Favourite",
+		Display = "Chefs Magnetic Ladle",
 		Rare = "Uncommon",
 		Magnetism = 8,
 		Price = "700",
@@ -81,8 +84,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714051763,
 		Icon = "",
 	},
-	LeafyLasher = {
+	LeafyLodestone = {
 		Name = "Leafy Lasher",
+		Display = "Leafy Lodestone",
 		Rare = "Uncommon",
 		Magnetism = 15,
 		Price = "2500",
@@ -90,8 +94,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714051821,
 		Icon = "",
 	},
-	DaybreakDaimyoDaikatana = {
+	DaybreakDynamoDriver = {
 		Name = "Daybreak Daimyo Daikatana",
+		Display = "Daybreak Dynamo Driver",
 		Rare = "Uncommon",
 		Magnetism = 25,
 		Price = "5000",
@@ -99,8 +104,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714051902,
 		Icon = "",
 	},
-	DuneNomadSword = {
+	DuneNomadsCompass = {
 		Name = "Dune Nomad Sword",
+		Display = "Dune Nomads Compass",
 		Rare = "Rare",
 		Magnetism = 50,
 		Price = "12000",
@@ -108,8 +114,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714051983,
 		Icon = "",
 	},
-	BlossomBarbarianBiter = {
+	BlossomBarbariansBolt = {
 		Name = "Blossom Barbarian Biter",
+		Display = "Blossom Barbarians Bolt",
 		Rare = "Rare",
 		Magnetism = 85,
 		Price = "30000",
@@ -117,8 +124,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052066,
 		Icon = "",
 	},
-	StringerBean = {
+	IronBean = {
 		Name = "Stringer Bean",
+		Display = "Iron Bean",
 		Rare = "Rare",
 		Magnetism = 170,
 		Price = "70000",
@@ -126,8 +134,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052132,
 		Icon = "",
 	},
-	SnowtrailStalkerSword = {
+	SnowtrailStalkersLodestone = {
 		Name = "Snowtrail Stalker Sword",
+		Display = "Snowtrail Stalkers Lodestone",
 		Rare = "Rare",
 		Magnetism = 360,
 		Price = "140000",
@@ -135,8 +144,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052185,
 		Icon = "",
 	},
-	PanateanBattleAxe = {
+	PanateanWarCore = {
 		Name = "Panatean Battle-Axe",
+		Display = "Panatean War-Core",
 		Rare = "Epic",
 		Magnetism = 750,
 		Price = "300000",
@@ -144,8 +154,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052240,
 		Icon = "",
 	},
-	LunewingEdge = {
+	LunewingFlux = {
 		Name = "Lunewing Edge",
+		Display = "Lunewing Flux",
 		Rare = "Epic",
 		Magnetism = 1500,
 		Price = "650000",
@@ -153,8 +164,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052287,
 		Icon = "",
 	},
-	FeatheredFriendFalchion = {
+	FeatheredFriendsFerrite = {
 		Name = "Feathered Friend Falchion",
+		Display = "Feathered Friends Ferrite",
 		Rare = "Epic",
 		Magnetism = 3200,
 		Price = "1500000",
@@ -162,8 +174,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052329,
 		Icon = "",
 	},
-	BeachBuriedShovel = {
+	BeachBuriedHorseshoe = {
 		Name = "Beach Buried Shovel",
+		Display = "Beach Buried Horseshoe",
 		Rare = "Epic",
 		Magnetism = 6800,
 		Price = "4200000",
@@ -171,8 +184,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052389,
 		Icon = "",
 	},
-	FieryTyrant = {
+	FieryMagnetron = {
 		Name = "Fiery Tyrant",
+		Display = "Fiery Magnetron",
 		Rare = "Legendary",
 		Magnetism = 14100,
 		Price = "12000000",
@@ -180,8 +194,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052444,
 		Icon = "",
 	},
-	IncandescentMachete = {
+	IncandescentInductor = {
 		Name = "Incandescent Machete",
+		Display = "Incandescent Inductor",
 		Rare = "Legendary",
 		Magnetism = 29500,
 		Price = "25000000",
@@ -189,8 +204,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052485,
 		Icon = "",
 	},
-	TwistedTraumatizer = {
+	TwistedTransformer = {
 		Name = "Twisted Traumatizer",
+		Display = "Twisted Transformer",
 		Rare = "Legendary",
 		Magnetism = 61500,
 		Price = "45000000",
@@ -198,8 +214,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052537,
 		Icon = "",
 	},
-	CrystallineBlade = {
+	CrystallineCore = {
 		Name = "Crystalline Blade",
+		Display = "Crystalline Core",
 		Rare = "Legendary",
 		Magnetism = 128000,
 		Price = "120000000",
@@ -207,8 +224,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052577,
 		Icon = "",
 	},
-	EldritchExecutor = {
+	EldritchElectromagnet = {
 		Name = "Eldritch Executor",
+		Display = "Eldritch Electromagnet",
 		Rare = "Mythic",
 		Magnetism = 267000,
 		Price = "280000000",
@@ -216,8 +234,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052620,
 		Icon = "",
 	},
-	FaewindWanderer = {
+	FaewindFieldWanderer = {
 		Name = "Faewind Wanderer",
+		Display = "Faewind Field Wanderer",
 		Rare = "Mythic",
 		Magnetism = 558000,
 		Price = "750000000",
@@ -225,8 +244,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052672,
 		Icon = "",
 	},
-	FloweryFae = {
+	FloweryFlux = {
 		Name = "Flowery Fae",
+		Display = "Flowery Flux",
 		Rare = "Mythic",
 		Magnetism = 11000000,
 		Price = "22000000000",
@@ -234,8 +254,9 @@ local Magnets: { [string]: Magnet } = {
 		RobuxProductId = 3714052717,
 		Icon = "",
 	},
-	MoonstruckBlade = {
+	MoonstruckMagnetite = {
 		Name = "Moonstruck Blade",
+		Display = "Moonstruck Magnetite",
 		Rare = "Mythic",
 		Magnetism = 24000000,
 		Price = "60000000000",
@@ -247,15 +268,17 @@ local Magnets: { [string]: Magnet } = {
 	-- Донат-мечи: НЕ продаются за Money (нет Price) — только за Game Pass.
 	-- Сила не фиксирована (нет Magnetism) — считается динамически от самого
 	-- сильного НЕ-донатного меча игрока, см. MagnetData.effectiveMagnetism.
-	Wraithflame = {
+	Wraithcoil = {
 		Name = "Wraithflame",
+		Display = "Wraithcoil",
 		Rare = "Secret",
 		Dynamic = { Multiplier = 2 }, -- +100% силы самого сильного меча
 		GamePassId = 1985637086,
 		Icon = "",
 	},
-	WarringWingblade = {
+	WarringWingcoil = {
 		Name = "Warring Wingblade",
+		Display = "Warring Wingcoil",
 		Rare = "Godly",
 		Dynamic = { Multiplier = 4 }, -- +300% силы самого сильного меча
 		GamePassId = 1982529455,
@@ -264,7 +287,7 @@ local Magnets: { [string]: Magnet } = {
 
 	-- легаси: старые профили до наполнения конфига хранят Magnet.Name = "Sword".
 	-- Не в Order (в магазине не показывается), нужен только чтобы у таких профилей
-	-- собирался хитбокс. Новые профили стартуют со Stick (ProfileTemplate).
+	-- собирался хитбокс. Новые профили стартуют с FridgeMagnet (ProfileTemplate).
 	-- Sword = {
 	-- 	Name = "Sword",
 	-- 	Rare = "Common",
@@ -348,30 +371,30 @@ local Magnets: { [string]: Magnet } = {
 local MagnetEntries = table.clone(Magnets)
 local MagnetData = Magnets :: any
 
--- Порядок карточек в панели (сверху вниз). Первым — стартовый Stick.
+-- Порядок карточек в панели (сверху вниз). Первым — стартовый FridgeMagnet.
 MagnetData.Order = {
-	"Stick",
-	"ChippedSword",
-	"ChefsFavourite",
-	"LeafyLasher",
-	"DaybreakDaimyoDaikatana",
-	"DuneNomadSword",
-	"BlossomBarbarianBiter",
-	"StringerBean",
-	"SnowtrailStalkerSword",
-	"PanateanBattleAxe",
-	"LunewingEdge",
-	"FeatheredFriendFalchion",
-	"BeachBuriedShovel",
-	"FieryTyrant",
-	"IncandescentMachete",
-	"TwistedTraumatizer",
-	"CrystallineBlade",
-	"EldritchExecutor",
-	"FaewindWanderer",
-	"FloweryFae",
-	"MoonstruckBlade",
-	-- Wraithflame / WarringWingblade НЕ в Order: у них отдельная карточка
+	"FridgeMagnet",
+	"CrackedMagnet",
+	"ChefsMagneticLadle",
+	"LeafyLodestone",
+	"DaybreakDynamoDriver",
+	"DuneNomadsCompass",
+	"BlossomBarbariansBolt",
+	"IronBean",
+	"SnowtrailStalkersLodestone",
+	"PanateanWarCore",
+	"LunewingFlux",
+	"FeatheredFriendsFerrite",
+	"BeachBuriedHorseshoe",
+	"FieryMagnetron",
+	"IncandescentInductor",
+	"TwistedTransformer",
+	"CrystallineCore",
+	"EldritchElectromagnet",
+	"FaewindFieldWanderer",
+	"FloweryFlux",
+	"MoonstruckMagnetite",
+	-- Wraithcoil / WarringWingcoil НЕ в Order: у них отдельная карточка
 	-- (OPMagnetCard) в ShopPanel -> "OP Magnets", не показываются в панели Cutters.
 }
 
@@ -379,8 +402,41 @@ MagnetData.Order = {
 -- Order, поэтому отдельный список. Не выводить их через pairs(MagnetData)/Order —
 -- та же таблица несёт мета-поля (Order/RarityEffects/effectsFor и т.п.).
 MagnetData.GamePassMagnets = {
-	"Wraithflame",
-	"WarringWingblade",
+	"Wraithcoil",
+	"WarringWingcoil",
+}
+
+-- Алиасы СТАРЫХ ключей (до ребрендинга «мечи -> магниты») на новые — у уже
+-- сохранённых профилей (Magnet.Name / OwnedMagnets) остались старые ключи, а
+-- Reconcile() их не переименовывает (только дозаполняет отсутствующее). Без
+-- этой таблицы resolveKey не находит магнит по старому ключу (Name-фоллбек
+-- ниже не срабатывает, если старый ключ не совпадает с текущим Name — почти
+-- всегда, кроме Stick) — игрок теряет из вида экипированный магнит и его
+-- владение в магазине. См. PlayerManagerService (миграция OwnedMagnets/Magnet.Name).
+MagnetData.LegacyKeyAliases = {
+	Stick = "FridgeMagnet",
+	ChippedSword = "CrackedMagnet",
+	ChefsFavourite = "ChefsMagneticLadle",
+	LeafyLasher = "LeafyLodestone",
+	DaybreakDaimyoDaikatana = "DaybreakDynamoDriver",
+	DuneNomadSword = "DuneNomadsCompass",
+	BlossomBarbarianBiter = "BlossomBarbariansBolt",
+	StringerBean = "IronBean",
+	SnowtrailStalkerSword = "SnowtrailStalkersLodestone",
+	PanateanBattleAxe = "PanateanWarCore",
+	LunewingEdge = "LunewingFlux",
+	FeatheredFriendFalchion = "FeatheredFriendsFerrite",
+	BeachBuriedShovel = "BeachBuriedHorseshoe",
+	FieryTyrant = "FieryMagnetron",
+	IncandescentMachete = "IncandescentInductor",
+	TwistedTraumatizer = "TwistedTransformer",
+	CrystallineBlade = "CrystallineCore",
+	EldritchExecutor = "EldritchElectromagnet",
+	FaewindWanderer = "FaewindFieldWanderer",
+	FloweryFae = "FloweryFlux",
+	MoonstruckBlade = "MoonstruckMagnetite",
+	Wraithflame = "Wraithcoil",
+	WarringWingblade = "WarringWingcoil",
 }
 
 -- Эффект по умолчанию для редкости (Mythic и выше). Ниже Mythic — без эффектов.
@@ -405,7 +461,7 @@ function MagnetData.effectsFor(magnet: Magnet): { Text: number, Card: number }
 end
 
 -- Восстановить внутренний ключ по любому значению, когда-либо лежавшему в
--- profile.Magnet.Name: сам ключ ("ChefsFavourite"), старое испорченное
+-- profile.Magnet.Name: сам ключ ("ChefsMagneticLadle"), старое испорченное
 -- отображаемое имя ("Chef's Favourite" — баг EquipMagnet до фикса) или мусор.
 -- nil, если не нашли ничего похожего.
 function MagnetData.resolveKey(nameOrKey: string?): string?
@@ -417,6 +473,11 @@ function MagnetData.resolveKey(nameOrKey: string?): string?
 		return nameOrKey
 	end
 
+	local alias = MagnetData.LegacyKeyAliases[nameOrKey]
+	if alias and MagnetEntries[alias] then
+		return alias
+	end
+
 	for key, magnet in pairs(MagnetEntries) do
 		if magnet.Name == nameOrKey then
 			return key
@@ -426,8 +487,37 @@ function MagnetData.resolveKey(nameOrKey: string?): string?
 	return nil
 end
 
+-- Кандидаты имени 3D-модели в ReplicatedStorage.Assets.Magnets для магнита
+-- `key`, в порядке приоритета: Display (если ассет уже переименован под новое
+-- название магнита), Name (историческое имя ассета, "Chipped Sword" и т.п.),
+-- сам ключ (на случай, если ассет назван прямо по ключу). Без дублей.
+--
+-- Нужно потому, что неизвестно заранее, как именно назван ассет в Studio —
+-- используется везде, где ищется модель магнита (MagnetHandler, MagnetShopPanel,
+-- OPMagnetCard/MagnetViewport), чтобы поиск не ломался ни при каком варианте.
+function MagnetData.assetNameCandidates(key: string): { string }
+	local cfg = MagnetEntries[key]
+	local candidates = {}
+	local seen: { [string]: boolean } = {}
+
+	local function add(name: string?)
+		if name and name ~= "" and not seen[name] then
+			seen[name] = true
+			table.insert(candidates, name)
+		end
+	end
+
+	if cfg then
+		add(cfg.Display)
+		add(cfg.Name)
+	end
+	add(key)
+
+	return candidates
+end
+
 -- Сила самого сильного НЕ-Dynamic меча, которым владеет игрок (owned = OwnedMagnets
--- игрока, map[key]=true). Stick всегда в OwnedMagnets (ProfileTemplate), так что
+-- игрока, map[key]=true). FridgeMagnet всегда в OwnedMagnets (ProfileTemplate), так что
 -- результат никогда не бывает меньше 1 для обычного профиля.
 function MagnetData.strongestOwnedMagnetism(owned: { [string]: boolean }): number
 	local best = 0
@@ -440,7 +530,7 @@ function MagnetData.strongestOwnedMagnetism(owned: { [string]: boolean }): numbe
 end
 
 -- Актуальная сила меча `key` для игрока, владеющего `owned`. У Dynamic-мечей
--- (Wraithflame, Warring Wingblade) считается на лету от strongestOwnedMagnetism,
+-- (Wraithcoil, Warring Wingcoil) считается на лету от strongestOwnedMagnetism,
 -- у обычных — просто cfg.Magnetism.
 function MagnetData.effectiveMagnetism(key: string, owned: { [string]: boolean }): number
 	local cfg = MagnetEntries[key]

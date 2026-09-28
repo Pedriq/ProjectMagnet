@@ -422,7 +422,7 @@ local function HUD()
 						sfx.play("Buy")
 						Knit.GetService("PlayerManagerService"):PromptBuffPurchase(productId):catch(warn)
 					end,
-					-- Донат-мечи (Wraithflame, Warring Wingblade) — Game Pass, не дев-продукт.
+					-- Донат-мечи (Wraithcoil, Warring Wingcoil) — Game Pass, не дев-продукт.
 					-- Владение подтвердит сам Roblox (MagnetGamePassPurchaseHandler),
 					-- Data.ownedMagnets/Data.magnet прилетят через ProfileService.UpdateSpecificData.
 					OnBuyOPMagnet = function(magnetKey)

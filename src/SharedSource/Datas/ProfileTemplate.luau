@@ -1,13 +1,13 @@
 local ProfileTemplate = {
 	Magnet = {
-		Name = "Stick",
+		Name = "FridgeMagnet",
 		Magnetism = 1,
 	},
 
 	-- какими мечами игрок владеет: map[magnetName] = true (см. MagnetData / MagnetShopHandler).
-	-- стартовый Stick доступен всегда.
+	-- стартовый FridgeMagnet доступен всегда.
 	OwnedMagnets = {
-		Stick = true,
+		FridgeMagnet = true,
 	},
 
 	Stats = {

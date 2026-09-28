@@ -6,8 +6,8 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 
 --[[
-	MagnetGamePassPurchaseHandler — покупка донат-мечей (Wraithflame, Warring
-	Wingblade — MagnetData[key].GamePassId) через Game Pass, по той же схеме,
+	MagnetGamePassPurchaseHandler — покупка донат-мечей (Wraithcoil, Warring
+	Wingcoil — MagnetData[key].GamePassId) через Game Pass, по той же схеме,
 	что и AutoClickZonePurchaseHandler: владение подтверждает сам Roblox
 	(PromptGamePassPurchaseFinished), не ProcessReceipt/чеки.
 

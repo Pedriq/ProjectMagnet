@@ -13,7 +13,7 @@ local create = vide.create
 export type Props = {
 	OnClose: () -> (),
 	OnBuyBoost: ((productId: number) -> ())?,
-	-- magnetKey — внутренний ключ MagnetData (MagnetData.Wraithflame/.WarringWingblade),
+	-- magnetKey — внутренний ключ MagnetData (MagnetData.Wraithcoil/.WarringWingcoil),
 	-- не отображаемое имя (OPMagnetCard.Props.Name может содержать пробелы).
 	OnBuyOPMagnet: ((magnetKey: string) -> ())?,
 	OnEquipOPMagnet: ((magnetKey: string) -> ())?,
@@ -131,47 +131,49 @@ local function ShopPanel(props: Props)
 				category("Boosts", 1, cards),
 				category("OP Magnets", 2, {
 					OPMagnetCard({
-						Name = "Wraithflame",
+						Name = "Wraithcoil",
+						ModelNames = MagnetData.assetNameCandidates("Wraithcoil"),
 						Bonus = 100,
 						Price = 499,
 						LayoutOrder = 1,
 						Owned = function()
-							return opMagnetOwned("Wraithflame")
+							return opMagnetOwned("Wraithcoil")
 						end,
 						Equipped = function()
-							return opMagnetEquipped("Wraithflame")
+							return opMagnetEquipped("Wraithcoil")
 						end,
 						OnBuy = function()
 							if props.OnBuyOPMagnet then
-								props.OnBuyOPMagnet("Wraithflame")
+								props.OnBuyOPMagnet("Wraithcoil")
 							end
 						end,
 						OnEquip = function()
 							if props.OnEquipOPMagnet then
-								props.OnEquipOPMagnet("Wraithflame")
+								props.OnEquipOPMagnet("Wraithcoil")
 							end
 						end,
 					}),
 					OPMagnetCard({
-						Name = "Warring Wingblade",
+						Name = "Warring Wingcoil",
+						ModelNames = MagnetData.assetNameCandidates("WarringWingcoil"),
 						Bonus = 300,
 						Price = 1499,
 						Red = true,
 						LayoutOrder = 2,
 						Owned = function()
-							return opMagnetOwned("WarringWingblade")
+							return opMagnetOwned("WarringWingcoil")
 						end,
 						Equipped = function()
-							return opMagnetEquipped("WarringWingblade")
+							return opMagnetEquipped("WarringWingcoil")
 						end,
 						OnBuy = function()
 							if props.OnBuyOPMagnet then
-								props.OnBuyOPMagnet("WarringWingblade")
+								props.OnBuyOPMagnet("WarringWingcoil")
 							end
 						end,
 						OnEquip = function()
 							if props.OnEquipOPMagnet then
-								props.OnEquipOPMagnet("WarringWingblade")
+								props.OnEquipOPMagnet("WarringWingcoil")
 							end
 						end,
 					}),

@@ -45,7 +45,7 @@ export type Props = {
 	MagnetismText: string | () -> string,
 	Model: Instance?, -- модель меча для 3D-превью в карточке
 
-	Purchasable: boolean, -- false у стартового Stick (только Equip/Equipped)
+	Purchasable: boolean, -- false у стартового FridgeMagnet (только Equip/Equipped)
 	Owned: () -> boolean,
 	Equipped: () -> boolean,
 

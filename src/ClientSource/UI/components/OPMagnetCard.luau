@@ -15,6 +15,11 @@ local switch = vide.switch
 ]]
 export type Props = {
 	Name: string,
+	-- Кандидаты имени модели в ReplicatedStorage.Assets.Magnets, в порядке
+	-- приоритета (см. MagnetData.assetNameCandidates) — неизвестно заранее,
+	-- назван ли ассет в Studio по Display, по старому Name или по ключу.
+	-- По умолчанию = { Name }.
+	ModelNames: { string }?,
 	Bonus: number,
 	Price: number,
 	Red: boolean?,
@@ -62,7 +67,7 @@ local function OPMagnetCard(props: Props)
 			BackgroundTransparency = 1,
 			Position = UDim2.fromScale(0.025, 0.23),
 			Size = UDim2.fromScale(0.42, 0.73),
-			MagnetViewport(props.Name),
+			MagnetViewport(props.ModelNames or { props.Name }),
 		}),
 		create("TextLabel")({
 			Name = "Bonus",

@@ -32,7 +32,7 @@ Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прок�
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
-Data.magnet = source({ Name = "Stick", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
+Data.magnet = source({ Name = "FridgeMagnet", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
 Data.ownedMagnets = source({}) -- купленные мечи: map[magnetName] = true
 Data.ready = source(false) -- пришёл ли первый снапшот профиля
 Data.friendBonusPercent = source(0) -- бонус к силе за клик от друзей в сессии, в процентах

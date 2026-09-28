@@ -11,8 +11,9 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 
 local create = vide.create
 
--- Модели мечей названы отображаемым именем (cfg.Name), а не ключом MagnetData —
--- см. MagnetHandler:GiveMagnet на сервере, где это уже учтено.
+-- Модель может быть названа Display/Name/ключом — см. findMagnetModel ниже
+-- и MagnetData.assetNameCandidates (та же логика, что у MagnetHandler:GiveMagnet
+-- на сервере).
 local weponFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Magnets")
 
 --[[
@@ -25,7 +26,7 @@ local weponFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Magne
 	  │  ...                                             │
 	  └─────────────────────────────────────────────────┘
 
-	Карточки строятся из MagnetData.Order. Стартовый Stick (нет цены) не продаётся —
+	Карточки строятся из MagnetData.Order. Стартовый FridgeMagnet (нет цены) не продаётся —
 	у него только Equip/Equipped.
 
 	Покупку (за Money — PlayerManagerService:BuyMagnet, за Robux — дев-продукт
@@ -63,6 +64,18 @@ local function equipped(name: string): boolean
 	return MagnetData.resolveKey(w.Name) == name
 end
 
+-- Модель может быть названа ЛИБО Display (если ассет уже переименован под
+-- магнит), ЛИБО старым Name, ЛИБО самим ключом — перебираем все варианты.
+local function findMagnetModel(key: string): Instance?
+	for _, candidate in ipairs(MagnetData.assetNameCandidates(key)) do
+		local found = weponFolder:FindFirstChild(candidate)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+
 local function MagnetShopPanel(props: Props)
 	local function makeCard(name: string, order: number)
 		local cfg = MagnetData[name]
@@ -74,7 +87,7 @@ local function MagnetShopPanel(props: Props)
 			Rarity = cfg.Rare,
 			RarityColor = RarityColors.get(cfg.Rare),
 			MagnetismText = "+" .. Format.short(cfg.Magnetism) .. " Magnetism",
-			Model = weponFolder:FindFirstChild(cfg.Name),
+			Model = findMagnetModel(name),
 
 			Purchasable = cfg.Price ~= nil,
 			Owned = function()
