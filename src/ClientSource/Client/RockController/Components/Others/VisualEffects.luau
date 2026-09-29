@@ -212,8 +212,39 @@ end
 
 -- Сегменты, летящие в игрока. Двигаются одним общим Heartbeat-циклом, который
 -- подключён только пока в полёте есть хоть один сегмент.
+-- Сегмент может быть как одиночным BasePart (кубик), так и Model (сборка из
+-- нескольких частей на один осколок) — обе ветки двигаются одинаково через
+-- PivotTo/GetPivot, единственная разница в способе "сжатия" при засасывании.
 local flying = {}
 local flyConnection: RBXScriptConnection? = nil
+
+local function isSegmentInstance(inst): boolean
+	return inst ~= nil and (inst:IsA("BasePart") or inst:IsA("Model"))
+end
+
+local function segmentPivot(segment): CFrame
+	if segment:IsA("Model") then
+		return segment:GetPivot()
+	end
+	return segment.CFrame
+end
+
+local function setSegmentPivot(segment, cframe: CFrame)
+	if segment:IsA("Model") then
+		segment:PivotTo(cframe)
+	else
+		segment.CFrame = cframe
+	end
+end
+
+-- factor — доля от исходного размера (1 = как было, MAGNET_END_SCALE = в момент засасывания).
+local function setSegmentScale(segment, factor: number, baseSize: Vector3?)
+	if segment:IsA("Model") then
+		segment:ScaleTo(factor)
+	else
+		segment.Size = (baseSize :: Vector3) * factor
+	end
+end
 
 local function magnetTarget(): Vector3?
 	local character = Players.LocalPlayer.Character
@@ -252,11 +283,14 @@ local function stepFlying()
 
 		-- Квадратичная кривая Безье: старт -> точка дуги над камнем -> игрок.
 		local position = f.startPos:Lerp(f.control, e):Lerp(f.control:Lerp(f.goal, e), e)
-		part.CFrame = CFrame.new(position) * f.startRotation * CFrame.fromAxisAngle(f.spinAxis, f.spinSpeed * elapsed)
+		setSegmentPivot(
+			part,
+			CFrame.new(position) * f.startRotation * CFrame.fromAxisAngle(f.spinAxis, f.spinSpeed * elapsed)
+		)
 
 		if t > MAGNET_SHRINK_FROM then
 			local k = (t - MAGNET_SHRINK_FROM) / (1 - MAGNET_SHRINK_FROM)
-			part.Size = f.baseSize * (1 - (1 - MAGNET_END_SCALE) * k)
+			setSegmentScale(part, 1 - (1 - MAGNET_END_SCALE) * k, f.baseSize)
 		end
 
 		if t >= 1 then
@@ -273,7 +307,7 @@ end
 
 -- delay — задержка старта полёта (для «ручейка» сегментов при полном разрушении).
 function VisualEffects:BreakSegment(segment, delay: number?)
-	if not segment or not segment:IsA("BasePart") then
+	if not isSegmentInstance(segment) then
 		return
 	end
 
@@ -283,18 +317,34 @@ function VisualEffects:BreakSegment(segment, delay: number?)
 
 	segment:SetAttribute("Broken", true)
 
-	local weld = segment:FindFirstChildOfClass("WeldConstraint")
-
-	if weld then
-		weld:Destroy()
+	-- Внутри Model осколка части держатся на весу через WeldConstraint к
+	-- остальной части камня (как и одиночный кубик) — рвём все такие связи
+	-- и жёстко анкорим всё, что внутри, иначе куски разлетятся сами по себе
+	-- под гравитацией ещё до начала полёта к игроку.
+	for _, weld in ipairs(segment:GetDescendants()) do
+		if weld:IsA("WeldConstraint") then
+			weld:Destroy()
+		end
 	end
 
-	local startCFrame = segment.CFrame
+	local startCFrame = segmentPivot(segment)
 
-	segment.Anchored = true
-	segment.CanCollide = false
-	segment.CanTouch = false
-	segment.CanQuery = false
+	if segment:IsA("Model") then
+		for _, part in ipairs(segment:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored = true
+				part.CanCollide = false
+				part.CanTouch = false
+				part.CanQuery = false
+			end
+		end
+	else
+		segment.Anchored = true
+		segment.CanCollide = false
+		segment.CanTouch = false
+		segment.CanQuery = false
+	end
+
 	segment.Parent = workspace
 
 	local goal = magnetTarget()
@@ -320,7 +370,7 @@ function VisualEffects:BreakSegment(segment, delay: number?)
 		goal = goal,
 		startTime = os.clock() + startDelay,
 		duration = duration,
-		baseSize = segment.Size,
+		baseSize = if segment:IsA("BasePart") then segment.Size else nil,
 		startRotation = startCFrame.Rotation,
 		spinAxis = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5).Unit,
 		spinSpeed = (math.random() * 2 - 1) * MAGNET_SPIN_MAX,
@@ -356,7 +406,7 @@ function VisualEffects:ShatterRock(model)
 		self:FlashRock(model)
 
 		for _, child in ipairs(model:GetChildren()) do
-			if child:IsA("BasePart") and tonumber(child.Name) then
+			if isSegmentInstance(child) and tonumber(child.Name) then
 				self:BreakSegment(child)
 			end
 		end

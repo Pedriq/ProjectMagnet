@@ -36,7 +36,9 @@ export type Ore = {
 }
 
 -- Сколько кусочков (сегментов "1".."N" в модели камня) отваливается за весь камень.
-local PIECES_PER_ROCK = 8
+-- Было 8, стало 15 — PieceWeight ниже пересчитан на коэффициент 8/15, чтобы
+-- суммарный вес руды с одного камня (PieceWeight * PIECES_PER_ROCK) не изменился.
+local PIECES_PER_ROCK = 15
 local DEFAULT_PIECE_WEIGHT = 10
 local DEFAULT_PIECES_PER_ITEM = 10
 
@@ -55,21 +57,23 @@ type Entry = {
 }
 
 -- PieceWeight растёт ~x1.2 за редкость, PiecesPerItem — +2 каждые две редкости;
--- в комментарии — итоговый вес руды на один предмет.
+-- в комментарии — итоговый вес руды на один предмет (PieceWeight * PiecesPerItem).
+-- PieceWeight пересчитан под PIECES_PER_ROCK = 15 (было 8, коэффициент 8/15),
+-- чтобы вес одного камня (PieceWeight * PIECES_PER_ROCK) остался прежним.
 local List: { Entry } = {
-	{ Id = "Common", Model = "CommonRock", PieceWeight = 10, PiecesPerItem = 10 }, -- 100
-	{ Id = "Uncommon", Model = "UncommonRock", PieceWeight = 12, PiecesPerItem = 10 }, -- 120
-	{ Id = "Rare", Model = "RareRock", PieceWeight = 15, PiecesPerItem = 12 }, -- 180
-	{ Id = "Epic", Model = "EpicRock", PieceWeight = 18, PiecesPerItem = 12 }, -- 216
-	{ Id = "Legendary", Model = "LegendaryRock", PieceWeight = 22, PiecesPerItem = 14 }, -- 308
-	{ Id = "Mythic", Model = "MythicRock", PieceWeight = 26, PiecesPerItem = 14 }, -- 364
-	{ Id = "Secret", Model = "SecretRock", PieceWeight = 32, PiecesPerItem = 16 }, -- 512
-	{ Id = "Godly", Model = "GodlyRock", PieceWeight = 38, PiecesPerItem = 16 }, -- 608
-	{ Id = "Divine", Model = "DivineRock", PieceWeight = 45, PiecesPerItem = 18 }, -- 810
-	{ Id = "Celestial", Model = "CelestialRock", PieceWeight = 55, PiecesPerItem = 18 }, -- 990
-	{ Id = "Eternal", Model = "EternalRock", PieceWeight = 65, PiecesPerItem = 20 }, -- 1300
-	{ Id = "Cosmic", Model = "CosmicRock", PieceWeight = 80, PiecesPerItem = 20 }, -- 1600
-	{ Id = "Ascendant", Model = "AscendantRock", PieceWeight = 95, PiecesPerItem = 22 }, -- 2090
+	{ Id = "Common", Model = "CommonRock", PieceWeight = 5, PiecesPerItem = 10 }, -- 50
+	{ Id = "Uncommon", Model = "UncommonRock", PieceWeight = 6, PiecesPerItem = 10 }, -- 60
+	{ Id = "Rare", Model = "RareRock", PieceWeight = 8, PiecesPerItem = 12 }, -- 96
+	{ Id = "Epic", Model = "EpicRock", PieceWeight = 10, PiecesPerItem = 12 }, -- 120
+	{ Id = "Legendary", Model = "LegendaryRock", PieceWeight = 12, PiecesPerItem = 14 }, -- 168
+	{ Id = "Mythic", Model = "MythicRock", PieceWeight = 14, PiecesPerItem = 14 }, -- 196
+	{ Id = "Secret", Model = "SecretRock", PieceWeight = 17, PiecesPerItem = 16 }, -- 272
+	{ Id = "Godly", Model = "GodlyRock", PieceWeight = 20, PiecesPerItem = 16 }, -- 320
+	{ Id = "Divine", Model = "DivineRock", PieceWeight = 24, PiecesPerItem = 18 }, -- 432
+	{ Id = "Celestial", Model = "CelestialRock", PieceWeight = 29, PiecesPerItem = 18 }, -- 522
+	{ Id = "Eternal", Model = "EternalRock", PieceWeight = 35, PiecesPerItem = 20 }, -- 700
+	{ Id = "Cosmic", Model = "CosmicRock", PieceWeight = 43, PiecesPerItem = 20 }, -- 860
+	{ Id = "Ascendant", Model = "AscendantRock", PieceWeight = 51, PiecesPerItem = 22 }, -- 1122
 }
 
 local OreConfig = {}
