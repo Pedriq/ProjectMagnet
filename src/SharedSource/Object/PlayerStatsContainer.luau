@@ -34,13 +34,11 @@ end
 function PlayerStatsContainer:CalculateAttackRadius(level)
 	local base = BaseStatsValues.AttackRange
 	local multiplier = RangeScale.Multiplier(level)
-	local widthMultiplier = RangeScale.WidthMultiplier(level)
-	local depthMultiplier = RangeScale.DepthMultiplier(level)
+	local horizontalMultiplier = RangeScale.HorizontalMultiplier(level)
 
-	-- X (ширина, "влево-вправо") и Z (глубина, "вперёд") растут сдержаннее полного
-	-- множителя — иначе на максимуме хитбокс становится неадекватно большим.
-	-- Высота (Y) растёт как обычно.
-	return Vector3.new(base.X * widthMultiplier, base.Y * multiplier, base.Z * depthMultiplier)
+	-- X и Z растут ОДНИМ множителем — хитбокс остаётся квадратным в плане на
+	-- любом уровне (base.X == base.Z). Высота (Y) растёт как обычно.
+	return Vector3.new(base.X * horizontalMultiplier, base.Y * multiplier, base.Z * horizontalMultiplier)
 end
 
 -- Уровни статов начинаются с 1 (см. ProfileTemplate.Stats), поэтому на стартовом

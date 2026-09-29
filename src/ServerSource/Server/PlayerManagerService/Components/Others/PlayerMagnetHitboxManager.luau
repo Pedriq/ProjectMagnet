@@ -11,8 +11,6 @@ local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsVa
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PlayerMagnetHitboxManager = {}
 
-local MAGNET_HITBOX_FRONT_GAP = 1 -- зазор от игрока до ближней грани хитбокса (студы)
-
 ---- Utilities
 local utilsFolder = ReplicatedStorage.SharedSource.Utilities
 
@@ -61,9 +59,9 @@ function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
 	weld.Part1 = hitbox
 	weld.Parent = hitbox
 
-	-- Ближняя грань хитбокса всегда в MAGNET_HITBOX_FRONT_GAP студ перед игроком,
-	-- дальше он растёт только вперёд (а не растягиваясь наполовину игроку за спину).
-	hitbox.CFrame = root.CFrame * CFrame.new(0, 0, -(MAGNET_HITBOX_FRONT_GAP + size.Z / 2))
+	-- Хитбокс центрирован на игроке — растёт от него во все стороны (а не только
+	-- вперёд), так что прокачка ренджи расширяет зону захвата вокруг игрока.
+	hitbox.CFrame = root.CFrame
 	hitbox.Parent = character
 end
 

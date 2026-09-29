@@ -7,13 +7,11 @@
 local STEP_LEVELS = 10
 local MAX_STEPS = 2 -- максимум x3 (1 база + 2 шага), достигается на 21 уровне
 
--- Ширина (X, "влево-вправо") растёт медленнее, чем глубина/высота — иначе на
--- максимуме хитбокс становится неадекватно широким. 0.5 = вдвое сдержаннее.
-local WIDTH_DAMPING = 0.5
-
--- Глубина (Z, "вперёд") — чуть сдержаннее полного роста, но всё ещё основной
--- рост от Range. 0.75 = на максимуме x2.5 вместо x3.
-local DEPTH_DAMPING = 0.75
+-- X и Z растут ОДНИМ множителем (см. HorizontalMultiplier), чтобы хитбокс
+-- оставался квадратным в плане на любом уровне. Сдержаннее полного роста —
+-- иначе на максимуме хитбокс становится неадекватно большим. 0.75 = на
+-- максимуме x2.5 вместо x3.
+local HORIZONTAL_DAMPING = 0.75
 
 local RangeScale = {}
 
@@ -23,12 +21,8 @@ function RangeScale.Multiplier(level: number): number
 	return 1 + steps
 end
 
-function RangeScale.WidthMultiplier(level: number): number
-	return 1 + (RangeScale.Multiplier(level) - 1) * WIDTH_DAMPING
-end
-
-function RangeScale.DepthMultiplier(level: number): number
-	return 1 + (RangeScale.Multiplier(level) - 1) * DEPTH_DAMPING
+function RangeScale.HorizontalMultiplier(level: number): number
+	return 1 + (RangeScale.Multiplier(level) - 1) * HORIZONTAL_DAMPING
 end
 
 return RangeScale
