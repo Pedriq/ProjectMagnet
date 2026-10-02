@@ -23,8 +23,11 @@ export type Props = {
 	AnimationSpeed: number?, -- period для spring: меньше = быстрее (по умолч. 0.35)
 
 	-- ЦВЕТА
-	FillColor: Color3?,
-	FillColor2: Color3?, -- если задан — вертикальный градиент на заливке
+	FillColor: (Color3 | () -> Color3)?, -- основной цвет заливки (можно источником)
+	FillColor2: (Color3 | () -> Color3)?, -- верх вертикального градиента заливки (можно источником)
+	-- горизонтальный градиент на всю ширину полосы (слева направо); если задан —
+	-- заменяет FillColor/FillColor2, заполнение «открывает» его по мере прогресса
+	FillGradient: ColorSequence?,
 	TrackColor: Color3?,
 	TextColor: Color3?,
 
@@ -59,8 +62,12 @@ local function XpBar(props: Props)
 	local textSize = large and 18 or 14
 	local radius = props.CornerRadius or UDim.new(0, 1)
 
+	-- цвета заливки могут быть источниками (меняются на лету, напр. от уровня)
 	local fillColor = props.FillColor or Color3.fromRGB(250, 175, 35) -- жёлтый с тёплым оттенком (основной)
 	local fillColor2 = props.FillColor2 or Color3.fromRGB(255, 210, 80) -- яркий жёлтый (верх градиента)
+	local function fillGradient(): ColorSequence
+		return ColorSequence.new(read(fillColor2), read(fillColor))
+	end
 	local trackColor = props.TrackColor or Color3.fromRGB(20, 20, 24)
 	local textColor = props.TextColor or Color3.fromRGB(240, 245, 240)
 	local totalColor = props.TotalColor or Color3.fromRGB(15, 15, 18)
@@ -155,17 +162,56 @@ local function XpBar(props: Props)
 				Size = function()
 					return UDim2.new(fillAlpha(), 0, 1, 0)
 				end,
-				BackgroundColor3 = fillColor,
+				-- белый фон: UIGradient УМНОЖАЕТ цвет фона, так цвета градиента
+				-- выходят ровно такими, как заданы (верх FillColor2 -> низ FillColor)
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				-- с FillGradient цвет даёт слой GradientSpan, своего фона у Fill нет
+				BackgroundTransparency = if props.FillGradient then 1 else 0,
 				ClipsDescendants = true,
 
 				create("UICorner")({ CornerRadius = radius }),
 				barStroke(), -- обводка заполнения (правый край = ведущая кромка прогресса)
 				create("UIGradient")({
+					Enabled = props.FillGradient == nil,
 					Rotation = 90,
-					Color = ColorSequence.new(fillColor2, fillColor), -- одинаковые цвета => no-op
+					Color = fillGradient,
 				}),
+
+				-- Горизонтальный градиент на ВСЮ ширину полосы: слой шириной полосы
+				-- внутри Fill (Fill обрезает лишнее) — заполнение «открывает»
+				-- градиент, а не сжимает его: левый край всегда начало, полная
+				-- полоса доходит до конца.
+				props.FillGradient and create("Frame")({
+					Name = "GradientSpan",
+					ZIndex = 1,
+					BorderSizePixel = 0,
+					BackgroundColor3 = Color3.new(1, 1, 1),
+					Size = function()
+						return UDim2.fromScale(1 / math.max(fillAlpha(), 0.001), 1)
+					end,
+
+					create("UIGradient")({ Color = props.FillGradient }),
+
+					-- блик сверху — объём, как у прежней вертикальной заливки
+					create("Frame")({
+						Name = "Sheen",
+						BorderSizePixel = 0,
+						BackgroundColor3 = Color3.new(1, 1, 1),
+						Size = UDim2.fromScale(1, 1),
+						create("UIGradient")({
+							Rotation = 90,
+							Transparency = NumberSequence.new({
+								NumberSequenceKeypoint.new(0, 0.65),
+								NumberSequenceKeypoint.new(0.5, 0.92),
+								NumberSequenceKeypoint.new(1, 1),
+							}),
+						}),
+					}),
+				}),
+
 				create("ImageLabel")({
 					Name = "FillTexture",
+					ZIndex = 2, -- поверх GradientSpan
 					BackgroundTransparency = 1,
 					Size = UDim2.fromScale(1, 1),
 					Image = asset(props.FillImage),

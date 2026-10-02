@@ -11,6 +11,7 @@ local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local StatRow = require(ReplicatedStorage.ClientSource.UI.components.StatRow)
+local CarryMeter = require(ReplicatedStorage.ClientSource.UI.components.CarryMeter)
 local ActiveBuffsBar = require(ReplicatedStorage.ClientSource.UI.components.ActiveBuffsBar)
 local XpBar = require(ReplicatedStorage.ClientSource.UI.components.XpBar)
 local ActionButton = require(ReplicatedStorage.ClientSource.UI.components.ActionButton)
@@ -63,6 +64,24 @@ end
 local function xpCurrent(): number -- то же, но числом (для текста), >= 0
 	return math.max(EtNum.toNumber(xpInLevel()), 0)
 end
+
+-- === градиент полосы уровня: синий слева -> фиолетовый -> красный справа ===
+-- Как полюса магнита. Идём по кругу оттенков через фиолетовый (hue 0.62 -> 1.0),
+-- а не через зелёный/жёлтый. Несколько точек, чтобы середина не «грязнела»
+-- (ColorSequence смешивает в RGB между соседними точками).
+local LEVEL_HUE_START = 0.62 -- синий
+local LEVEL_HUE_END = 1.0 -- красный
+local LEVEL_GRADIENT_STEPS = 6
+
+local LEVEL_GRADIENT = (function()
+	local keypoints = {}
+	for i = 0, LEVEL_GRADIENT_STEPS do
+		local t = i / LEVEL_GRADIENT_STEPS
+		local hue = (LEVEL_HUE_START + (LEVEL_HUE_END - LEVEL_HUE_START) * t) % 1
+		table.insert(keypoints, ColorSequenceKeypoint.new(t, Color3.fromHSV(hue, 0.85, 1)))
+	end
+	return ColorSequence.new(keypoints)
+end)()
 
 local function xpProgress(): number -- 0..1 для заполнения
 	local req = xpRequired()
@@ -310,6 +329,7 @@ local function HUD()
 						Required = xpRequired,
 						TrackImage = "137638295200351",
 						FillImage = "137638295200351",
+						FillGradient = LEVEL_GRADIENT,
 					})
 				end, function()
 					-- кнопка компактная и по центру: оборачиваем в контейнер с центрированием
@@ -402,14 +422,9 @@ local function HUD()
 					HorizontalAlignment = Enum.HorizontalAlignment.Left,
 				}),
 
-				-- 1: заполненность инвентаря переноса
-				StatRow({
-					LayoutOrder = 1,
-					Icon = "rbxassetid://15507675979",
-					Text = function()
-						return Data.carryCount() .. " / " .. Data.carryCapacity()
-					end,
-				}),
+				-- 1: заполненность инвентаря переноса — полоска, «+N», пульс у
+				-- максимума, вспышка «SAVED!» при опустошении (см. CarryMeter)
+				CarryMeter({ LayoutOrder = 1 }),
 				-- 2: реберсы
 				StatRow({
 					LayoutOrder = 2,

@@ -52,6 +52,19 @@ function RockVisualizer:CreateRockVisual(rock)
 
 	local rockClone = rockTemplate:Clone()
 
+	-- Визуальная модель — только картинка: блокирует игрока серверный хитбокс
+	-- (rock). Иначе модель коллайдилась бы сверх хитбокса, а после разрушения её
+	-- «скорлупа» (VisualEffects:ShatterRock держит её SHATTER_MODEL_CLEANUP сек)
+	-- ещё мешала бы бежать. Один раз при создании — и физике меньше работы:
+	-- модель двигают тряска/дрожание (PivotTo), без коллизий это дешевле.
+	for _, part in ipairs(rockClone:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+			part.CanTouch = false
+			part.CanQuery = false
+		end
+	end
+
 	-- Ставим геометрический низ модели (а не её pivot, который у камня
 	-- смещён от низа) на нижнюю грань hitbox.
 	local pivotToBottom = RockGeometry.GetMetrics(section).pivotToBottom
@@ -72,6 +85,9 @@ function RockVisualizer:CreateRockVisual(rock)
 		-- для HitFeedback: цвет руды и сколько HP было до удара (цифра урона)
 		Section = section,
 		Hp = rock:GetAttribute("Hp"),
+		-- серверный хитбокс камня — RockController снимает с него коллизию
+		-- локально в момент добивающего удара (см. HitRock)
+		Hitbox = rock,
 	}
 
 	RockController.VisualizedRocks[rockKey] = visualData

@@ -78,6 +78,17 @@ function RockController:KnitStart()
 			return
 		end
 
+		-- Камень добит: сразу убираем коллизию хитбокса ЛОКАЛЬНО. Сервер и так
+		-- удалит хитбокс, но удаление долетает только через пинг, а персонаж
+		-- симулируется у клиента — без этого игрок успевает «споткнуться» о
+		-- невидимый хитбокс уже разбитого камня. Один раз по событию, без опроса.
+		if newHp <= 0 then
+			local hitbox = visualData.Hitbox
+			if hitbox and hitbox.Parent then
+				hitbox.CanCollide = false
+			end
+		end
+
 		-- Эффект попадания
 		self:HitRock(visualData.Model)
 
