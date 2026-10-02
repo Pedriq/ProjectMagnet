@@ -114,7 +114,7 @@ local function RebirthPanel(props: Props)
 				Color = MAGNETISM,
 				From = strFrom,
 				To = strTo,
-				Icon = "96772289336842",
+				Icon = "74885498760042",
 			}),
 			MultiplierRow({
 				LayoutOrder = 2,

@@ -78,16 +78,18 @@ local function rockKey(part: BasePart): string?
 end
 
 -- 0 у внешней границы -> 1 на границе настоящего хитбокса и внутри него.
--- Расстояние — от края камня (а не центра) до центра хитбокса, по осям хитбокса.
+-- Хитбокс круглый (радиус Size.X / 2, см. PlayerMagnetHitboxManager:CollectTargets),
+-- расстояние — от ближайшей точки камня (а не центра) до центра хитбокса, по горизонтали.
 local function proximity(hitbox: BasePart, part: BasePart): number
-	local p = hitbox.CFrame:PointToObjectSpace(part.Position)
-	local innerX, innerZ = hitbox.Size.X / 2, hitbox.Size.Z / 2
-	local gapX = math.max(math.abs(p.X) - part.Size.X / 2, 0)
-	local gapZ = math.max(math.abs(p.Z) - part.Size.Z / 2, 0)
+	local p = part.CFrame:PointToObjectSpace(hitbox.Position)
+	local halfX, halfZ = part.Size.X / 2, part.Size.Z / 2
+	local dx = p.X - math.clamp(p.X, -halfX, halfX)
+	local dz = p.Z - math.clamp(p.Z, -halfZ, halfZ)
+	local gap = math.sqrt(dx * dx + dz * dz)
+	local inner = hitbox.Size.X / 2
 	-- доля пути от настоящего хитбокса до внешнего (0 = уже внутри настоящего)
-	local tX = math.max(gapX - innerX, 0) / math.max(innerX * (OUTER_SCALE - 1), 0.01)
-	local tZ = math.max(gapZ - innerZ, 0) / math.max(innerZ * (OUTER_SCALE - 1), 0.01)
-	return math.clamp(1 - math.max(tX, tZ), 0, 1)
+	local t = math.max(gap - inner, 0) / math.max(inner * (OUTER_SCALE - 1), 0.01)
+	return math.clamp(1 - t, 0, 1)
 end
 
 local function scan()

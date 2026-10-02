@@ -588,7 +588,7 @@ local function HUD()
 					Title = function()
 						return permanentTierTitle("Magnetism", "Magnetism")
 					end,
-					Icon = "96772289336842",
+					Icon = "74885498760042",
 					Price = function()
 						return permanentTierPrice("Magnetism")
 					end,
@@ -645,7 +645,7 @@ local function HUD()
 				-- конфига, чтобы менять будущие значения в одном месте.
 				PowerBuyButton({
 					LayoutOrder = 1,
-					Icon = "96772289336842",
+					Icon = "74885498760042",
 					Text = PowerPackConfig.Packs[1].Label,
 					Price = PowerPackConfig.Packs[1].Price,
 					OnActivated = function()
@@ -654,7 +654,7 @@ local function HUD()
 				}),
 				PowerBuyButton({
 					LayoutOrder = 2,
-					Icon = "96772289336842",
+					Icon = "74885498760042",
 					Text = PowerPackConfig.Packs[2].Label,
 					Price = PowerPackConfig.Packs[2].Price,
 					OnActivated = function()
@@ -663,7 +663,7 @@ local function HUD()
 				}),
 				PowerBuyButton({
 					LayoutOrder = 3,
-					Icon = "96772289336842",
+					Icon = "74885498760042",
 					Text = PowerPackConfig.Packs[3].Label,
 					Price = PowerPackConfig.Packs[3].Price,
 					OnActivated = function()

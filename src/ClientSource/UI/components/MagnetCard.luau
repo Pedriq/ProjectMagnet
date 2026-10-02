@@ -77,7 +77,7 @@ local EQUIP_COLOR = Theme.ButtonElectric
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 
-local MAGNETISM_ICON = "96772289336842" -- та же иконка «силы», что в MultiplierRow
+local MAGNETISM_ICON = "74885498760042" -- та же иконка «силы», что в MultiplierRow
 
 local function textStroke(thickness: number?)
 	return create("UIStroke")({

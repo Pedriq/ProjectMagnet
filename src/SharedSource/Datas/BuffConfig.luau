@@ -22,8 +22,8 @@ export type BuffEntry = {
 local BuffConfig = {}
 
 BuffConfig.Boosts = {
-	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "96772289336842" },
-	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "96772289336842" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "74885498760042" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "74885498760042" },
 	{ Type = "Money", Title = "2x Money", Minutes = 10, Bonus = 1, Price = 39, ProductId = 3713418304, Icon = "117287387544386" },
 } :: { BuffEntry }
 

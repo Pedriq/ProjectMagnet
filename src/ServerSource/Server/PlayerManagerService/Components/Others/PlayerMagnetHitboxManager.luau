@@ -52,7 +52,8 @@ function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "MagnetHitbox"
 	hitbox.Size = size
-	hitbox.Transparency = 0.9
+	-- Невидим: границу хитбокса рисует клиент (HitboxRing — круг на земле).
+	hitbox.Transparency = 1
 	hitbox.CanCollide = false
 	hitbox.CanQuery = true
 	hitbox.CanTouch = false
@@ -69,6 +70,18 @@ function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
 	-- вперёд), так что прокачка ренджи расширяет зону захвата вокруг игрока.
 	hitbox.CFrame = root.CFrame
 	hitbox.Parent = character
+end
+
+-- Хитбокс — квадратная часть, но бьёт по КРУГУ радиуса Size.X / 2 (вписанному
+-- в квадрат): ровно то, что игрок видит кольцом на земле (HitboxRing).
+-- Камень задет, если ближайшая к центру точка его коробки (по горизонтали) в круге.
+local function overlapsCircle(hitbox: BasePart, part: BasePart): boolean
+	local radius = hitbox.Size.X / 2
+	local p = part.CFrame:PointToObjectSpace(hitbox.Position)
+	local halfX, halfZ = part.Size.X / 2, part.Size.Z / 2
+	local dx = p.X - math.clamp(p.X, -halfX, halfX)
+	local dz = p.Z - math.clamp(p.Z, -halfZ, halfZ)
+	return dx * dx + dz * dz <= radius * radius
 end
 
 function PlayerMagnetHitboxManager:CollectTargets(player)
@@ -91,7 +104,7 @@ function PlayerMagnetHitboxManager:CollectTargets(player)
 	-- будут заново срабатывать урон/начисление/визуальные эффекты.
 	local targets = {}
 	for _, part in ipairs(parts) do
-		if CollectionService:HasTag(part, "RockHitbox") then
+		if CollectionService:HasTag(part, "RockHitbox") and overlapsCircle(hitbox, part) then
 			local rockState = PlayerManagerService:GetRockState(
 				player.UserId,
 				part:GetAttribute("StripId"),
