@@ -13,6 +13,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local StatRow = require(ReplicatedStorage.ClientSource.UI.components.StatRow)
 local CarryMeter = require(ReplicatedStorage.ClientSource.UI.components.CarryMeter)
+local SavedOreMeter = require(ReplicatedStorage.ClientSource.UI.components.SavedOreMeter)
 local ActiveBuffsBar = require(ReplicatedStorage.ClientSource.UI.components.ActiveBuffsBar)
 local XpBar = require(ReplicatedStorage.ClientSource.UI.components.XpBar)
 local ActionButton = require(ReplicatedStorage.ClientSource.UI.components.ActionButton)
@@ -416,9 +417,12 @@ local function HUD()
 						return tostring(Data.rebirths())
 					end,
 				}),
-				-- 3: деньги
+				-- 3: вся сохранённая руда (profile.Ores) — растёт от сейва рюкзака,
+				-- обнуляется выгрузкой в пресс (см. SavedOreMeter)
+				SavedOreMeter({ LayoutOrder = 3 }),
+				-- 4: деньги
 				StatRow({
-					LayoutOrder = 3,
+					LayoutOrder = 4,
 					Icon = "rbxassetid://117287387544386",
 					Large = true,
 					TextColor = Theme.Money,

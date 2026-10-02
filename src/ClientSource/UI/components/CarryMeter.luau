@@ -51,6 +51,13 @@ local BG_COLOR = Theme.Steel800
 local NEAR_FULL = 0.8 -- с этой доли — пульсация и красный текст
 local GAIN_MERGE_TIME = 0.35 -- «+N» подряд в этом окне складываются в одну подпись
 
+-- фон и чёрная обводка гаснут к правому краю
+local FADE = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0),
+	NumberSequenceKeypoint.new(0.55, 0.2),
+	NumberSequenceKeypoint.new(1, 1),
+})
+
 local function fillColor(fraction: number): Color3
 	if fraction < 0.6 then
 		return GREEN:Lerp(YELLOW, fraction / 0.6)
@@ -80,6 +87,16 @@ local function CarryMeter(props: Props)
 		Color = RED,
 		Transparency = 1,
 	}) :: UIStroke
+	-- пульсация — на отдельном оверлее: у одного GuiObject рисуется только один
+	-- UIStroke, а у самой рамки — постоянная чёрная обводка (как у StatRow)
+	local glow = create("Frame")({
+		Name = "Glow",
+		ZIndex = 4,
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		create("UICorner")({ CornerRadius = UDim.new(0, 4) }),
+		glowStroke,
+	}) :: Frame
 	local flash = create("Frame")({
 		Name = "Flash",
 		ZIndex = 5,
@@ -206,14 +223,13 @@ local function CarryMeter(props: Props)
 		BackgroundTransparency = 0.7,
 
 		scale,
-		glowStroke,
 		create("UICorner")({ CornerRadius = UDim.new(0, 4) }),
-		create("UIGradient")({
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0),
-				NumberSequenceKeypoint.new(0.55, 0.2),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
+		create("UIGradient")({ Transparency = FADE }), -- гасит фон
+		-- чёрная обводка, гаснет вместе с фоном — как у StatRow (Money / Rebirth)
+		create("UIStroke")({
+			Thickness = 1.5,
+			Color = Color3.new(0, 0, 0),
+			create("UIGradient")({ Transparency = FADE }),
 		}),
 
 		create("ImageLabel")({
@@ -269,6 +285,7 @@ local function CarryMeter(props: Props)
 			}),
 		}),
 
+		glow,
 		flash,
 		gainLabel,
 	})
