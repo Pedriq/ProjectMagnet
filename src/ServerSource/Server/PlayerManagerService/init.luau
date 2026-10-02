@@ -29,7 +29,7 @@ local PlayerManagerService = Knit.CreateService({
 		-- Fire(player, buffType, expiresAt, bonus) — временный бафф куплен/продлён
 		-- (см. BuffHandler). expiresAt — workspace:GetServerTimeNow() момент истечения.
 		BuffChanged = Knit.CreateSignal(),
-		-- Fire(player, checkpointPart) — игрок прошёл чекпоинт, руда сохранена
+		-- Fire(player, checkpointPart, savedWeight) — игрок прошёл чекпоинт, руда сохранена
 		-- (см. CheckpointHandler). Клиент делает этот парт прозрачным.
 		CheckpointPassed = Knit.CreateSignal(),
 		-- Fire(player) — ресет чекпоинтов после Entrance -> Save: вернуть видимость.

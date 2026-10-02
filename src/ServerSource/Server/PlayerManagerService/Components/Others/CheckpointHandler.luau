@@ -40,8 +40,11 @@ function CheckpointHandler:_OnTouched(part: BasePart, hit: BasePart)
 	end
 	playerPassed[part] = true
 
+	-- сколько руды сохраняем — для эффекта «+N ORE SAVED» на клиенте
+	-- (после SaveCarriedOres инвентарь переноски уже пуст)
+	local saved = PlayerManagerService:GetCarryInfo(player).Count
 	PlayerManagerService:SaveCarriedOres(player)
-	PlayerManagerService.Client.CheckpointPassed:Fire(player, part)
+	PlayerManagerService.Client.CheckpointPassed:Fire(player, part, saved)
 end
 
 function CheckpointHandler:_Bind(part: Instance)

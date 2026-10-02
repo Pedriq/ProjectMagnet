@@ -24,6 +24,7 @@ local SoundService = game:GetService("SoundService")
 	  RareDrop     — пресс сделал предмет Epic+
 	  Collect      — забрал деньги с Collect
 	  GoalReady    — хватает денег на следующий магнит
+	  Checkpoint   — прошёл чекпоинт (руда сохранена)
 
 	play(name, opts?) — полифония: каждый вызов берёт свободный клон из пула,
 	поэтому частые клики не обрывают друг друга. opts:
@@ -51,6 +52,7 @@ local FALLBACKS: { [string]: Fallback } = {
 	RareDrop = { name = "LevelUP", pitch = 1.15 },
 	Collect = { name = "Sell", pitch = 1.1 },
 	GoalReady = { name = "Buy", pitch = 1.25 },
+	Checkpoint = { name = "LevelUP", pitch = 1.4, volume = 0.4 },
 }
 
 -- Сколько одновременных копий одного звука держим.
