@@ -3,6 +3,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 
 local HUD = require(ReplicatedStorage.ClientSource.UI.screens.HUD)
 local ClickEffect = require(ReplicatedStorage.ClientSource.UI.components.ClickEffect)
+local FeedbackOverlay = require(ReplicatedStorage.ClientSource.UI.components.FeedbackOverlay)
 
 local create = vide.create
 
@@ -26,6 +27,9 @@ local function App()
 
 		Screen("HUD", HUD, 1),
 		Screen("ClickEffect", ClickEffect, 5),
+		-- баннеры, комбо, BAG FULL, цель «следующий магнит», вспышки.
+		-- Ниже HUD: открытые панели (магазин и т.п.) всегда перекрывают этот слой.
+		Screen("Feedback", FeedbackOverlay, 0),
 	})
 end
 

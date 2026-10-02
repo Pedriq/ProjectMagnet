@@ -23,6 +23,8 @@ BaseStructures.PANEL_BY_BUILDING = {
 	Buy = "magnets",
 	Upgrade = "upgrades",
 	Sell = "sell",
+	-- локальный якорь промпта «Press Queue» на Conveyor пресса (PressVisualizer)
+	PressQueue = "press",
 } :: { [string]: string }
 
 --[[

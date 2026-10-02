@@ -3,6 +3,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
 local VisualEffects = {}
 
@@ -121,7 +122,12 @@ function VisualEffects:ShakeRock(model)
 
 	local shakeId = data.shakeId
 
-	local originalPivot = model:GetPivot()
+	-- От покойного положения (RockVisualizer), а не от текущего: камень может быть
+	-- наклонён магнитным дрожанием (MagnetWobble) — иначе вернулся бы в наклон.
+	local originalPivot = model:GetAttribute("BasePivot") or model:GetPivot()
+
+	-- пока идёт тряска удара, MagnetWobble не трогает камень (IsHitShaking)
+	data.hitShakeUntil = os.clock() + SHAKE_OUT_TIME + SHAKE_BACK_TIME
 
 	local direction = math.random(0, 1) == 0 and -1 or 1
 
@@ -252,6 +258,24 @@ local function magnetTarget(): Vector3?
 	return root and root.Position + MAGNET_TARGET_OFFSET
 end
 
+-- Кусочек долетел до игрока: «чпок» с растущим тоном — цепочка подряд
+-- прилетевших кусочков звучит как восходящая гамма (классический «collect»-фидбек).
+-- Пауза дольше ORE_CHAIN_RESET — цепочка начинается заново с низкого тона.
+local ORE_CHAIN_RESET = 0.45
+local ORE_CHAIN_MAX = 16
+local oreChain = 0
+local lastAbsorb = 0
+
+local function onPieceAbsorbed()
+	local now = os.clock()
+	if now - lastAbsorb > ORE_CHAIN_RESET then
+		oreChain = 0
+	end
+	lastAbsorb = now
+	oreChain = math.min(oreChain + 1, ORE_CHAIN_MAX)
+	sfx.play("OrePop", { pitch = 0.9 + oreChain * 0.05, volume = 0.8 })
+end
+
 local function stepFlying()
 	local now = os.clock()
 	-- Цель берётся каждый кадр — сегмент догоняет игрока, даже если тот бежит.
@@ -296,6 +320,7 @@ local function stepFlying()
 		if t >= 1 then
 			part:Destroy()
 			table.remove(flying, i)
+			onPieceAbsorbed()
 		end
 	end
 
@@ -422,6 +447,13 @@ function VisualEffects:ShatterRock(model)
 	task.delay(SHATTER_MODEL_CLEANUP, function()
 		activeEffects[model] = nil
 	end)
+end
+
+-- Идёт ли сейчас тряска от удара (ShakeRock) — MagnetWobble в это время молчит,
+-- чтобы две анимации не дёргали pivot одновременно.
+function VisualEffects:IsHitShaking(model): boolean
+	local data = activeEffects[model]
+	return data ~= nil and (data.hitShakeUntil or 0) > os.clock()
 end
 
 function VisualEffects:DestroyRockEffects(model)

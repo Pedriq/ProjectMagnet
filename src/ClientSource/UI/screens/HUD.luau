@@ -22,6 +22,7 @@ local RebirthPanel = require(ReplicatedStorage.ClientSource.UI.screens.RebirthPa
 local UpgradesPanel = require(ReplicatedStorage.ClientSource.UI.screens.UpgradesPanel)
 local SellPanel = require(ReplicatedStorage.ClientSource.UI.screens.SellPanel)
 local MagnetShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.MagnetShopPanel)
+local PressQueuePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressQueuePanel)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
 local BaseStructures = require(ReplicatedStorage.ClientSource.UI.baseStructures)
@@ -173,8 +174,43 @@ local function onInviteActivated()
 	end
 end
 
+-- Деньги в HUD не прыгают, а «накручиваются» к новому значению — каждая продажа
+-- ощущается как поток монет. Огромные значения (за пределами number) — сразу.
+local MONEY_ROLL_SPEED = 8
+
+local function rollingMoney(): () -> any
+	local shown = source(Data.money() :: any)
+
+	local conn = RunService.Heartbeat:Connect(function(dt)
+		local target = Data.money()
+		local okTarget, t = pcall(EtNum.toNumber, EtNum.convert(target))
+		local okShown, c = pcall(EtNum.toNumber, EtNum.convert(shown()))
+		if not okTarget or not okShown or t ~= t or c ~= c or math.abs(t) >= 1e300 then
+			if shown() ~= target then
+				shown(target)
+			end
+			return
+		end
+		if t == c then
+			return
+		end
+		local nextValue = c + (t - c) * math.min(dt * MONEY_ROLL_SPEED, 1)
+		if math.abs(t - nextValue) <= math.max(1, math.abs(t) * 0.001) then
+			nextValue = t
+		end
+		shown(math.floor(nextValue + 0.5))
+	end)
+	cleanup(function()
+		conn:Disconnect()
+	end)
+
+	return shown
+end
+
 local function HUD()
-	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | nil
+	local shownMoney = rollingMoney()
+
+	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | "press" | nil
 	local openPanel = source(nil :: string?)
 	local function closePanel()
 		openPanel(nil)
@@ -389,7 +425,7 @@ local function HUD()
 					Large = true,
 					TextColor = Color3.fromRGB(95, 247, 95),
 					Text = function()
-						return Format.short(Data.money())
+						return Format.short(shownMoney())
 					end,
 				}),
 			}),
@@ -499,6 +535,20 @@ local function HUD()
 					-- ProfileService.UpdateSpecificData.
 					OnLock = function(name)
 						Knit.GetService("PlayerManagerService"):ToggleItemLock(name):catch(warn)
+					end,
+				}),
+				press = PressQueuePanel({
+					OnClose = closePanel,
+					-- Сервер убирает руду (PressService:RemoveOre); Data.pressOres обновится
+					-- через ProfileService.UpdateSpecificData, кучка в прессе — по OreRemoved.
+					OnRemove = function(oreId)
+						Knit.GetService("PressService"):RemoveOre(oreId):catch(warn)
+					end,
+					-- Сервер сам считает цену и списывает Money (PressService:BuySpeedUpgrade);
+					-- Data.pressSpeedLevel и Data.money обновятся через UpdateSpecificData.
+					OnUpgradeSpeed = function()
+						sfx.play("Buy")
+						Knit.GetService("PressService"):BuySpeedUpgrade():catch(warn)
 					end,
 				}),
 			}),

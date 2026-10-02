@@ -1,16 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local LevelCurve = require(ReplicatedStorage.SharedSource.Datas.LevelCurve)
+local ComboConfig = require(ReplicatedStorage.SharedSource.Datas.ComboConfig)
 local ClickHandler = {}
-
----- Utilities
-local utilsFolder = ReplicatedStorage.SharedSource.Utilities
 
 ---- Knit Services
 local ClickerService
@@ -19,10 +13,58 @@ local PlayerManagerService
 ---- Datas
 local TotalXPForLevel = LevelCurve.TotalForLevel
 
+---- State
+-- [player] = { combo, lastClick, windowStart, windowClicks } — только ручные клики.
+local manualState = {}
+
+-- Ручной клик: лимит частоты + комбо + крит. Возвращает (засчитан?, множитель, комбо, крит?).
+local function registerManualClick(player): (boolean, number, number, boolean)
+	local now = os.clock()
+	local state = manualState[player]
+	if not state then
+		state = { combo = 0, lastClick = 0, windowStart = now, windowClicks = 0 }
+		manualState[player] = state
+	end
+
+	if now - state.windowStart >= 1 then
+		state.windowStart = now
+		state.windowClicks = 0
+	end
+	state.windowClicks += 1
+	if state.windowClicks > ComboConfig.MAX_CLICKS_PER_SECOND then
+		return false, 1, state.combo, false
+	end
+
+	if now - state.lastClick <= ComboConfig.WINDOW then
+		state.combo += 1
+	else
+		state.combo = 1
+	end
+	state.lastClick = now
+
+	local multiplier = ComboConfig.Multiplier(state.combo)
+	local crit = math.random() < ComboConfig.CRIT_CHANCE
+	if crit then
+		multiplier *= ComboConfig.CRIT_MULTIPLIER
+	end
+	return true, multiplier, state.combo, crit
+end
+
 ---- Assets
 -- extraMultiplier — доп. множитель поверх обычного клика (например, AutoClickZone.multiplier).
-function ClickHandler:Click(player, extraMultiplier: number?)
+-- manual — клик игрока по экрану (комбо/криты/лимит частоты), а не автоудар/автозона.
+function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?)
 	extraMultiplier = extraMultiplier or 1
+
+	local crit = false
+	if manual then
+		local accepted, comboMultiplier, _, isCrit = registerManualClick(player)
+		if not accepted then
+			return
+		end
+		extraMultiplier *= comboMultiplier
+		crit = isCrit
+	end
 
 	local magnetism = ClickerService:GetPlayerMagnetism(player)
 	local magnetMagnetism = PlayerManagerService:GetPlayerMagnet(player).Magnetism
@@ -49,11 +91,13 @@ function ClickHandler:Click(player, extraMultiplier: number?)
 
 	if leveledUp then
 		ClickerService:ChangePlayerLevel(player, currentLevel)
-		-- Ивент на сервер для эффектов и прочей хуйни
 	end
 
 	ClickerService:ChangePlayerMagnetism(player, EtNum.toString(newMagnetism))
-	print(PlayerManagerService:GetAllPlayerData(player))
+
+	if crit then
+		ClickerService.Client.CritClick:Fire(player, EtNum.toString(magnetismGain))
+	end
 end
 
 function ClickHandler.Start() end
@@ -61,6 +105,10 @@ function ClickHandler.Start() end
 function ClickHandler.Init()
 	ClickerService = Knit.GetService("ClickerService")
 	PlayerManagerService = Knit.GetService("PlayerManagerService")
+
+	Players.PlayerRemoving:Connect(function(player)
+		manualState[player] = nil
+	end)
 end
 
 return ClickHandler

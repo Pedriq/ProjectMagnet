@@ -2,6 +2,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local ClickerService = Knit.CreateService({
 	Name = "ClickerService",
+	Client = {
+		-- Fire(player, gain) — ручной клик выпал критом (gain — EtNum-строка
+		-- прироста силы за этот клик), см. ClickHandler / ComboConfig.
+		CritClick = Knit.CreateSignal(),
+	},
 })
 
 ---- Components
@@ -21,8 +26,8 @@ local PlayerManagerService
 local ProfileService
 
 function ClickerService.Client:Click(player)
-	-- TODO add debaounce
-	self.Server.Components.ClickHandler:Click(player)
+	-- manual = true: лимит частоты, комбо и криты (см. ClickHandler / ComboConfig)
+	self.Server.Components.ClickHandler:Click(player, nil, true)
 end
 
 -- Серверный клик от имени игрока с доп. множителем (например, AutoClickZone).

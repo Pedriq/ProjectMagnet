@@ -54,6 +54,14 @@ function PressController:KnitStart()
 		visualizer:MoneyCollected(amount)
 	end)
 
+	-- руду убрали в окне Press Queue (UI.screens.PressQueuePanel) — кусочки
+	-- выпрыгивают из кучки
+	PressService.OreRemoved:Connect(function(oreId)
+		if type(oreId) == "string" then
+			visualizer:RemoveOre(oreId)
+		end
+	end)
+
 	ProfileService.UpdateSpecificData:Connect(function(path, value)
 		if path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
 			self:_SetOre(path[3], value)

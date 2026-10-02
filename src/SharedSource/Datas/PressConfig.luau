@@ -13,7 +13,9 @@ local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresCo
 	Две характеристики пресса (уровни в profile.Press):
 	  UnloadSpeed — сейчас не используется (выгрузка мгновенная);
 	  CraftSpeed  — как быстро пресс делает предметы.
-	Прокачки пока нет — уровни всегда 1, формулы ниже уже учитывают уровень.
+	CraftSpeed прокачивается за Money (PressService:BuySpeedUpgrade, цена —
+	StatUpgradesConfig.CostFor("PressSpeed", уровень), та же формула, что у статов).
+	UnloadSpeed прокачки нет.
 ]]
 
 local PressConfig = {}
@@ -36,16 +38,34 @@ end
 local BASE_UNLOAD_INTERVAL = 0.15
 local UNLOAD_SPEED_PER_LEVEL = 0.25 -- +25% скорости за уровень
 
--- === CraftSpeed: секунд на один предмет
-local BASE_CRAFT_INTERVAL = 2
-local CRAFT_SPEED_PER_LEVEL = 0.25
+-- === CraftSpeed: сколько предметов в секунду делает пресс.
+-- Уровень 1 — BASE_ITEMS_PER_SECOND, уровень CRAFT_MAX_EFFECTIVE_LEVEL — ровно
+-- MAX_ITEMS_PER_SECOND; между ними — геометрически (каждый уровень даёт одинаковый
+-- +% скорости, т.е. КАЖДЫЙ уровень до потолка реально ускоряет пресс).
+-- Выше CRAFT_MAX_EFFECTIVE_LEVEL уровень растёт (и продаётся) дальше, но скорость
+-- остаётся на потолке — «фейковая» прогрессия. MAX_ITEMS_PER_SECOND не
+-- превышается ни при каком уровне (clamp уровня + math.min + max интервала).
+local BASE_ITEMS_PER_SECOND = 0.5 -- = прежние 2 сек на предмет
+local MAX_ITEMS_PER_SECOND = 5
+local CRAFT_MAX_EFFECTIVE_LEVEL = 50
+
+PressConfig.MAX_ITEMS_PER_SECOND = MAX_ITEMS_PER_SECOND
+PressConfig.CRAFT_MAX_EFFECTIVE_LEVEL = CRAFT_MAX_EFFECTIVE_LEVEL
+
+function PressConfig.GetCraftItemsPerSecond(level: number?): number
+	local effective = math.clamp(math.floor(tonumber(level) or 1), 1, CRAFT_MAX_EFFECTIVE_LEVEL)
+	local t = (effective - 1) / (CRAFT_MAX_EFFECTIVE_LEVEL - 1)
+	local speed = BASE_ITEMS_PER_SECOND * (MAX_ITEMS_PER_SECOND / BASE_ITEMS_PER_SECOND) ^ t
+	return math.min(speed, MAX_ITEMS_PER_SECOND)
+end
 
 function PressConfig.GetUnloadInterval(level: number?): number
 	return BASE_UNLOAD_INTERVAL / (1 + (math.max(level or 1, 1) - 1) * UNLOAD_SPEED_PER_LEVEL)
 end
 
+-- Секунд на один предмет — никогда не меньше 1 / MAX_ITEMS_PER_SECOND.
 function PressConfig.GetCraftInterval(level: number?): number
-	return BASE_CRAFT_INTERVAL / (1 + (math.max(level or 1, 1) - 1) * CRAFT_SPEED_PER_LEVEL)
+	return math.max(1 / PressConfig.GetCraftItemsPerSecond(level), 1 / MAX_ITEMS_PER_SECOND)
 end
 
 -- === Тайминги визуала. Сервер начисляет деньги через SELL_DELAY после крафта —

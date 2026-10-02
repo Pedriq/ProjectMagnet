@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
+local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
+local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
 
 --[[
 	PressService — гидравлический пресс (Workspace.HydraulicPress, см. PressConfig).
@@ -31,6 +33,9 @@ local PressService = Knit.CreateService({
 		-- Fire(player, amount) — игрок наступил на Collect и забрал накопленные
 		-- деньги (amount — EtNum-строка). Сам остаток — profile.Press.Unclaimed.
 		MoneyCollected = Knit.CreateSignal(),
+		-- Fire(player, oreId) — игрок убрал всю руду oreId из пресса (табличка
+		-- очереди, кнопка ✕), см. PressService:RemoveOre.
+		OreRemoved = Knit.CreateSignal(),
 	},
 })
 
@@ -186,6 +191,60 @@ end
 -- Снапшот при старте клиента: руда, уже лежащая в прессе (для визуала кучки), и статы.
 function PressService.Client:GetState(player)
 	return self.Server:GetState(player)
+end
+
+-- Убрать из пресса ВСЮ руду oreId (управление очередью: пресс крафтит руды по
+-- порядку OreConfig.Order, начиная с дешёвых — игрок может выкинуть дешёвую руду,
+-- чтобы дорогая пошла в работу сразу). Руда уничтожается, не возвращается.
+-- Уже начатый предмет (вес списан в _Craft) не отменяется.
+function PressService:RemoveOre(player, oreId): boolean
+	if type(oreId) ~= "string" or not OreConfig.Get(oreId) or not self:IsProfileLoaded(player) then
+		return false
+	end
+	local weight = tonumber(self:GetPressOres(player)[oreId]) or 0
+	if weight <= 0 then
+		return false
+	end
+
+	ProfileService:ChangeData(player, { "Press", "Ores", oreId }, nil)
+	self.Client.OreRemoved:Fire(player, oreId)
+	return true
+end
+
+function PressService.Client:RemoveOre(player, oreId)
+	return self.Server:RemoveOre(player, oreId)
+end
+
+-- Прокачка скорости пресса (profile.Press.CraftSpeed) на 1 уровень за Money.
+-- Цена — общая формула статов (StatUpgradesConfig.CostFor("PressSpeed", level)).
+-- Уровень продаётся до StatUpgradesConfig.Stats.PressSpeed.MaxLevel, но реальная
+-- скорость перестаёт расти после PressConfig.CRAFT_MAX_EFFECTIVE_LEVEL (потолок
+-- PressConfig.MAX_ITEMS_PER_SECOND) — см. PressConfig.GetCraftItemsPerSecond.
+-- true — куплено, false — нет денег / максимум / профиль не загружен.
+function PressService:BuySpeedUpgrade(player): boolean
+	if not self:IsProfileLoaded(player) then
+		return false
+	end
+
+	local cfg = StatUpgradesConfig.Stats.PressSpeed
+	local level = self:GetPressLevel(player, "CraftSpeed")
+	if level >= cfg.MaxLevel then
+		return false
+	end
+
+	local cost = StatUpgradesConfig.CostFor("PressSpeed", level)
+	local money = ProfileService:GetData(player, { "Stats", "Money" }) or "0"
+	if EtNum.me(cost, money) then -- цена > денег
+		return false
+	end
+
+	ProfileService:ChangeData(player, { "Stats", "Money" }, EtNum.toString(EtNum.sub(money, cost)))
+	ProfileService:ChangeData(player, { "Press", "CraftSpeed" }, level + 1)
+	return true
+end
+
+function PressService.Client:BuySpeedUpgrade(player)
+	return self.Server:BuySpeedUpgrade(player)
 end
 
 function PressService:KnitStart()

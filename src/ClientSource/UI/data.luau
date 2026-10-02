@@ -31,6 +31,8 @@ Data.carryCapacity = source(1) -- вместимость переноски, в 
 Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прокачиваемых статов (Range/Agility/Capacity/Mobility)
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
+Data.pressOres = source({}) -- руда в прессе (profile.Press.Ores): map[oreId] = вес — окно Press Queue
+Data.pressSpeedLevel = source(1) -- уровень скорости пресса (profile.Press.CraftSpeed), см. PressConfig
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
 Data.magnet = source({ Name = "FridgeMagnet", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
 Data.ownedMagnets = source({}) -- купленные мечи: map[magnetName] = true
@@ -152,6 +154,8 @@ function Data.start()
 		Data.ownedMagnets(profile.OwnedMagnets or {})
 		Data.items(profile.Items or {})
 		Data.ores(savedOres(profile.Ores))
+		Data.pressOres(savedOres(profile.Press and profile.Press.Ores))
+		Data.pressSpeedLevel(tonumber(profile.Press and profile.Press.CraftSpeed) or 1)
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ready(true)
 	end)
@@ -185,6 +189,12 @@ function Data.start()
 			local t = table.clone(Data.lockedItems())
 			t[path[2]] = a
 			Data.lockedItems(t)
+		elseif path[1] == "Press" and path[2] == "CraftSpeed" then
+			Data.pressSpeedLevel(tonumber(a) or 1)
+		elseif path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
+			local t = table.clone(Data.pressOres())
+			t[path[3]] = if type(a) == "number" and a > 0 then a else nil
+			Data.pressOres(t)
 		elseif path[1] == "Ores" and path[2] ~= nil then
 			local t = table.clone(Data.ores())
 			t[path[2]] = if type(a) == "number" then a else nil

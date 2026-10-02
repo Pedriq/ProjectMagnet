@@ -26,7 +26,8 @@ local PlayerManagerService
 
 ---- Datas
 local IDLE_WAIT = 0.25
-local DEBUG = true -- логи крафта в Output (выключить, когда всё заработает)
+-- логи крафта в Output. Выключено: на прокачанном прессе это до 5 строк в секунду.
+local DEBUG = false
 
 ---- State
 local crafting = false

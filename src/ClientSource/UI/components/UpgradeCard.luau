@@ -26,12 +26,13 @@ local asset = Format.asset
 
 export type Props = {
 	Title: string,
-	Bonus: string, -- статичный текст бонуса, напр. "+10% Atk. Speed"
+	Bonus: string | () -> string, -- текст бонуса, напр. "+10% Atk. Speed" (можно источником)
 	Icon: string?, -- rbxassetid или "" (заведут позже)
 
 	Level: () -> number,
 	CostText: () -> string, -- уже с валютой, напр. "$21.9Qa"
-	RobuxText: () -> string, -- подпись на кнопке доната, напр. "⬡ 139"
+	RobuxText: (() -> string)?, -- подпись на кнопке доната, напр. "⬡ 139"
+	HideRobux: boolean?, -- без кнопки доната (например, прокачка пресса — дев-продукта нет)
 
 	MoneyDisabled: (() -> boolean)?, -- нет денег / макс. уровень
 	OnBuyMoney: (() -> ())?,
@@ -218,7 +219,7 @@ local function UpgradeCard(props: Props)
 				Disabled = props.MoneyDisabled,
 				OnActivated = props.OnBuyMoney,
 			}),
-			WideButton({
+			not props.HideRobux and WideButton({
 				LayoutOrder = 2,
 				Text = props.RobuxText,
 				Size = UDim2.fromOffset(BUTTONS_WIDTH, 34),

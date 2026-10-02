@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
+local PlayerStatsContainer = require(ReplicatedStorage.SharedSource.Object.PlayerStatsContainer)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
 local player = Players.LocalPlayer
@@ -52,10 +52,12 @@ function RockController:HitRock(model)
 	self.Components.VisualEffects:HitRock(model)
 	-- Анимация удара — на каждый РЕАЛЬНЫЙ автоудар сервера (HitRock фирится
 	-- только своему игроку и только когда атака физически попала по камню).
-	-- Кулдаун атаки фиксированный (BaseStatsValues.AttacksCooldawn), анимация
-	-- подгоняется под него.
-	self.Components.RockAttackAnimation:PlayAttack(BaseStatsValues.AttacksCooldawn)
-	sfx.play("Hit")
+	-- Кулдаун атаки зависит от Agility (та же формула, что на сервере —
+	-- PlayerStatsContainer:CalculateAttackCooldown), анимация подгоняется под него.
+	self.Components.RockAttackAnimation:PlayAttack(
+		PlayerStatsContainer:CalculateAttackCooldown(player:GetAttribute("AgilityLevel"))
+	)
+	sfx.play("Hit", { jitter = 0.1 })
 end
 
 function RockController:UpdateRockDamage(newHp, maxHp, visualData, value)
@@ -78,6 +80,9 @@ function RockController:KnitStart()
 
 		-- Эффект попадания
 		self:HitRock(visualData.Model)
+
+		-- Цифра урона, полоска HP, искры, тряска; на добивании — взрыв
+		self.Components.HitFeedback:OnHit(visualData, maxHp, newHp)
 
 		-- Разрушение сегментов
 		self:UpdateRockDamage(newHp, maxHp, visualData, true)

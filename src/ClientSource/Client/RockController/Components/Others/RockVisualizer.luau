@@ -58,11 +58,20 @@ function RockVisualizer:CreateRockVisual(rock)
 	local spawnCFrame = rock.CFrame * CFrame.new(0, -rock.Size.Y / 2 + pivotToBottom, 0)
 
 	rockClone:PivotTo(spawnCFrame)
+	-- «Покойное» положение камня: от него считают и тряску удара (VisualEffects),
+	-- и магнитное дрожание (MagnetWobble) — обе анимации пишут абсолютный pivot,
+	-- поэтому камень никогда не «уползает». BaseBottom — точка у основания, вокруг
+	-- которой камень наклоняется к магниту.
+	rockClone:SetAttribute("BasePivot", spawnCFrame)
+	rockClone:SetAttribute("BaseBottom", (spawnCFrame * CFrame.new(0, -pivotToBottom, 0)).Position)
 	rockClone.Parent = workspace
 
 	local visualData = {
 		Model = rockClone,
 		BrokenSegments = 0,
+		-- для HitFeedback: цвет руды и сколько HP было до удара (цифра урона)
+		Section = section,
+		Hp = rock:GetAttribute("Hp"),
 	}
 
 	RockController.VisualizedRocks[rockKey] = visualData

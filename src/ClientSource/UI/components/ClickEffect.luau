@@ -1,13 +1,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
-local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local vide = require(ReplicatedStorage.Packages.Vide)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
+local combo = require(ReplicatedStorage.ClientSource.combo)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 
 local create = vide.create
@@ -53,14 +52,20 @@ local RANDOM_MARGIN_X = 90
 local RANDOM_MARGIN_TOP = GAIN_RISE + 60
 local RANDOM_MARGIN_BOTTOM = 40
 
-local function isPointerClick(input: InputObject)
-	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
-end
+-- крит (сигнал сервера ClickerService.CritClick) — крупно, красно-оранжевым
+local CRIT_COLOR = Color3.fromRGB(255, 84, 46)
+-- цвет попапа клика «накаляется» с комбо: жёлтый -> оранжевый -> малиновый
+local COMBO_HOT_COLOR = Color3.fromRGB(255, 70, 140)
+local COMBO_HOT_AT = 60
 
 local function computeGainText(multiplier: number?): string
 	local magnet = Data.magnet()
 	local gain = EtNum.mul(magnet.Magnetism, Data.fullMagnetismMultiplier() * (multiplier or 1))
 	return "+" .. Format.short(gain)
+end
+
+local function comboColor(count: number): Color3
+	return GAIN_COLOR:Lerp(COMBO_HOT_COLOR, math.clamp(count / COMBO_HOT_AT, 0, 1))
 end
 
 local function randomScreenPos(): (number, number)
@@ -74,13 +79,24 @@ local function randomScreenPos(): (number, number)
 end
 
 -- component для vide.indexes (удаление из карты уже отложено через spawnPop -> task.delay)
-local function clickPop(item: () -> { x: number, y: number, gainText: string, withRing: boolean, large: boolean })
-	local data = item()
+type Pop = {
+	x: number,
+	y: number,
+	gainText: string,
+	withRing: boolean,
+	large: boolean,
+	color: Color3?,
+	scale: number?, -- доп. масштаб (комбо/крит)
+}
 
-	local iconSize = data.large and GAIN_ICON_SIZE_LARGE or GAIN_ICON_SIZE
-	local textSize = data.large and GAIN_TEXT_SIZE_LARGE or GAIN_TEXT_SIZE
-	local pillWidth = data.large and 160 or 120
-	local labelHeight = data.large and 40 or 26
+local function clickPop(item: () -> Pop)
+	local data = item()
+	local scale = data.scale or 1
+
+	local iconSize = math.floor((data.large and GAIN_ICON_SIZE_LARGE or GAIN_ICON_SIZE) * scale)
+	local textSize = math.floor((data.large and GAIN_TEXT_SIZE_LARGE or GAIN_TEXT_SIZE) * scale)
+	local pillWidth = math.floor((data.large and 160 or 120) * scale)
+	local labelHeight = math.floor((data.large and 40 or 26) * scale)
 
 	local kids = {}
 
@@ -141,7 +157,7 @@ local function clickPop(item: () -> { x: number, y: number, gainText: string, wi
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBlack,
 		TextSize = textSize,
-		TextColor3 = GAIN_COLOR,
+		TextColor3 = data.color or GAIN_COLOR,
 		TextTransparency = 0,
 		Text = data.gainText,
 
@@ -180,6 +196,16 @@ local function clickPop(item: () -> { x: number, y: number, gainText: string, wi
 	TweenService:Create(label, fadeInfo, { TextTransparency = 1 }):Play()
 	TweenService:Create(textStroke, fadeInfo, { Transparency = 1 }):Play()
 
+	-- крупные (крит/высокое комбо) выскакивают с «пружиной»
+	if scale > 1 then
+		local pop = Instance.new("UIScale")
+		pop.Scale = 1.6
+		pop.Parent = pill
+		TweenService:Create(pop, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Scale = 1,
+		}):Play()
+	end
+
 	table.insert(kids, pill)
 
 	return create("Frame")({
@@ -194,18 +220,23 @@ end
 local function ClickEffect()
 	local PlayerManagerService = Knit.GetService("PlayerManagerService")
 
-	local pops =
-		source({} :: { [number]: { x: number, y: number, gainText: string, withRing: boolean, large: boolean } })
+	local ClickerService = Knit.GetService("ClickerService")
+
+	local pops = source({} :: { [number]: Pop })
 	local nextId = 0
 
 	local lifetime = math.max(RIPPLE_TIME, GAIN_TIME)
 
-	local function spawnPop(x: number, y: number, gainText: string, withRing: boolean, large: boolean)
+	-- последняя точка ручного клика — туда же падает попап крита (сигнал сервера
+	-- приходит с задержкой пинга, к этому моменту палец обычно ещё там же)
+	local lastClickX, lastClickY = nil :: number?, nil :: number?
+
+	local function spawnPop(pop: Pop)
 		nextId += 1
 		local id = nextId
 
 		local list = table.clone(pops())
-		list[id] = { x = x, y = y, gainText = gainText, withRing = withRing, large = large }
+		list[id] = pop
 		pops(list)
 
 		task.delay(lifetime, function()
@@ -215,34 +246,54 @@ local function ClickEffect()
 		end)
 	end
 
-	-- 1) обычный клик/тап мимо UI — в точке клика, с кольцом
-	local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-		if gameProcessedEvent then
-			return
+	-- 1) ручной клик/тап мимо UI — в точке клика, с кольцом. Засчитанный клик
+	-- приходит из combo (его регистрирует ClickerController), поэтому прирост
+	-- уже учитывает текущее комбо.
+	local clickConn = combo.Clicked:Connect(function(x: number?, y: number?, count: number)
+		if not x or not y then
+			x, y = randomScreenPos()
 		end
-
-		if not isPointerClick(input) then
-			return
-		end
-
-		-- ScreenGui рисуется с IgnoreGuiInset = true (абсолютные пиксели экрана),
-		-- а input.Position уже уменьшен на высоту топбара — компенсируем инсет,
-		-- иначе эффект оказывается выше реальной точки клика.
-		local inset = GuiService:GetGuiInset()
-		spawnPop(input.Position.X + inset.X, input.Position.Y + inset.Y, computeGainText(), true, false)
+		lastClickX, lastClickY = x, y
+		spawnPop({
+			x = x :: number,
+			y = y :: number,
+			gainText = computeGainText(combo.multiplier()),
+			withRing = true,
+			large = false,
+			color = comboColor(count),
+			scale = 1 + math.min(count, 100) / 250,
+		})
 	end)
 
-	-- 2) авто-удар оружия по камню — без привязки к экрану, случайная точка.
+	-- 2) крит ручного клика (сервер прислал реальный прирост)
+	local critConn = ClickerService.CritClick:Connect(function(gain: string)
+		local x, y = lastClickX, lastClickY
+		if not x or not y then
+			x, y = randomScreenPos()
+		end
+		spawnPop({
+			x = x :: number,
+			y = (y :: number) - 30,
+			gainText = "CRIT! +" .. Format.short(gain),
+			withRing = false,
+			large = true,
+			color = CRIT_COLOR,
+			scale = 1.25,
+		})
+	end)
+
+	-- 3) авто-удар оружия по камню — без привязки к экрану, случайная точка.
 	-- AttackHit стреляет РОВНО 1 раз за взмах (в отличие от HitRock, который
 	-- бьёт по каждому задетому стеблю — один взмах может задеть сразу несколько
 	-- камней, но начисление силы за него одно).
 	local hitConn = PlayerManagerService.AttackHit:Connect(function()
 		local x, y = randomScreenPos()
-		spawnPop(x, y, computeGainText(), false, true)
+		spawnPop({ x = x, y = y, gainText = computeGainText(), withRing = false, large = true })
 	end)
 
 	cleanup(function()
-		inputConn:Disconnect()
+		clickConn:Disconnect()
+		critConn:Disconnect()
 		hitConn:Disconnect()
 	end)
 

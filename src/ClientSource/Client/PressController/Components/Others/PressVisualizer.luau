@@ -17,7 +17,9 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 	  * на крафт головка пресса бьёт по руде, из кучки исчезает
 	    weight / PieceWeight кусочков этой руды, остальные оседают на свои ячейки,
 	    из PressInventory «выдавливается» предмет, едет по Conveyor и падает в Sell;
-	  * над PressInventory — табличка прогресса «руда: вес / вес на предмет».
+	  * на Conveyor — ProximityPrompt «Press Queue», открывает окно очереди
+	    (UI.screens.PressQueuePanel): прогресс руд, NEXT, кнопка X — убрать руду;
+	  * кучка светится цветом самой редкой руды, удар головки — искры и тряска.
 
 	Модели:
 	  кусочки руды — ReplicatedStorage.Assets.Ores.<OreConfig.Model> (случайный ребёнок);
@@ -27,6 +29,8 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 local PressVisualizer = {}
 
 local PressFrame = require(script.Parent.PressFrame)
+local juice = require(ReplicatedStorage.ClientSource.juice)
+local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
 local player = Players.LocalPlayer
 
@@ -50,6 +54,8 @@ local PILE_CELL = 1.2 -- шаг сетки, studs (кусочек подгоня
 local PILE_PIECE_FILL = 0.95 -- доля ячейки, которую занимает кусочек
 local PILE_LAYER_HEIGHT = 0.9 -- высота одного слоя, studs
 local PILE_MAX_HEIGHT = 5 -- максимальная высота кучки, studs
+-- С какого расстояния доступен ProximityPrompt «Press Queue» на Conveyor, studs
+local QUEUE_PROMPT_DISTANCE = 20
 local PILE_INSET = 0.1 -- отступ сетки от краёв PressInventory (доля размера)
 local PILE_SETTLE_TIME = 0.25 -- кусочки «оседают» на новые места после крафта
 local PIECE_FALLBACK_SIZE = 0.7
@@ -80,7 +86,7 @@ type Grid = { Origin: CFrame, Cols: number, Rows: number, PerLayer: number, Capa
 local pileList: { PileEntry } = {} -- порядок = номер ячейки (снизу вверх, слой за слоем)
 local hidden: { [string]: number } = {} -- [oreId] = кусочков сверх вместимости (не нарисованы)
 local grid: Grid? = nil
-local progressLabel: TextLabel? = nil
+local queuePromptReady = false
 local lastProgress: { [string]: number } = {}
 local collectAnchor: BasePart? = nil
 local collectLabel: TextLabel? = nil
@@ -381,11 +387,100 @@ local function fitToCell(model: Model)
 	end
 end
 
+-- Свечение кучки: свет + искорки цвета самой редкой руды в прессе. Чем
+-- реже руда, тем ярче — кучку Legendary видно издалека.
+local GLOW_MIN_BRIGHTNESS = 0.6
+local GLOW_BRIGHTNESS_PER_RARITY = 0.35
+local glowAnchor: Part? = nil
+local glowLight: PointLight? = nil
+local glowSparkles: ParticleEmitter? = nil
+
+local function ensureGlow(): boolean
+	if glowAnchor and glowAnchor.Parent then
+		return true
+	end
+	if not grid or not visualsFolder then
+		return false
+	end
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "PileGlow"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	-- площадь кучки — искорки рождаются по всей её поверхности
+	anchor.Size = Vector3.new(grid.Cols * PILE_CELL, 0.2, grid.Rows * PILE_CELL)
+	anchor.CFrame = grid.Origin
+
+	local light = Instance.new("PointLight")
+	light.Range = 12
+	light.Shadows = false
+	light.Enabled = false
+	light.Parent = anchor
+
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkles.LightEmission = 1
+	sparkles.LightInfluence = 0
+	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkles.Speed = NumberRange.new(1, 3)
+	sparkles.EmissionDirection = Enum.NormalId.Top
+	sparkles.SpreadAngle = Vector2.new(25, 25)
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.3, 0.35),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkles.Transparency = NumberSequence.new(0.1)
+	sparkles.Rate = 0
+	sparkles.Parent = anchor
+
+	anchor.Parent = visualsFolder
+	glowAnchor, glowLight, glowSparkles = anchor, light, sparkles
+	return true
+end
+
+local function updatePileGlow()
+	if not ensureGlow() then
+		return
+	end
+
+	local best = 0
+	for _, entry in ipairs(pileList) do
+		best = math.max(best, table.find(OreConfig.Order, entry.OreId) or 0)
+	end
+	for oreId, count in pairs(hidden) do
+		if count > 0 then
+			best = math.max(best, table.find(OreConfig.Order, oreId) or 0)
+		end
+	end
+
+	local light, sparkles, anchor = glowLight :: PointLight, glowSparkles :: ParticleEmitter, glowAnchor :: Part
+	if best == 0 then
+		light.Enabled = false
+		sparkles.Rate = 0
+		return
+	end
+
+	local ore = OreConfig.Get(OreConfig.Order[best])
+	local color = RarityColors.get(ore and ore.Rarity)
+	light.Enabled = true
+	light.Color = color
+	light.Brightness = GLOW_MIN_BRIGHTNESS + (best - 1) * GLOW_BRIGHTNESS_PER_RARITY
+	sparkles.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	sparkles.Rate = 3 + best * 2
+	-- поверхность свечения — верх кучки
+	anchor.CFrame = (grid :: Grid).Origin + Vector3.new(0, pileTopY() - (grid :: Grid).Origin.Position.Y, 0)
+end
+
 -- Раме пресса — новый верх кучки.
 local function updateFrame()
 	if grid then
 		PressFrame:SetPile(grid.Origin.Position.Y, pileTopY())
 	end
+	updatePileGlow()
 end
 
 -- Новая запись в конец кучки (следующая свободная ячейка).
@@ -660,6 +755,47 @@ function PressVisualizer:_ConsumeFromPile(oreId: string, count: number)
 	self:_Relayout()
 end
 
+-- Игрок убрал всю руду oreId из пресса (PressService.OreRemoved): все её кусочки
+-- выпрыгивают из кучки и тают, остальные оседают на освободившиеся места.
+function PressVisualizer:RemoveOre(oreId: string)
+	hidden[oreId] = 0
+
+	local color = RarityColors.get((OreConfig.Get(oreId) or {} :: any).Rarity)
+	local removed = 0
+	for index = #pileList, 1, -1 do
+		local entry = pileList[index]
+		if entry.OreId == oreId then
+			table.remove(pileList, index)
+			removed += 1
+			local model = entry.Model
+			local from = model:GetPivot()
+			local baseScale = model:GetScale()
+			local hop = Vector3.new((math.random() * 2 - 1) * 2.5, 2 + math.random() * 1.5, (math.random() * 2 - 1) * 2.5)
+			task.delay(removed * 0.01, function()
+				animate(0.35, function(alpha)
+					if model.Parent then
+						-- подлёт вверх по параболе и сжатие
+						local offset = Vector3.new(hop.X * alpha, hop.Y * math.sin(alpha * math.pi * 0.75), hop.Z * alpha)
+						model:PivotTo(from + offset)
+						safeScale(model, baseScale * (1 - alpha * 0.9))
+					end
+				end)
+				model:Destroy()
+			end)
+		end
+	end
+
+	if grid then
+		juice.burst(
+			Vector3.new(grid.Origin.Position.X, pileTopY(), grid.Origin.Position.Z),
+			color,
+			math.clamp(removed, 8, 30),
+			{ speed = 0.6 }
+		)
+	end
+	self:_Relayout()
+end
+
 -- Точки конвейера: начало (ближе к PressInventory) и конец (ближе к Sell).
 local function conveyorPath(itemHalfHeight: number): (Vector3?, Vector3?)
 	local conveyor = findConveyor()
@@ -754,6 +890,17 @@ function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: str
 	PressFrame:SlamAsync(hitY, PressConfig.SLAM_TIME)
 
 	local ore = OreConfig.Get(oreId)
+
+	-- удар: искры цвета руды, глухой «бум» и тряска, если игрок рядом с прессом
+	if grid then
+		local impact = Vector3.new(grid.Origin.Position.X, hitY, grid.Origin.Position.Z)
+		juice.burst(impact, RarityColors.get(ore and ore.Rarity or oreId), 18, { speed = 0.9 })
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and (root.Position - impact).Magnitude < 45 then
+			sfx.play("Smash", { pitch = 0.6, jitter = 0.05 })
+			juice.shake(0.15)
+		end
+	end
 	if ore then
 		self:_ConsumeFromPile(oreId, math.ceil(weight / ore.PieceWeight))
 	end
@@ -833,37 +980,11 @@ function PressVisualizer:_PlayCraft(oreId: string, weight: number, itemName: str
 	end)
 end
 
--- Табличка прогресса над PressInventory: «руда: вес / вес на предмет».
+-- Руда в прессе изменилась: свечение кучки под самую редкую руду. Сам список
+-- руд — в окне Press Queue (UI.screens.PressQueuePanel, Data.pressOres).
 function PressVisualizer:UpdateProgress(ores: { [string]: number })
-	lastProgress = ores -- табличка может появиться позже (стриминг) — покажет последнее
-	if not progressLabel then
-		return
-	end
-
-	local lines = {}
-	for _, oreId in ipairs(OreConfig.Order) do
-		local weight = ores[oreId]
-		if weight and weight > 0 then
-			local ore = OreConfig.Get(oreId)
-			local color = RarityColors.get(ore and ore.Rarity or oreId):ToHex()
-			-- сколько предметов уже в очереди на крафт + прогресс следующего
-			local perItem = PressConfig.GetWeightPerItem(oreId)
-			local queued = math.floor(weight / perItem)
-			local line = string.format(
-				'<font color="#%s">%s</font>: %d / %d',
-				color,
-				oreId,
-				math.floor(weight % perItem),
-				perItem
-			)
-			if queued > 0 then
-				line ..= string.format("  (x%d)", queued)
-			end
-			table.insert(lines, line)
-		end
-	end
-	progressLabel.Text = table.concat(lines, "\n")
-	progressLabel.Parent.Enabled = #lines > 0
+	lastProgress = ores
+	updatePileGlow()
 end
 
 -- Кучка по снапшоту руды в прессе (вход в игру).
@@ -882,44 +1003,34 @@ function PressVisualizer:BuildPile(ores: { [string]: number })
 	updateFrame()
 end
 
--- Табличка прогресса: на невидимом локальном якоре над PressInventory (сама деталь
--- может выгрузиться стримингом — якорь нет).
-function PressVisualizer:_CreateProgressBillboard(inventory: Instance)
-	local cf, size = getBox(inventory)
+-- ProximityPrompt «Press Queue» на верхней грани Conveyor — открывает окно
+-- очереди пресса. Якорь локальный (деталь может выгрузиться стримингом — якорь нет);
+-- его имя "PressQueue" HUD сопоставляет с окном "press" (UI.baseStructures).
+function PressVisualizer:_CreateQueuePrompt(conveyor: Instance)
+	local cf, size = getBox(conveyor)
 
-	local anchor = Instance.new("Part")
-	anchor.Name = "ProgressAnchor"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.one * 0.1
-	anchor.CFrame = CFrame.new(cf.Position + Vector3.new(0, size.Y / 2 + 3, 0))
-	anchor.Parent = visualsFolder
+	local promptAnchor = Instance.new("Part")
+	promptAnchor.Name = "PressQueue"
+	promptAnchor.Anchored = true
+	promptAnchor.CanCollide = false
+	promptAnchor.CanQuery = false
+	promptAnchor.CanTouch = false
+	promptAnchor.Transparency = 1
+	promptAnchor.Size = Vector3.one * 0.1
+	promptAnchor.CFrame = CFrame.new(cf.Position + Vector3.new(0, size.Y / 2, 0))
+	promptAnchor.Parent = visualsFolder
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "PressProgress"
-	billboard.ResetOnSpawn = false
-	billboard.Size = UDim2.fromScale(6, 2.5)
-	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.MaxDistance = 80
-	billboard.Enabled = false
-	billboard.Adornee = anchor
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "PressQueuePrompt"
+	prompt.ActionText = "Press Queue"
+	prompt.ObjectText = "Hydraulic Press"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = QUEUE_PROMPT_DISTANCE
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = promptAnchor
 
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.RichText = true
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.3
-	label.Parent = billboard
-	billboard.Parent = player:WaitForChild("PlayerGui")
-	progressLabel = label
-	self:UpdateProgress(lastProgress)
+	queuePromptReady = true
 end
 
 local function findCollect(): Instance?
@@ -1054,10 +1165,10 @@ function PressVisualizer:_EnsureReady()
 		end
 	end
 
-	if not progressLabel then
-		local inventory = findPart("PressInventory")
-		if inventory then
-			self:_CreateProgressBillboard(inventory)
+	if not queuePromptReady then
+		local conveyor = findConveyor()
+		if conveyor then
+			self:_CreateQueuePrompt(conveyor)
 		end
 	end
 

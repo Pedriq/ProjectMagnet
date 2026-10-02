@@ -73,6 +73,20 @@ StatUpgradesConfig.Stats = {
 		RobuxLevels = 10,
 		RobuxPrice = 0,
 	},
+	-- Скорость пресса (profile.Press.CraftSpeed). НЕ в Order — карточка живёт в окне
+	-- Press Queue, покупка — PressService:BuySpeedUpgrade. Здесь только цена по
+	-- общей формуле CostFor. Реальная скорость — PressConfig.GetCraftItemsPerSecond
+	-- (растёт до уровня 50, дальше уровень «фейковый», потолок 5 предметов/сек).
+	PressSpeed = {
+		Title = "Press Speed",
+		Bonus = "+Items per second",
+		Icon = "",
+		BaseCost = "5000",
+		MaxLevel = 500,
+		RobuxProductId = 0,
+		RobuxLevels = 10,
+		RobuxPrice = 0,
+	},
 	Mobility = {
 		Title = "Mobility",
 		Bonus = "+1 Move Speed",
