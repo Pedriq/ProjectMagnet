@@ -27,11 +27,12 @@ local untrack = vide.untrack
 	FeedbackOverlay — слой обратной связи поверх HUD (отдельный ScreenGui, см. App):
 
 	  * Баннеры (очередь, по одному): LEVEL UP, REBIRTH READY, рубежи комбо,
-	    сбор денег с пресса, «хватает на магнит».
+	    сбор денег с пресса.
 	  * Счётчик комбо ручного клика с убывающей полоской-таймером.
 	  * BAG FULL: пульсирующее предупреждение, пока инвентарь переноски полон
 	    (иначе игрок не понимает, почему магнит перестал бить камни).
-	  * Уведомление «новый магнит доступен» — один раз, когда денег стало хватать.
+	  * Контекстные подсказки действий внизу по центру («You can buy a new
+	    magnet») — один раз, когда денег стало хватать (pushNotice).
 	  * «+$X» при каждом приросте денег.
 	  * Вспышка экрана на LEVEL UP и Legendary+.
 ]]
@@ -96,6 +97,7 @@ end
 local function FeedbackOverlay()
 	local player = Players.LocalPlayer
 	local PressService = Knit.GetService("PressService")
+	local AutoClickZoneService = Knit.GetService("AutoClickZoneService")
 
 	local guiScale = viewportScale()
 
@@ -236,6 +238,119 @@ local function FeedbackOverlay()
 		end
 		if not showing then
 			showNext()
+		end
+	end
+
+	--=== контекстные подсказки действий (внизу по центру) ===================
+	-- «You can buy a new magnet» и т.п.: не перебивают центральные баннеры,
+	-- а тихо выезжают снизу. Очередь по одной, одинаковые ключи не дублируются.
+	local NOTICE_HOLD = 3.5
+	local NOTICE_MAX_QUEUE = 3
+
+	local noticeHolder = Instance.new("Frame")
+	noticeHolder.Name = "ActionNotices"
+	noticeHolder.AnchorPoint = Vector2.new(0.5, 1)
+	noticeHolder.Position = UDim2.new(0.5, 0, 1, -16)
+	noticeHolder.Size = UDim2.fromOffset(520, 64)
+	noticeHolder.BackgroundTransparency = 1
+	noticeHolder.ClipsDescendants = true
+	noticeHolder.ZIndex = 5
+	noticeHolder.Parent = root
+
+	type Notice = { key: string, title: string, subtitle: string?, color: Color3 }
+	local noticeQueue: { Notice } = {}
+	local currentNotice: Notice? = nil
+
+	local function showNextNotice()
+		local notice = table.remove(noticeQueue, 1)
+		currentNotice = notice
+		if not notice then
+			return
+		end
+
+		local pill = Instance.new("Frame")
+		pill.Name = "Notice"
+		pill.AnchorPoint = Vector2.new(0.5, 1)
+		pill.Position = UDim2.new(0.5, 0, 1, 70) -- старт под краем, выезжает вверх
+		pill.Size = UDim2.new(1, 0, 0, 56)
+		pill.BackgroundColor3 = Theme.Steel800
+		pill.BackgroundTransparency = Theme.PanelBodyTransparency
+		pill.BorderSizePixel = 0
+		pill.Parent = noticeHolder
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = pill
+		local pillStroke = stroke(pill, 2.5, notice.color)
+		pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+		local accent = Instance.new("Frame")
+		accent.Name = "Accent"
+		accent.Position = UDim2.fromOffset(10, 10)
+		accent.Size = UDim2.new(0, 6, 1, -20)
+		accent.BackgroundColor3 = notice.color
+		accent.BorderSizePixel = 0
+		accent.Parent = pill
+		local accentCorner = Instance.new("UICorner")
+		accentCorner.CornerRadius = UDim.new(1, 0)
+		accentCorner.Parent = accent
+
+		local title = label({
+			Name = "Title",
+			Position = UDim2.fromOffset(28, notice.subtitle and 6 or 0),
+			Size = notice.subtitle and UDim2.new(1, -40, 0, 26) or UDim2.new(1, -40, 1, 0),
+			TextSize = 24,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = notice.color:Lerp(WHITE, 0.35),
+			Text = notice.title,
+		})
+		title.Parent = pill
+
+		local subtitle
+		if notice.subtitle then
+			subtitle = label({
+				Name = "Subtitle",
+				Position = UDim2.fromOffset(28, 32),
+				Size = UDim2.new(1, -40, 0, 18),
+				TextSize = 16,
+				Font = Enum.Font.GothamBold,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = Theme.Text,
+				Text = notice.subtitle,
+			})
+			subtitle.Parent = pill
+		end
+
+		TweenService:Create(pill, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 1, -4),
+		}):Play()
+
+		task.delay(NOTICE_HOLD, function()
+			local out = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			TweenService:Create(pill, out, { Position = UDim2.new(0.5, 0, 1, 70) }):Play()
+			task.delay(0.27, function()
+				pill:Destroy()
+				showNextNotice()
+			end)
+		end)
+	end
+
+	local function pushNotice(notice: Notice)
+		if currentNotice and currentNotice.key == notice.key then
+			return
+		end
+		for i, queued in ipairs(noticeQueue) do
+			if queued.key == notice.key then
+				noticeQueue[i] = notice -- свежий текст вместо устаревшего
+				return
+			end
+		end
+		table.insert(noticeQueue, notice)
+		while #noticeQueue > NOTICE_MAX_QUEUE do
+			table.remove(noticeQueue, 1)
+		end
+		if not currentNotice then
+			showNextNotice()
 		end
 	end
 
@@ -461,11 +576,11 @@ local function FeedbackOverlay()
 			local goalReady = magnet ~= nil and EtNum.meeq(money, magnet.Price)
 			if goalReady and not wasGoalReady then
 				sfx.play("GoalReady")
-				pushBanner({
-					title = "NEW MAGNET READY!",
+				pushNotice({
+					key = "magnet",
+					title = "You can buy a new magnet!",
 					subtitle = (magnet.Display or magnet.Name) .. " — visit the magnet shop",
 					color = Theme.Electric, -- магнит
-					priority = 4,
 				})
 			end
 			wasGoalReady = goalReady
@@ -491,6 +606,21 @@ local function FeedbackOverlay()
 			if hrp then
 				juice.burst(hrp.Position, GREEN, 40, { speed = 1.2, size = 1.3 })
 			end
+		end)
+	)
+
+	--=== авто-зона: нет доступа («Not enough rebirths», «Not Enough Yet»…) ===
+	-- Сервер сам дебаунсит (AutoClickZoneHandler.MESSAGE_DEBOUNCE), а pushNotice
+	-- не дублирует уже показанный ключ.
+	table.insert(
+		connections,
+		AutoClickZoneService.ShowMessage:Connect(function(text: string, subtitle: string?)
+			pushNotice({
+				key = "zone:" .. text,
+				title = text,
+				subtitle = subtitle,
+				color = RED,
+			})
 		end)
 	)
 

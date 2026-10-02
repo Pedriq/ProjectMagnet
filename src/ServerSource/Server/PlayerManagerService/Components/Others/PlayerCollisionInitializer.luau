@@ -37,6 +37,10 @@ local function setUpCollisionGroupForPlayer(player, charGroup, rockGroup)
 
 			if PhysicsService:IsCollisionGroupRegistered(otherCharGroup) then
 				PhysicsService:CollisionGroupSetCollidable(rockGroup, otherCharGroup, false)
+				-- Игроки не толкают друг друга. Новых групп/тегов не заводим —
+				-- переиспользуем уже существующие "Char_<id>" (лимит групп 32).
+				-- Пара симметрична, поэтому хватает вызова от нового игрока.
+				PhysicsService:CollisionGroupSetCollidable(charGroup, otherCharGroup, false)
 			end
 		end
 	end

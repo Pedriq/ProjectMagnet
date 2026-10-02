@@ -142,6 +142,12 @@ local function step(dt: number)
 
 	-- земля под игроком; без попадания (прыжок над пропастью) — уровень ног
 	rayParams.FilterDescendantsInstances = { character, folder :: Folder, workspace:FindFirstChild("PlayersRock") }
+	-- Луч видит только то, на чём персонаж реально может стоять: группа
+	-- "Char_<id>" не коллайдится с чужими персонажами (PlayerCollisionInitializer),
+	-- значит кольцо не «залезает» на игрока, в котором стоишь. RespectCanCollide
+	-- заодно игнорирует неколлайдящиеся триггеры/зоны.
+	rayParams.CollisionGroup = root.CollisionGroup
+	rayParams.RespectCanCollide = true
 	local center = hitbox.Position
 	local hit = workspace:Raycast(root.Position, Vector3.new(0, -RAY_DEPTH, 0), rayParams)
 	local groundY

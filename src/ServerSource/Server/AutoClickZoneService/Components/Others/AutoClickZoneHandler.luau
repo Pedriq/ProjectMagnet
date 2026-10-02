@@ -29,6 +29,7 @@ local AutoClickZoneHandler = {}
 local TICK_INTERVAL = 0.5
 local MESSAGE_DEBOUNCE = 3 -- как часто можно повторно показывать "Not Enough Yet" одному игроку
 local ZONE_MESSAGE_TEXT = "Not Enough Yet"
+local REBIRTH_MESSAGE_TEXT = "Not enough rebirths"
 
 ---- Knit Services
 local PlayerManagerService
@@ -86,7 +87,7 @@ function AutoClickZoneHandler:_HasAccess(player: Player, zoneModel: Instance): b
 	return playerRebirths >= requiredRebirth
 end
 
-function AutoClickZoneHandler:_ShowDeniedMessage(player: Player)
+function AutoClickZoneHandler:_ShowDeniedMessage(player: Player, text: string, subtitle: string?)
 	local now = os.clock()
 	local last = lastMessageAt[player.UserId]
 
@@ -95,20 +96,28 @@ function AutoClickZoneHandler:_ShowDeniedMessage(player: Player)
 	end
 
 	lastMessageAt[player.UserId] = now
-	AutoClickZoneService.Client.ShowMessage:Fire(player, ZONE_MESSAGE_TEXT)
+	AutoClickZoneService.Client.ShowMessage:Fire(player, text, subtitle)
 end
 
 function AutoClickZoneHandler:_HandleDenied(player: Player, zoneModel: Instance)
-	self:_ShowDeniedMessage(player)
-
 	local zoneId = zoneModel:GetAttribute("ZoneId")
 	local gamePassId = tonumber(zoneModel:GetAttribute("gamePassId"))
 	local userId = player.UserId
 
+	-- Зона за ребёрсы (не донатная) — см. _HasAccess.
 	if not zoneId or not gamePassId or gamePassId == 0 then
+		local requiredRebirth = tonumber(zoneModel:GetAttribute("rebirth")) or 0
+		local playerRebirths = tonumber(PlayerManagerService:GetPlayerRebirths(player)) or 0
+		self:_ShowDeniedMessage(
+			player,
+			REBIRTH_MESSAGE_TEXT,
+			`Requires {requiredRebirth} rebirths (you have {playerRebirths})`
+		)
 		lastPromptedZone[userId] = nil
 		return
 	end
+
+	self:_ShowDeniedMessage(player, ZONE_MESSAGE_TEXT)
 
 	-- Game Pass предлагаем один раз за заход в конкретную зону, а не каждый тик.
 	local zoneKey = zoneModel:GetFullName()

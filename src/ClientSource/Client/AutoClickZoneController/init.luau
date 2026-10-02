@@ -26,7 +26,8 @@ local RockController
 
 function AutoClickZoneController:KnitStart()
 	-- Визуальная пульсация катушки Теслы зоны при успешном автоклике (см. ZonePulseEffect).
-	-- Показ "Not Enough Yet" — отдельно, в UI.zoneMessage (реактивный UI-слой).
+	-- Показ ShowMessage ("Not enough rebirths" и т.п.) — отдельно, в
+	-- UI.components.FeedbackOverlay (нижние подсказки, pushNotice).
 	AutoClickZoneService.ZonePulse:Connect(function(teslaCoil)
 		sfx.play("Click")
 		if teslaCoil then
