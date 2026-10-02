@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format) -- Format.short через EtNum
 
 local create = vide.create
@@ -63,14 +64,14 @@ local function XpBar(props: Props)
 	local radius = props.CornerRadius or UDim.new(0, 1)
 
 	-- цвета заливки могут быть источниками (меняются на лету, напр. от уровня)
-	local fillColor = props.FillColor or Color3.fromRGB(250, 175, 35) -- жёлтый с тёплым оттенком (основной)
-	local fillColor2 = props.FillColor2 or Color3.fromRGB(255, 210, 80) -- яркий жёлтый (верх градиента)
+	local fillColor = props.FillColor or Theme.Electric
+	local fillColor2 = props.FillColor2 or Theme.ElectricBright
 	local function fillGradient(): ColorSequence
 		return ColorSequence.new(read(fillColor2), read(fillColor))
 	end
-	local trackColor = props.TrackColor or Color3.fromRGB(20, 20, 24)
-	local textColor = props.TextColor or Color3.fromRGB(240, 245, 240)
-	local totalColor = props.TotalColor or Color3.fromRGB(15, 15, 18)
+	local trackColor = props.TrackColor or Theme.Steel900
+	local textColor = props.TextColor or Theme.Text
+	local totalColor = props.TotalColor or Theme.Steel950
 	local totalFade = math.clamp(props.TotalFade or 0.4, 0, 0.5)
 
 	local texTransparency = props.TextureTransparency or 0.55

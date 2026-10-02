@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local MultiplierRow = require(ReplicatedStorage.ClientSource.UI.components.MultiplierRow)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
@@ -38,10 +39,9 @@ export type Props = {
 	OnSkip: (() -> ())?,
 }
 
-local RED = Color3.fromRGB(255, 64, 72)
-local MAGNETISM = Color3.fromRGB(255, 208, 1)
-local MONEY = Color3.fromRGB(56, 240, 72)
-local GOLD = Color3.fromRGB(255, 198, 56)
+-- язык цвета UI.theme: сила (магнит) — синий, деньги — зелёный, ребёрс — фиолетовый
+local MAGNETISM = Theme.Electric
+local MONEY = Theme.Money
 
 local perMagnetism = RebirthConfig.MagnetismMultiplierPerRebirth
 local perCash = RebirthConfig.CashMultiplierPerRebirth
@@ -90,14 +90,14 @@ local function RebirthPanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Rebirth",
-			TitleColor = RED,
+			TitleColor = Theme.titleColor("Rebirth"),
 			TitleTransparency = 0, -- не разбавлять красный тёмным телом позади
-			BodyColor = Color3.fromRGB(22, 14, 15),
-			BodyTransparency = 0.7,
-			StrokeColor = Color3.fromRGB(0, 0, 0),
-			TitleImage = "rbxassetid://137638295200351",
-			TitleImageTransparency = 0.6,
-			StrokeThickness = 3,
+			BodyColor = Theme.bodyColor("Rebirth"),
+			BodyTransparency = Theme.PanelBodyTransparency,
+			StrokeColor = Theme.Outline,
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			StrokeThickness = Theme.PanelStrokeThickness,
 
 			List = false,
 
@@ -131,7 +131,7 @@ local function RebirthPanel(props: Props)
 				BackgroundTransparency = 1,
 				Font = Enum.Font.GothamBlack,
 				TextSize = 20,
-				TextColor3 = Color3.fromRGB(245, 245, 240),
+				TextColor3 = Theme.Warning,
 				Text = "Rebirth resets your Magnetism!",
 
 				create("UIStroke")({
@@ -146,7 +146,7 @@ local function RebirthPanel(props: Props)
 				Name = "LevelBar",
 				LayoutOrder = 4,
 				Size = UDim2.new(1, 0, 0, 46),
-				BackgroundColor3 = Color3.fromRGB(58, 44, 20),
+				BackgroundColor3 = Theme.Steel900,
 				ClipsDescendants = true,
 
 				create("UICorner")({ CornerRadius = UDim.new(0, 6) }),
@@ -163,15 +163,24 @@ local function RebirthPanel(props: Props)
 					Size = function()
 						return UDim2.new(levelProgress(), 0, 1, 0)
 					end,
-					BackgroundColor3 = GOLD,
+					-- тот же градиент синий -> красный, что у полосы уровня в HUD:
+					-- слой на всю ширину полосы, заполнение его «открывает»
+					BackgroundTransparency = 1,
+					ClipsDescendants = true,
 
 					create("UICorner")({ CornerRadius = UDim.new(0, 6) }),
-					create("UIGradient")({
-						Rotation = 90,
-						Color = ColorSequence.new(Color3.fromRGB(255, 214, 92), Color3.fromRGB(236, 166, 28)),
+					create("Frame")({
+						Name = "GradientSpan",
+						BorderSizePixel = 0,
+						BackgroundColor3 = Color3.new(1, 1, 1),
+						Size = function()
+							return UDim2.fromScale(1 / math.max(levelProgress(), 0.001), 1)
+						end,
+						create("UIGradient")({ Color = Theme.LEVEL_GRADIENT }),
 					}),
 					create("ImageLabel")({
 						Name = "Texture",
+						ZIndex = 2, -- поверх GradientSpan
 						BackgroundTransparency = 1,
 						Size = UDim2.fromScale(1, 1),
 						Image = asset("137638295200351"),
@@ -187,7 +196,7 @@ local function RebirthPanel(props: Props)
 					Size = UDim2.fromScale(1, 1),
 					Font = Enum.Font.GothamBlack,
 					TextSize = 22,
-					TextColor3 = Color3.fromRGB(250, 250, 245),
+					TextColor3 = Theme.Text,
 					Text = levelText,
 
 					create("UIStroke")({
@@ -217,7 +226,7 @@ local function RebirthPanel(props: Props)
 					LayoutOrder = 1,
 					Text = "Rebirth",
 					Size = UDim2.fromOffset(200, 58),
-					Color = RED,
+					Color = Theme.ButtonRebirth,
 					TextureTransparency = 0.5,
 					Disabled = function()
 						return not canRebirth()
@@ -228,8 +237,8 @@ local function RebirthPanel(props: Props)
 					LayoutOrder = 2,
 					Text = "Skip",
 					Size = UDim2.fromOffset(176, 58),
-					Color = GOLD,
-					TextColor = Color3.fromRGB(255, 255, 255),
+					Color = Theme.ButtonGold,
+					TextColor = Theme.Text,
 					TextureTransparency = 0.66,
 					OnActivated = props.OnSkip,
 				}),

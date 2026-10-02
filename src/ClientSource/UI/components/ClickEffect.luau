@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
@@ -42,7 +43,7 @@ local GAIN_TEXT_SIZE = 20
 -- поэтому глаз должен цеплять их сам
 local GAIN_ICON_SIZE_LARGE = 48
 local GAIN_TEXT_SIZE_LARGE = 32
-local GAIN_COLOR = Color3.fromRGB(255, 208, 1) -- как MAGNETISM в RebirthPanel
+local GAIN_COLOR = Theme.ElectricBright -- сила = магнит (UI.theme)
 local GAIN_RISE = 46 -- на сколько пикселей всплывает вверх
 local GAIN_TIME = 0.7
 local GAIN_GAP = RIPPLE_SIZE / 2 + 8 -- отступ пилюли над точкой/кольцом
@@ -53,9 +54,9 @@ local RANDOM_MARGIN_TOP = GAIN_RISE + 60
 local RANDOM_MARGIN_BOTTOM = 40
 
 -- крит (сигнал сервера ClickerService.CritClick) — крупно, красно-оранжевым
-local CRIT_COLOR = Color3.fromRGB(255, 84, 46)
+local CRIT_COLOR = Theme.Danger
 -- цвет попапа клика «накаляется» с комбо: жёлтый -> оранжевый -> малиновый
-local COMBO_HOT_COLOR = Color3.fromRGB(255, 70, 140)
+local COMBO_HOT_COLOR = Theme.CopperBright -- магнит «перегревается»
 local COMBO_HOT_AT = 60
 
 local function computeGainText(multiplier: number?): string

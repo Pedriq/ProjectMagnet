@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local BoostCard = require(ReplicatedStorage.ClientSource.UI.components.BoostCard)
 local BuffConfig = require(ReplicatedStorage.SharedSource.Datas.BuffConfig)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
@@ -92,20 +93,16 @@ local function ShopPanel(props: Props)
 			Title = "Shop",
 			Icon = "95100426738981",
 			TitleHeight = 75,
-			TitleColor = Color3.fromRGB(255, 62, 120),
-			-- Раньше тут стояли кастомные TileSize (0.025x0.33 — плитка ~13x13px,
-			-- намного мельче, чем в любой другой панели) и Transparency=0.78
-			-- (почти невидимо) — текстура технически рисовалась, но на глаз не
-			-- читалась. Убрал TileSize (берёт дефолт Panel.luau — плитка размером
-			-- с полоску тайтла, как везде) и выровнял прозрачность по остальным
-			-- панелям (Sell/Rebirth/Upgrades/MagnetShop — везде 0.6).
-			TitleImage = "137638295200351",
-			TitleImageTransparency = 0.6,
-			BodyColor = Color3.fromRGB(30, 22, 20),
-			BodyTransparency = 0.35,
+			TitleColor = Theme.ShopTitle, -- чистый янтарь (UI.theme, раздел Магазин)
+			-- Свой TileSize не задаём (дефолт Panel.luau — плитка размером с полоску
+			-- тайтла); прозрачность текстуры — общая для всех панелей (UI.theme).
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			BodyColor = Theme.ShopBody,
+			BodyTransparency = Theme.PanelBodyTransparency,
 			BodyInset = 22,
 			BodyPadding = 8,
-			StrokeThickness = 3,
+			StrokeThickness = Theme.PanelStrokeThickness,
 			List = false,
 			OnClose = props.OnClose,
 

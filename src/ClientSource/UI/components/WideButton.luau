@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -49,10 +50,10 @@ local function WideButton(props: Props)
 	local radius = props.CornerRadius or (if props.ScaleLayout then UDim.new(0.025, 0) else UDim.new(0, 4))
 	local textSize = props.TextSize or 28
 
-	local color = props.Color or Color3.fromRGB(226, 62, 72)
-	local disabledColor = props.DisabledColor or Color3.fromRGB(108, 108, 112)
+	local color = props.Color or Theme.ButtonElectric
+	local disabledColor = props.DisabledColor or Theme.Steel600
 	local disabledTextTransparency = props.DisabledTextTransparency or 0.4
-	local textColor = props.TextColor or Color3.fromRGB(245, 245, 240)
+	local textColor = props.TextColor or Theme.Text
 
 	local texture = if props.Texture ~= nil then props.Texture else DEFAULT_TEXTURE
 	local texTransparency = props.TextureTransparency or 0.68

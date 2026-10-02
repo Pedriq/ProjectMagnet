@@ -7,6 +7,7 @@ local SocialService = game:GetService("SocialService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
@@ -65,24 +66,6 @@ local function xpCurrent(): number -- то же, но числом (для те�
 	return math.max(EtNum.toNumber(xpInLevel()), 0)
 end
 
--- === градиент полосы уровня: синий слева -> фиолетовый -> красный справа ===
--- Как полюса магнита. Идём по кругу оттенков через фиолетовый (hue 0.62 -> 1.0),
--- а не через зелёный/жёлтый. Несколько точек, чтобы середина не «грязнела»
--- (ColorSequence смешивает в RGB между соседними точками).
-local LEVEL_HUE_START = 0.62 -- синий
-local LEVEL_HUE_END = 1.0 -- красный
-local LEVEL_GRADIENT_STEPS = 6
-
-local LEVEL_GRADIENT = (function()
-	local keypoints = {}
-	for i = 0, LEVEL_GRADIENT_STEPS do
-		local t = i / LEVEL_GRADIENT_STEPS
-		local hue = (LEVEL_HUE_START + (LEVEL_HUE_END - LEVEL_HUE_START) * t) % 1
-		table.insert(keypoints, ColorSequenceKeypoint.new(t, Color3.fromHSV(hue, 0.85, 1)))
-	end
-	return ColorSequence.new(keypoints)
-end)()
-
 local function xpProgress(): number -- 0..1 для заполнения
 	local req = xpRequired()
 	if req <= 0 then
@@ -104,8 +87,8 @@ local function canRebirth(): boolean
 	return Data.level() >= rebirthReqLevel()
 end
 
-local BADGE_NORMAL_COLOR = Color3.fromRGB(240, 245, 240) -- обычный (как текст кнопки)
-local BADGE_ACCENT_COLOR = Color3.fromRGB(95, 247, 95) -- зелёный, когда что-то готово/активно
+local BADGE_NORMAL_COLOR = Theme.Text -- обычный (как текст кнопки)
+local BADGE_ACCENT_COLOR = Theme.ElectricBright -- «готово/активно» — электрический акцент
 
 local function rebirthBadgeText(): string
 	if canRebirth() then
@@ -329,7 +312,7 @@ local function HUD()
 						Required = xpRequired,
 						TrackImage = "137638295200351",
 						FillImage = "137638295200351",
-						FillGradient = LEVEL_GRADIENT,
+						FillGradient = Theme.LEVEL_GRADIENT, -- синий -> фиолетовый -> красный (UI.theme)
 					})
 				end, function()
 					-- кнопка компактная и по центру: оборачиваем в контейнер с центрированием
@@ -347,7 +330,7 @@ local function HUD()
 							Text = "Base",
 							Size = UDim2.fromOffset(200, 46),
 							TextSize = 24,
-							Color = Color3.fromRGB(46, 120, 224), -- синий
+							Color = Theme.ButtonNav, -- яркий электрический: кнопка явно активна
 							OnActivated = function()
 								Knit.GetService("PlayerManagerService"):TeleportToWorldSpawn():catch(warn)
 							end,
@@ -438,7 +421,7 @@ local function HUD()
 					LayoutOrder = 3,
 					Icon = "rbxassetid://117287387544386",
 					Large = true,
-					TextColor = Color3.fromRGB(95, 247, 95),
+					TextColor = Theme.Money,
 					Text = function()
 						return Format.short(shownMoney())
 					end,

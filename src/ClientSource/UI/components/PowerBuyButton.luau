@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
@@ -84,7 +85,7 @@ local function PowerBuyButton(props: Props)
 				Font = Enum.Font.GothamBlack,
 				Text = `\u{E002}{props.Price}`,
 				TextScaled = true,
-				TextColor3 = Color3.fromRGB(70, 220, 90),
+				TextColor3 = Theme.GoldBright, -- цена в Robux
 
 				create("UIStroke")({
 					Thickness = 1,

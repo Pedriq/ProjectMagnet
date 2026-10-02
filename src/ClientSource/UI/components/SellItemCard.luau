@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
@@ -49,10 +50,10 @@ local ICON_SIZE = 72
 local ICON_PAD = 12
 local BUTTONS_WIDTH = 132
 
-local CARD_COLOR = Color3.fromRGB(126, 208, 96)
-local SELL_COLOR = Color3.fromRGB(70, 200, 64)
-local LOCK_COLOR = Color3.fromRGB(232, 72, 72)
-local PRICE_COLOR = Color3.fromRGB(60, 255, 90)
+local CARD_COLOR = Theme.Steel600 -- металлическая плита (UI.theme)
+local SELL_COLOR = Theme.ButtonMoney
+local LOCK_COLOR = Theme.ButtonDanger
+local PRICE_COLOR = Theme.Money
 
 local function textStroke(thickness: number?)
 	return create("UIStroke")({
@@ -115,7 +116,7 @@ local function SellItemCard(props: Props)
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, ICON_PAD, 0.5, 0),
 			Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-			BackgroundColor3 = Color3.fromRGB(248, 250, 245),
+			BackgroundColor3 = Theme.Steel300,
 
 			create("UICorner")({ CornerRadius = UDim.new(0, 5) }),
 			create("UIStroke")({ Thickness = 2.5, Color = Color3.new(0, 0, 0), Transparency = 0.15 }),
@@ -160,7 +161,7 @@ local function SellItemCard(props: Props)
 				Size = UDim2.new(1, 0, 0, 26),
 				Font = Enum.Font.GothamBlack,
 				TextSize = 22,
-				TextColor3 = props.NameColor or Color3.fromRGB(250, 252, 245),
+				TextColor3 = props.NameColor or Theme.Text,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Text = nameText,

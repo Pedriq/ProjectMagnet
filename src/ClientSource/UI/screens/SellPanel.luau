@@ -3,6 +3,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local SellItemCard = require(ReplicatedStorage.ClientSource.UI.components.SellItemCard)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
@@ -52,11 +53,8 @@ export type Props = {
 	OnLock: (name: string) -> (),
 }
 
-local GREEN = Color3.fromRGB(108, 206, 84)
-local BODY = Color3.fromRGB(16, 34, 20)
-local GOLD = Color3.fromRGB(255, 190, 62)
-local SELL_ALL_COLOR = Color3.fromRGB(70, 200, 64)
-local PRICE_COLOR = Color3.fromRGB(60, 255, 90)
+-- деньги — зелёный, премиум (Sell x2 за Robux) — золото; карточка итога — металл (UI.theme)
+local PRICE_COLOR = Theme.Money
 
 -- Data.items -> отсортированный список стопок { Name, Price, Rarity, Count, Ids }
 local function groupedItems()
@@ -125,14 +123,14 @@ local function SellPanel(props: Props)
 			Name = "Summary",
 			LayoutOrder = 0,
 			Size = UDim2.new(1, -6, 0, 96),
-			BackgroundColor3 = GOLD,
+			BackgroundColor3 = Theme.Steel700,
 
 			create("UICorner")({ CornerRadius = UDim.new(0, 6) }),
 			create("UIGradient")({
 				Rotation = 90,
-				Color = ColorSequence.new(Color3.fromRGB(255, 214, 120), Color3.fromRGB(240, 150, 40)),
+				Color = Theme.sheen(Color3.new(1, 1, 1)),
 			}),
-			create("UIStroke")({ Thickness = 3, Color = Color3.new(0, 0, 0), Transparency = 0.1 }),
+			create("UIStroke")({ Thickness = 2.5, Color = Theme.MoneyDeep, Transparency = 0 }),
 			create("ImageLabel")({
 				Name = "Texture",
 				ZIndex = 0,
@@ -181,7 +179,7 @@ local function SellPanel(props: Props)
 					Text = "Sell All",
 					Size = UDim2.fromOffset(140, 34),
 					TextSize = 19,
-					Color = SELL_ALL_COLOR,
+					Color = Theme.ButtonMoney,
 					Disabled = isEmpty,
 					OnActivated = props.OnSellAll,
 				}),
@@ -190,8 +188,8 @@ local function SellPanel(props: Props)
 					Text = "Sell x2",
 					Size = UDim2.fromOffset(140, 34),
 					TextSize = 19,
-					Color = GOLD,
-					TextColor = Color3.fromRGB(255, 255, 255),
+					Color = Theme.ButtonGold,
+					TextColor = Theme.Text,
 					Disabled = isEmpty,
 					OnActivated = props.OnSellX2,
 				}),
@@ -209,13 +207,13 @@ local function SellPanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Sell Loot",
-			TitleColor = GREEN,
-			BodyColor = BODY,
-			BodyTransparency = 0.55,
-			StrokeColor = Color3.fromRGB(0, 0, 0),
-			TitleImage = "rbxassetid://137638295200351",
-			TitleImageTransparency = 0.6,
-			StrokeThickness = 3,
+			TitleColor = Theme.titleColor("Money"),
+			BodyColor = Theme.bodyColor("Money"),
+			BodyTransparency = Theme.PanelBodyTransparency,
+			StrokeColor = Theme.Outline,
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			StrokeThickness = Theme.PanelStrokeThickness,
 
 			List = false,
 
@@ -285,7 +283,7 @@ local function SellPanel(props: Props)
 						BackgroundTransparency = 1,
 						Font = Enum.Font.GothamMedium,
 						TextSize = 18,
-						TextColor3 = Color3.fromRGB(200, 210, 200),
+						TextColor3 = Theme.TextMuted,
 						Text = "No loot to sell — go collect some!",
 						TextWrapped = true,
 					})

@@ -4,6 +4,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local UpgradeCard = require(ReplicatedStorage.ClientSource.UI.components.UpgradeCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -47,12 +48,11 @@ export type Props = {
 	OnUpgradeSpeed: () -> (),
 }
 
-local ORANGE = Color3.fromRGB(232, 132, 40)
-local BODY = Color3.fromRGB(34, 22, 12)
-local ROW_COLOR = Color3.fromRGB(40, 30, 50)
-local TRACK_COLOR = Color3.fromRGB(14, 10, 20)
-local GOLD = Color3.fromRGB(255, 208, 1)
-local CONFIRM_COLOR = Color3.fromRGB(255, 120, 40)
+-- пресс = медь/ржавчина (UI.theme); удаление — опасность
+local ROW_COLOR = Theme.Steel700
+local TRACK_COLOR = Theme.Steel900
+local GOLD = Theme.CopperBright -- NEXT и «x3»
+local CONFIRM_COLOR = Theme.Danger
 local REMOVE_ICON = "rbxassetid://103344771690872"
 
 local ROW_HEIGHT = 66
@@ -367,13 +367,13 @@ local function PressQueuePanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Press Queue",
-			TitleColor = ORANGE,
-			BodyColor = BODY,
-			BodyTransparency = 0.55,
-			StrokeColor = Color3.fromRGB(0, 0, 0),
-			TitleImage = "rbxassetid://137638295200351",
-			TitleImageTransparency = 0.6,
-			StrokeThickness = 3,
+			TitleColor = Theme.titleColor("Copper"),
+			BodyColor = Theme.bodyColor("Copper"),
+			BodyTransparency = Theme.PanelBodyTransparency,
+			StrokeColor = Theme.Outline,
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			StrokeThickness = Theme.PanelStrokeThickness,
 
 			List = false,
 
@@ -412,7 +412,7 @@ local function PressQueuePanel(props: Props)
 					Size = UDim2.new(1, -8, 0, 22),
 					Font = Enum.Font.GothamBold,
 					TextSize = 15,
-					TextColor3 = Color3.fromRGB(215, 205, 230),
+					TextColor3 = Theme.TextMuted,
 					Text = "Lowest rarity is pressed first — remove cheap ore to skip it.",
 					TextWrapped = true,
 					textStroke(1.5),
@@ -426,7 +426,7 @@ local function PressQueuePanel(props: Props)
 					Size = UDim2.new(1, -8, 0, 60),
 					Font = Enum.Font.GothamBlack,
 					TextSize = 22,
-					TextColor3 = Color3.fromRGB(190, 180, 210),
+					TextColor3 = Theme.TextMuted,
 					Text = "The press is empty.\nUnload ore to start crafting!",
 					textStroke(),
 				}),

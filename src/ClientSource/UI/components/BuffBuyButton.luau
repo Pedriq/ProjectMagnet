@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -30,14 +31,14 @@ local asset = Format.asset
 	уже вне кнопки — цена зелёным текстом с иконкой робуксов ("Only <R$>3").
 ]]
 
-local GREEN_PRICE_COLOR = Color3.fromRGB(95, 247, 95)
+local GREEN_PRICE_COLOR = Theme.Money
 
 -- Общая тайловая текстура проекта (та же, что на WideButton/XpBar).
 local DEFAULT_TEXTURE = "137638295200351"
 
 local COLORS = {
-	Magnetism = { Color = Color3.fromRGB(255, 158, 25), Light = Color3.fromRGB(255, 214, 130) },
-	Money = { Color = Color3.fromRGB(48, 199, 60), Light = Color3.fromRGB(170, 255, 150) },
+	Magnetism = { Color = Theme.ButtonElectric, Light = Theme.ElectricBright },
+	Money = { Color = Theme.ButtonMoney, Light = Theme.MoneyBright },
 }
 
 export type Props = {

@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
@@ -46,12 +47,12 @@ local ICON_SIZE = 72
 local ICON_PAD = 12
 local BUTTONS_WIDTH = 138
 
-local CARD_COLOR = Color3.fromRGB(126, 208, 96)
-local MONEY_COLOR = Color3.fromRGB(70, 200, 64) -- кнопка «за Money» всегда зелёная (в т.ч. в Disabled)
-local ROBUX_COLOR = Color3.fromRGB(255, 190, 62)
-local TITLE_COLOR = Color3.fromRGB(250, 252, 245)
-local LEVEL_COLOR = Color3.fromRGB(232, 246, 220)
-local BONUS_COLOR = Color3.fromRGB(250, 252, 245)
+local CARD_COLOR = Theme.Steel600 -- плита из металла на теле панели (UI.theme)
+local MONEY_COLOR = Theme.ButtonMoney -- кнопка «за Money» всегда зелёная (в т.ч. в Disabled)
+local ROBUX_COLOR = Theme.ButtonGold
+local TITLE_COLOR = Theme.Text
+local LEVEL_COLOR = Theme.ElectricBright -- уровень = прогресс магнита
+local BONUS_COLOR = Theme.Text
 
 local function textStroke(thickness: number?)
 	return create("UIStroke")({
@@ -105,7 +106,7 @@ local function UpgradeCard(props: Props)
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, ICON_PAD, 0.5, 0),
 			Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-			BackgroundColor3 = Color3.fromRGB(248, 250, 245),
+			BackgroundColor3 = Theme.Steel300, -- подложка иконки: светлая сталь
 
 			create("UICorner")({ CornerRadius = UDim.new(0, 5) }),
 			create("UIStroke")({ Thickness = 2.5, Color = Color3.new(0, 0, 0), Transparency = 0.15 }),
@@ -225,7 +226,7 @@ local function UpgradeCard(props: Props)
 				Size = UDim2.fromOffset(BUTTONS_WIDTH, 34),
 				TextSize = 18,
 				Color = ROBUX_COLOR,
-				TextColor = Color3.fromRGB(255, 255, 255),
+				TextColor = Theme.Text,
 				TextureTransparency = 0.66,
 				OnActivated = props.OnBuyRobux,
 			}),

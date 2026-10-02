@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Surface = require(ReplicatedStorage.ClientSource.UI.components.Surface)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
@@ -19,7 +20,7 @@ export type Props = {
 
 local function BoostCard(props: Props)
 	local money = props.Money == true
-	local accent = if money then Color3.fromRGB(76, 242, 0) else Color3.fromRGB(255, 195, 35)
+	local accent = if money then Theme.Money else Theme.Electric
 	local function label(name: string, text: string, y: number, height: number, color: Color3)
 		return create("TextLabel")({
 			Name = name,
@@ -46,8 +47,8 @@ local function BoostCard(props: Props)
 		create("UIGradient")({
 			Rotation = 90,
 			Color = ColorSequence.new(
-				if money then Color3.fromRGB(221, 255, 202) else Color3.fromRGB(255, 253, 200),
-				if money then Color3.fromRGB(44, 222, 19) else Color3.fromRGB(255, 161, 0)
+				if money then Theme.ShopMoneyTop else Theme.ShopPowerTop,
+				if money then Theme.ShopMoneyBottom else Theme.ShopPowerBottom
 			),
 		}),
 		label("Title", props.Title, 0.035, 0.12, accent),
@@ -71,7 +72,7 @@ local function BoostCard(props: Props)
 				Text = `\u{E002}{props.Price}`,
 				Size = UDim2.fromScale(1, 1),
 				ScaleLayout = true,
-				Color = Color3.fromRGB(99, 255, 0),
+				Color = Theme.ShopBuy, -- цена в Robux
 				TextureTransparency = 0.72,
 				OnActivated = function()
 					if props.OnBuy and props.ProductId then

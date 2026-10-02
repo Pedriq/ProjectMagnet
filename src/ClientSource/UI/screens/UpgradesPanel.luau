@@ -3,6 +3,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local UpgradeCard = require(ReplicatedStorage.ClientSource.UI.components.UpgradeCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
@@ -34,9 +35,6 @@ export type Props = {
 	OnBuyMoney: (statKey: string) -> (),
 	OnBuyRobux: (statKey: string) -> (),
 }
-
-local GREEN = Color3.fromRGB(108, 206, 84)
-local BODY = Color3.fromRGB(16, 34, 20)
 
 local function levelOf(statKey: string): number
 	return Data.upgradeLevels()[statKey] or 1
@@ -95,13 +93,14 @@ local function UpgradesPanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Upgrades",
-			TitleColor = GREEN,
-			BodyColor = BODY,
-			BodyTransparency = 0.55,
-			StrokeColor = Color3.fromRGB(0, 0, 0),
-			TitleImage = "rbxassetid://137638295200351",
-			TitleImageTransparency = 0.6,
-			StrokeThickness = 3,
+			-- магнит/прокачки — электрический синий (см. UI.theme)
+			TitleColor = Theme.titleColor("Electric"),
+			BodyColor = Theme.bodyColor("Electric"),
+			BodyTransparency = Theme.PanelBodyTransparency,
+			StrokeColor = Theme.Outline,
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			StrokeThickness = Theme.PanelStrokeThickness,
 
 			List = false,
 

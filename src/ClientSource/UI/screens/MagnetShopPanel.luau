@@ -3,6 +3,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local MagnetCard = require(ReplicatedStorage.ClientSource.UI.components.MagnetCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
@@ -45,8 +46,6 @@ export type Props = {
 	OnEquip: (magnetName: string) -> (),
 }
 
-local BLUE = Color3.fromRGB(122, 138, 248)
-local BODY = Color3.fromRGB(16, 20, 34)
 
 local function owns(name: string): boolean
 	return Data.ownedMagnets()[name] == true
@@ -135,13 +134,13 @@ local function MagnetShopPanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Magnets",
-			TitleColor = BLUE,
-			BodyColor = BODY,
-			BodyTransparency = 0.5,
-			StrokeColor = Color3.fromRGB(0, 0, 0),
-			TitleImage = "rbxassetid://137638295200351",
-			TitleImageTransparency = 0.6,
-			StrokeThickness = 3,
+			TitleColor = Theme.titleColor("Electric"),
+			BodyColor = Theme.bodyColor("Electric"),
+			BodyTransparency = Theme.PanelBodyTransparency,
+			StrokeColor = Theme.Outline,
+			TitleImage = Theme.PanelTitleTexture,
+			TitleImageTransparency = Theme.PanelTitleTextureTransparency,
+			StrokeThickness = Theme.PanelStrokeThickness,
 
 			List = false,
 

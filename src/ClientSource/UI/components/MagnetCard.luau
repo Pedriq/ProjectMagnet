@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
@@ -68,11 +69,11 @@ local ICON_SIZE = 84
 local ICON_PAD = 12
 local BUTTONS_WIDTH = 150
 
-local NAME_COLOR = Color3.fromRGB(250, 252, 245)
-local MAGNETISM_COLOR = Color3.fromRGB(250, 252, 245)
-local MONEY_COLOR = Color3.fromRGB(70, 200, 64)
-local ROBUX_COLOR = Color3.fromRGB(255, 190, 62)
-local EQUIP_COLOR = Color3.fromRGB(70, 200, 64)
+local NAME_COLOR = Theme.Text
+local MAGNETISM_COLOR = Theme.ElectricBright -- сила магнита = электрический синий
+local MONEY_COLOR = Theme.ButtonMoney
+local ROBUX_COLOR = Theme.ButtonGold
+local EQUIP_COLOR = Theme.ButtonElectric
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 
@@ -298,7 +299,7 @@ local function MagnetCard(props: Props)
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, ICON_PAD, 0.5, 0),
 			Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-			BackgroundColor3 = Color3.fromRGB(248, 250, 245),
+			BackgroundColor3 = Theme.Steel300,
 
 			create("UICorner")({ CornerRadius = UDim.new(0, 5) }),
 			create("UIStroke")({ Thickness = 2.5, Color = BLACK, Transparency = 0.15 }),

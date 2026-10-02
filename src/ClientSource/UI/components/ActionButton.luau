@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
@@ -50,8 +51,8 @@ local function ActionButton(props: Props)
 	local iconScale = props.IconScale or 0.62
 	local textSize = props.TextSize or 20
 
-	local color = props.Color or Color3.fromRGB(28, 24, 36)
-	local textColor = props.TextColor or Color3.fromRGB(240, 245, 240)
+	local color = props.Color or Theme.Steel700
+	local textColor = props.TextColor or Theme.Text
 	local bgTransparency = math.clamp(props.BackgroundTransparency or 0.3, 0, 1)
 
 	-- верх светлее, низ темнее ("ниже слегка темнее чем сверху")

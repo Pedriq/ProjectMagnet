@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local create = vide.create
 
@@ -34,7 +35,7 @@ local function StatRow(props: Props)
 	local height = props.Large and 44 or 32
 	local iconSize = props.Large and 34 or 24
 	local textSize = props.Large and 30 or 23
-	local textColor = props.TextColor or Color3.fromRGB(230, 233, 230)
+	local textColor = props.TextColor or Theme.Text
 	local fadeStart = math.clamp(props.FadeStart or 0.3, 0, 0.95)
 	local fadePower = math.max(props.FadePower or 1, 1)
 
@@ -47,7 +48,7 @@ local function StatRow(props: Props)
 		Name = "StatRow",
 		Size = UDim2.new(0.5, 0, 0, height),
 		LayoutOrder = props.LayoutOrder,
-		BackgroundColor3 = Color3.fromRGB(35, 25, 45),
+		BackgroundColor3 = Theme.Steel800,
 		BackgroundTransparency = 0.7,
 
 		create("UIGradient")({ Transparency = fade }), -- гасит фон

@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local CloseButton = require(ReplicatedStorage.ClientSource.UI.components.CloseButton)
 
@@ -80,8 +81,8 @@ local function Panel(props: Props)
 		return if relative then UDim2.fromScale(xs + xo / 1000, ys + yo / (height or 450)) else UDim2.new(xs, xo, ys, yo)
 	end
 	local titleH = props.TitleHeight or 46
-	local titleColor = props.TitleColor or Color3.fromRGB(46, 38, 60)
-	local titleTextColor = props.TitleTextColor or Color3.fromRGB(245, 245, 240)
+	local titleColor = props.TitleColor or Theme.Steel600
+	local titleTextColor = props.TitleTextColor or Theme.Text
 	local titleTextSize = props.TitleTextSize or 22
 	local titleTransparency = props.TitleTransparency or 0.05
 	local titleImageTransparency = math.clamp(props.TitleImageTransparency or 0.3, 0, 1)
@@ -89,7 +90,7 @@ local function Panel(props: Props)
 	local titleUnderline = props.TitleUnderline ~= false
 	local titleShine = props.TitleShine ~= false
 
-	local bodyColor = props.BodyColor or Color3.fromRGB(18, 15, 24)
+	local bodyColor = props.BodyColor or Theme.Steel800
 	local bodyTransparency = math.clamp(props.BodyTransparency or 0.3, 0, 1)
 	local inset = props.BodyInset or 12
 	local gap = props.BodyGap or 0

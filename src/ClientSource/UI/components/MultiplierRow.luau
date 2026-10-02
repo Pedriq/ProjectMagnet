@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
 
@@ -122,7 +123,7 @@ local function MultiplierRow(props: Props)
 					Font = Enum.Font.GothamBlack,
 					Text = value,
 					TextSize = valueTextSize,
-					TextColor3 = Color3.fromRGB(250, 250, 245),
+					TextColor3 = Theme.Text,
 					TextXAlignment = Enum.TextXAlignment.Center,
 					TextYAlignment = Enum.TextYAlignment.Center,
 
@@ -171,11 +172,11 @@ local function MultiplierRow(props: Props)
 			Font = Enum.Font.GothamBlack,
 			Text = "▶",
 			TextSize = math.floor(pillH * 0.5),
-			TextColor3 = Color3.fromRGB(150, 205, 255),
+			TextColor3 = Theme.ElectricBright,
 
 			create("UIStroke")({
 				Thickness = 3,
-				Color = Color3.fromRGB(28, 70, 130),
+				Color = Theme.ElectricDeep,
 				LineJoinMode = Enum.LineJoinMode.Round,
 			}),
 		}),

@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 
@@ -35,9 +36,10 @@ local untrack = vide.untrack
 	  * Вспышка экрана на LEVEL UP и Legendary+.
 ]]
 
-local GOLD = Color3.fromRGB(255, 208, 1)
-local GREEN = Color3.fromRGB(95, 247, 95)
-local RED = Color3.fromRGB(255, 72, 72)
+-- язык цвета UI.theme: прогресс/сила — электрический, деньги — зелёный, опасность — красный
+local GOLD = Theme.ElectricBright -- LEVEL UP, комбо, сила
+local GREEN = Theme.Money
+local RED = Theme.Danger
 local WHITE = Color3.new(1, 1, 1)
 
 local BANNER_HOLD = 1.3
@@ -290,7 +292,7 @@ local function FeedbackOverlay()
 			Font = Enum.Font.GothamBlack,
 			TextSize = 42,
 			TextColor3 = function()
-				return GOLD:Lerp(Color3.fromRGB(255, 70, 140), math.clamp(combo.count() / 60, 0, 1))
+				return GOLD:Lerp(Theme.CopperBright, math.clamp(combo.count() / 60, 0, 1))
 			end,
 			Text = function()
 				return "x" .. combo.count() .. " COMBO"
@@ -315,7 +317,7 @@ local function FeedbackOverlay()
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0, 63),
 			Size = UDim2.fromOffset(160, 6),
-			BackgroundColor3 = Color3.fromRGB(20, 16, 26),
+			BackgroundColor3 = Theme.Steel900,
 			BorderSizePixel = 0,
 			create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
 			create("Frame")({
@@ -346,7 +348,7 @@ local function FeedbackOverlay()
 			pushBanner({
 				title = count .. " COMBO!",
 				subtitle = "+" .. math.floor((combo.multiplier() - 1) * 100 + 0.5) .. "% power per click",
-				color = Color3.fromRGB(255, 120, 60),
+				color = Theme.CopperBright,
 				priority = 1,
 			})
 		end)
@@ -419,7 +421,7 @@ local function FeedbackOverlay()
 					pushBanner({
 						title = "REBIRTH READY!",
 						subtitle = "Rebirth for a permanent power & cash boost",
-						color = Color3.fromRGB(190, 120, 255),
+						color = Theme.Rebirth,
 						priority = 6,
 					})
 				end
@@ -462,7 +464,7 @@ local function FeedbackOverlay()
 				pushBanner({
 					title = "NEW MAGNET READY!",
 					subtitle = (magnet.Display or magnet.Name) .. " — visit the magnet shop",
-					color = GREEN,
+					color = Theme.Electric, -- магнит
 					priority = 4,
 				})
 			end

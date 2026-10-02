@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local BuffConfig = require(ReplicatedStorage.SharedSource.Datas.BuffConfig)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local BuffChip = require(ReplicatedStorage.ClientSource.UI.components.BuffChip)
@@ -22,8 +23,8 @@ local cleanup = vide.cleanup
 
 -- порядок и цвет плиток по типу баффа (те же акценты, что у BoostCard в Shop)
 local ORDER = {
-	{ Type = "Magnetism", Color = Color3.fromRGB(255, 195, 35) },
-	{ Type = "Money", Color = Color3.fromRGB(76, 242, 0) },
+	{ Type = "Magnetism", Color = Theme.Electric },
+	{ Type = "Money", Color = Theme.Money },
 }
 
 local function formatTime(seconds: number): string

@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Surface = require(ReplicatedStorage.ClientSource.UI.components.Surface)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local MagnetViewport = require(ReplicatedStorage.ClientSource.UI.components.MagnetViewport)
@@ -45,8 +46,8 @@ local function OPMagnetCard(props: Props)
 		create("UIGradient")({
 			Rotation = 90,
 			Color = ColorSequence.new(
-				if props.Red then Color3.fromRGB(255, 0, 0) else Color3.fromRGB(255, 253, 226),
-				if props.Red then Color3.fromRGB(58, 16, 20) else Color3.fromRGB(255, 230, 0)
+				if props.Red then Theme.ShopRedTop else Theme.ShopGoldTop,
+				if props.Red then Theme.ShopRedBottom else Theme.ShopGoldBottom
 			),
 		}),
 		create("TextLabel")({
@@ -58,7 +59,7 @@ local function OPMagnetCard(props: Props)
 			Font = Enum.Font.GothamBlack,
 			Text = props.Name,
 			TextScaled = true,
-			TextColor3 = if props.Red then Color3.fromRGB(215, 0, 0) else Color3.fromRGB(255, 211, 111),
+			TextColor3 = Theme.Text, -- белый с обводкой: читается на ярком красном и золотом фоне
 			stroke(),
 		}),
 		create("Frame")({
@@ -82,7 +83,7 @@ local function OPMagnetCard(props: Props)
 			stroke(),
 			create("UIGradient")({
 				Rotation = 90,
-				Color = ColorSequence.new(Color3.fromRGB(255, 255, 0), Color3.fromRGB(255, 168, 0)),
+				Color = ColorSequence.new(Theme.ShopGoldTop, Theme.ShopGoldBottom),
 			}),
 		}),
 		create("Frame")({
@@ -103,7 +104,7 @@ local function OPMagnetCard(props: Props)
 						Text = `\u{E002}{props.Price}`,
 						Size = UDim2.fromScale(1, 1),
 						ScaleLayout = true,
-						Color = Color3.fromRGB(99, 255, 0),
+						Color = Theme.ShopBuy,
 						TextureTransparency = 0.72,
 						OnActivated = props.OnBuy,
 					})
@@ -113,7 +114,7 @@ local function OPMagnetCard(props: Props)
 						Text = "Equip",
 						Size = UDim2.fromScale(1, 1),
 						ScaleLayout = true,
-						Color = Color3.fromRGB(99, 255, 0),
+						Color = Theme.ShopBuy,
 						TextureTransparency = 0.72,
 						OnActivated = props.OnEquip,
 					})
@@ -123,8 +124,8 @@ local function OPMagnetCard(props: Props)
 						Text = "Equipped",
 						Size = UDim2.fromScale(1, 1),
 						ScaleLayout = true,
-						Color = Color3.fromRGB(99, 255, 0),
-						DisabledColor = Color3.fromRGB(99, 255, 0),
+						Color = Theme.ShopBuy,
+						DisabledColor = Theme.ShopBuy,
 						TextureTransparency = 0.72,
 						Disabled = true,
 					})

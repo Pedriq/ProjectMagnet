@@ -6,6 +6,7 @@ local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 
 --[[
 	PressVisualizer — ЛОКАЛЬНЫЙ визуал пресса: всё создаётся на клиенте, поэтому
@@ -290,7 +291,7 @@ local function createItem(itemName: string, rarity: string, payout: string): Mod
 	priceLabel.Font = Enum.Font.FredokaOne
 	priceLabel.TextScaled = true
 	priceLabel.Text = "$" .. Format.short(payout)
-	priceLabel.TextColor3 = Color3.fromRGB(60, 255, 90)
+	priceLabel.TextColor3 = Theme.Money
 	priceLabel.TextStrokeTransparency = 0.3
 	priceLabel.Parent = billboard
 	billboard.Parent = model
@@ -856,7 +857,7 @@ local function moneyPopup(position: Vector3, payout: string)
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
 	label.Text = "+$" .. Format.short(payout)
-	label.TextColor3 = Color3.fromRGB(60, 255, 90)
+	label.TextColor3 = Theme.Money
 	label.TextStrokeTransparency = 0.2
 	label.Parent = billboard
 	billboard.Parent = anchor
@@ -1127,7 +1128,7 @@ function PressVisualizer:_CreateCollectBillboard(collect: Instance)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(60, 255, 90)
+	label.TextColor3 = Theme.Money
 	label.TextStrokeTransparency = 0.2
 	label.Parent = billboard
 	billboard.Parent = player:WaitForChild("PlayerGui")

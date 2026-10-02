@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -40,11 +41,12 @@ local ICON = "rbxassetid://15507675979"
 local HEIGHT = 46
 local ICON_SIZE = 26
 
-local GREEN = Color3.fromRGB(95, 247, 95)
-local YELLOW = Color3.fromRGB(255, 208, 1)
-local RED = Color3.fromRGB(255, 72, 72)
-local TEXT_COLOR = Color3.fromRGB(230, 233, 230)
-local BG_COLOR = Color3.fromRGB(35, 25, 45)
+-- руда = металлолом: медь -> предупреждение -> опасность (язык цвета UI.theme)
+local GREEN = Theme.CopperBright -- «+N», «SAVED!», полоска на малом заполнении
+local YELLOW = Theme.Warning
+local RED = Theme.Danger
+local TEXT_COLOR = Theme.Text
+local BG_COLOR = Theme.Steel800
 
 local NEAR_FULL = 0.8 -- с этой доли — пульсация и красный текст
 local GAIN_MERGE_TIME = 0.35 -- «+N» подряд в этом окне складываются в одну подпись
@@ -245,7 +247,7 @@ local function CarryMeter(props: Props)
 			Name = "Track",
 			Position = UDim2.fromOffset(ICON_SIZE + 14, 31),
 			Size = UDim2.new(1, -(ICON_SIZE + 22), 0, 8),
-			BackgroundColor3 = Color3.fromRGB(14, 10, 20),
+			BackgroundColor3 = Theme.Steel900,
 			BorderSizePixel = 0,
 			create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
 			create("UIStroke")({ Thickness = 1.5 }),

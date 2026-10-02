@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -43,8 +44,8 @@ export type Props = {
 local function CloseButton(props: Props)
 	local size = props.Size or UDim2.fromOffset(32, 32)
 	local radius = props.CornerRadius or (if props.ScaleLayout then UDim.new(0.06, 0) else UDim.new(0, 6))
-	local color = props.Color or Color3.fromRGB(238, 52, 52)
-	local iconColor = props.IconColor or Color3.fromRGB(245, 240, 240)
+	local color = props.Color or Theme.ButtonDanger
+	local iconColor = props.IconColor or Theme.Text
 
 	local inset = props.IconInset or 4
 	local hasIcon = props.Icon ~= nil and props.Icon ~= ""
