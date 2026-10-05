@@ -26,6 +26,7 @@ local UpgradesPanel = require(ReplicatedStorage.ClientSource.UI.screens.Upgrades
 local SellPanel = require(ReplicatedStorage.ClientSource.UI.screens.SellPanel)
 local MagnetShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.MagnetShopPanel)
 local PressQueuePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressQueuePanel)
+local PressUpgradePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressUpgradePanel)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
 local BaseStructures = require(ReplicatedStorage.ClientSource.UI.baseStructures)
@@ -213,14 +214,14 @@ end
 local function HUD()
 	local shownMoney = rollingMoney()
 
-	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | "press" | nil
+	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | "press" | "pressUpgrade" | nil
 	local openPanel = source(nil :: string?)
 	local function closePanel()
 		openPanel(nil)
 	end
 
 	--=== NPC-триггеры окон ===================================================
-	-- Окна magnets / upgrades / sell открываются не кнопками HUD, а ProximityPrompt'ами
+	-- Окна magnets / upgrades / sell / pressUpgrade открываются не кнопками HUD, а ProximityPrompt'ами
 	-- у NPC внутри построек базы мира (Buy / Upgrade / Sell в *BazeZone).
 	-- Маппинг построек и разбор промпта — в UI.baseStructures (работает для всех миров).
 	local promptConn = ProximityPromptService.PromptTriggered:Connect(function(prompt)
@@ -546,6 +547,9 @@ local function HUD()
 					OnRemove = function(oreId)
 						Knit.GetService("PressService"):RemoveOre(oreId):catch(warn)
 					end,
+				}),
+				pressUpgrade = PressUpgradePanel({
+					OnClose = closePanel,
 					-- Сервер сам считает цену и списывает Money (PressService:BuySpeedUpgrade);
 					-- Data.pressSpeedLevel и Data.money обновятся через UpdateSpecificData.
 					OnUpgradeSpeed = function()

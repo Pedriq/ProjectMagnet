@@ -1,19 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local vide = require(ReplicatedStorage.Packages.Vide)
 
-local EtNum = require(ReplicatedStorage.Packages.EtNum)
-
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
 local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
-local UpgradeCard = require(ReplicatedStorage.ClientSource.UI.components.UpgradeCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresConfig)
-local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
-local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 
 local create = vide.create
 local source = vide.source
@@ -38,14 +33,13 @@ local cleanup = vide.cleanup
 	CONFIRM_TIME — удаление (props.OnRemove -> PressService:RemoveOre).
 
 	Использование:
-	  PressQueuePanel({ OnClose = fn, OnRemove = fn(oreId), OnUpgradeSpeed = fn })
+	  PressQueuePanel({ OnClose = fn, OnRemove = fn(oreId) })
 	возвращает компонент-тезис () -> Instance (для vide.switch в HUD).
 ]]
 
 export type Props = {
 	OnClose: () -> (),
 	OnRemove: (oreId: string) -> (),
-	OnUpgradeSpeed: () -> (),
 }
 
 -- пресс = медь/ржавчина (UI.theme); удаление — опасность
@@ -308,52 +302,6 @@ local function OreRow(oreId: string, order: number, onRemove: (string) -> ())
 	})
 end
 
-local function formatSpeed(itemsPerSecond: number): string
-	-- 2 знака: ранние уровни дают ~+0.02 предм./сек, с одним знаком «0.5 → 0.5»
-	return string.format("%.2f/s", itemsPerSecond)
-end
-
--- Карточка прокачки скорости пресса — тот же UpgradeCard, что в окне Upgrades.
--- Цена — общая формула статов; уровень растёт и после CRAFT_MAX_EFFECTIVE_LEVEL,
--- но скорость там уже на потолке (см. PressConfig.GetCraftItemsPerSecond).
-local function SpeedUpgradeCard(onUpgrade: () -> ())
-	local cfg = StatUpgradesConfig.Stats.PressSpeed
-
-	local function level()
-		return Data.pressSpeedLevel()
-	end
-	local function cost()
-		return StatUpgradesConfig.CostFor("PressSpeed", level())
-	end
-	local function atMax()
-		return level() >= cfg.MaxLevel
-	end
-
-	return UpgradeCard({
-		LayoutOrder = -1,
-		Title = cfg.Title,
-		Icon = cfg.Icon,
-		Level = level,
-		-- «0.5/s → 0.5/s»: текущая скорость и после покупки. На потолке — просто 5.0/s.
-		Bonus = function()
-			local now = PressConfig.GetCraftItemsPerSecond(level())
-			local after = PressConfig.GetCraftItemsPerSecond(level() + 1)
-			if after <= now then
-				return formatSpeed(now) .. " items"
-			end
-			return formatSpeed(now) .. " → " .. formatSpeed(after)
-		end,
-		CostText = function()
-			return if atMax() then "MAX" else "$" .. Format.short(cost())
-		end,
-		HideRobux = true,
-		MoneyDisabled = function()
-			return atMax() or EtNum.me(cost(), Data.money())
-		end,
-		OnBuyMoney = onUpgrade,
-	})
-end
-
 local function PressQueuePanel(props: Props)
 	return function()
 		local rows = {}
@@ -401,8 +349,6 @@ local function PressQueuePanel(props: Props)
 					PaddingTop = UDim.new(0, 4),
 					PaddingBottom = UDim.new(0, 4),
 				}),
-
-				SpeedUpgradeCard(props.OnUpgradeSpeed),
 
 				-- подсказка, зачем удалять руду
 				create("TextLabel")({

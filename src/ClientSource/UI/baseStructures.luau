@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 		Buy      -> magnets   (магазин кастеров)
 		Upgrade  -> upgrades  (прокачка статов)
 		Sell     -> sell      (продажа лута)
+		PressUpgrade -> pressUpgrade (прокачка пресса)
 
 	Новая постройка на базе = одна строка в PANEL_BY_BUILDING + ветка в switch у HUD.
 ]]
@@ -23,6 +24,7 @@ BaseStructures.PANEL_BY_BUILDING = {
 	Buy = "magnets",
 	Upgrade = "upgrades",
 	Sell = "sell",
+	PressUpgrade = "pressUpgrade",
 	-- локальный якорь промпта «Press Queue» на Conveyor пресса (PressVisualizer)
 	PressQueue = "press",
 } :: { [string]: string }
