@@ -6,6 +6,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local RebirthConfig = require(ReplicatedStorage.SharedSource.Datas.RebirthConfig)
+local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilities.MarketplaceReceiptRouter)
 local RebirthHandler = {}
 
 ---- Utilities
@@ -24,12 +25,8 @@ function RebirthHandler:CanRebirth(player)
 	return tonumber(currentLevel) >= requiredLevel
 end
 
-function RebirthHandler:Rebirth(player)
-	if not self:CanRebirth(player) then
-		print("Player does not meet the requirements to rebirth.")
-		return
-	end
-
+-- Сам ребёрс без проверки уровня: общий для обычного (Rebirth) и платного (Skip).
+function RebirthHandler:ApplyRebirth(player)
 	local playerRebirths = PlayerManagerService:GetPlayerRebirths(player)
 
 	playerRebirths += 1
@@ -44,7 +41,39 @@ function RebirthHandler:Rebirth(player)
 	)
 end
 
-function RebirthHandler.Start() end
+function RebirthHandler:Rebirth(player)
+	if not self:CanRebirth(player) then
+		print("Player does not meet the requirements to rebirth.")
+		return
+	end
+
+	self:ApplyRebirth(player)
+end
+
+-- Skip Rebirth: промпт дев-продукта ступени, соответствующей числу реберсов игрока.
+function RebirthHandler:PromptSkip(player)
+	local step = RebirthConfig.SkipStepFor(PlayerManagerService:GetPlayerRebirths(player) or 0)
+	if step.ProductId == 0 then
+		warn("[Rebirth] ProductId для Skip Rebirth не задан в RebirthConfig")
+		return
+	end
+
+	MarketplaceService:PromptProductPurchase(player, step.ProductId)
+end
+
+function RebirthHandler.Start()
+	-- TODO: идемпотентность чеков (как у StatUpgradeHandler) — повторная обработка
+	-- чека после падения сервера выдала бы второй ребёрс.
+	-- Каждая ступень — свой дев-продукт, все дают один ребёрс без проверки уровня.
+	for _, step in ipairs(RebirthConfig.SkipSteps) do
+		if step.ProductId ~= 0 then
+			MarketplaceReceiptRouter.Register(step.ProductId, function(player)
+				RebirthHandler:ApplyRebirth(player)
+				return Enum.ProductPurchaseDecision.PurchaseGranted
+			end)
+		end
+	end
+end
 
 function RebirthHandler.Init()
 	PlayerManagerService = Knit.GetService("PlayerManagerService")

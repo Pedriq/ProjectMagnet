@@ -478,8 +478,10 @@ local function HUD()
 					OnRebirth = function()
 						Knit.GetService("PlayerManagerService"):Rebirth():catch(warn)
 					end,
+					-- Платный Skip: сервер выбирает ступень по числу реберсов (RebirthConfig.SkipStepFor),
+					-- ребёрс без проверки уровня выдаёт после покупки (RebirthHandler:ApplyRebirth).
 					OnSkip = function()
-						warn("[Rebirth] OnSkip: не реализовано")
+						Knit.GetService("PlayerManagerService"):PromptSkipRebirth():catch(warn)
 					end,
 				}),
 				upgrades = UpgradesPanel({

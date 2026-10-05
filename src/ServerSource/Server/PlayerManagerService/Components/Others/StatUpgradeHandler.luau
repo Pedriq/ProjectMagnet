@@ -7,13 +7,15 @@ local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgr
 local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilities.MarketplaceReceiptRouter)
 
 --[[
-	StatUpgradeHandler — прокачка статов (Range / Agility / Capacity / Mobility)
+	StatUpgradeHandler — прокачка статов (Range / Capacity / Mobility)
 	за Money и за донат. Конфиг цен/бонусов — StatUpgradesConfig.
 
 	За Money: сервер считает цену из StatUpgradesConfig.CostFor(statKey, level),
 	сверяет с деньгами игрока (EtNum), списывает и поднимает уровень.
 
-	За донат: PromptProductPurchase(RobuxProductId); выдача уровней — через
+	За донат: платных ступеней несколько (StatUpgradesConfig.RobuxStepFor): продукт и
+	цена зависят от ТЕКУЩЕГО уровня стата; PromptProductPurchase(ProductId ступени);
+	выдача уровней (step.Levels) — через
 	MarketplaceReceiptRouter (общий диспетчер ProcessReceipt на весь проект,
 	см. SharedSource.Utilities.MarketplaceReceiptRouter).
 ]]
@@ -77,25 +79,27 @@ function StatUpgradeHandler:PromptRobuxUpgrade(player, statKey: string)
 		return
 	end
 
-	if not cfg.RobuxProductId or cfg.RobuxProductId == 0 then
-		warn(`[StatUpgrade] RobuxProductId для "{statKey}" не задан в StatUpgradesConfig`)
+	local step = StatUpgradesConfig.RobuxStepFor(statKey, currentLevel(player, statKey))
+	if not step or step.ProductId == 0 then
+		warn(`[StatUpgrade] платный продукт для "{statKey}" не задан в StatUpgradesConfig`)
 		return
 	end
 
-	MarketplaceService:PromptProductPurchase(player, cfg.RobuxProductId)
+	MarketplaceService:PromptProductPurchase(player, step.ProductId)
 end
 
 function StatUpgradeHandler.Start()
 	-- TODO: идемпотентность чеков (кэш обработанных receipt'ов в профиле),
 	-- чтобы повторная обработка чека после падения сервера не выдала уровни дважды.
-	for statKey, cfg in pairs(StatUpgradesConfig.Stats) do
-		if cfg.RobuxProductId and cfg.RobuxProductId ~= 0 then
-			local levels = cfg.RobuxLevels or 1
-
-			MarketplaceReceiptRouter.Register(cfg.RobuxProductId, function(player)
-				StatUpgradeHandler:GrantLevels(player, statKey, levels)
-				return Enum.ProductPurchaseDecision.PurchaseGranted
-			end)
+	-- каждая ступень — свой дев-продукт; уровни выдаёт ступень, чей ProductId купили
+	for statKey in pairs(StatUpgradesConfig.Stats) do
+		for _, step in ipairs(StatUpgradesConfig.RobuxSteps(statKey)) do
+			if step.ProductId ~= 0 then
+				MarketplaceReceiptRouter.Register(step.ProductId, function(player)
+					StatUpgradeHandler:GrantLevels(player, statKey, step.Levels)
+					return Enum.ProductPurchaseDecision.PurchaseGranted
+				end)
+			end
 		end
 	end
 end

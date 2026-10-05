@@ -10,9 +10,9 @@ local story = {
 	vide = Vide,
 	story = function()
 		Data.money("50000")
-		-- Range/Agility — по карману; Capacity — дорого (кнопка Money гаснет);
+		-- Range — по карману; Capacity — дорого (кнопка Money гаснет);
 		-- Mobility на MaxLevel (100) -> кнопка Money = "MAX" и заблокирована.
-		Data.upgradeLevels({ Range = 32, Agility = 8, Capacity = 60, Mobility = 100 })
+		Data.upgradeLevels({ Range = 32, Capacity = 60, Mobility = 100 })
 
 		return create("Frame")({
 			Size = UDim2.fromOffset(660, 620),

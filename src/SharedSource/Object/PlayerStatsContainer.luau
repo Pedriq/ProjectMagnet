@@ -10,7 +10,7 @@ function PlayerStatsContainer.new()
 	local self = setmetatable({}, PlayerStatsContainer)
 
 	self.AttackRange = BaseStatsValues.AttackRange
-	-- Кулдаун атаки, сокращается прокачкой Agility (см. CalculateAttackCooldown).
+	-- Кулдаун атаки фиксированный (стат Agility временно убран).
 	self.AttackCooldown = BaseStatsValues.AttacksCooldawn
 	self.Capacity = BaseStatsValues.InvetoryCapacity
 	self.WalkSpeed = BaseStatsValues.WalkSpeed
@@ -31,15 +31,10 @@ function PlayerStatsContainer:UpdateMobility(level)
 	self.WalkSpeed = self:CalculateWalkSpeed(level)
 end
 
-function PlayerStatsContainer:UpdateAgility(level)
-	self.AttackCooldown = self:CalculateAttackCooldown(level)
-end
-
--- Не использует self — клиент зовёт как PlayerStatsContainer:CalculateAttackCooldown(level)
+-- Не использует self — клиент зовёт как PlayerStatsContainer:CalculateAttackCooldown()
 -- (подгонка скорости анимации удара, см. RockController).
-function PlayerStatsContainer:CalculateAttackCooldown(level)
-	local speed = 1 + (math.max(tonumber(level) or 1, 1) - 1) * BaseStatsValues.AgilitySpeedPerLevel
-	return math.max(BaseStatsValues.AttacksCooldawn / speed, BaseStatsValues.MinAttackCooldown)
+function PlayerStatsContainer:CalculateAttackCooldown()
+	return BaseStatsValues.AttacksCooldawn
 end
 
 function PlayerStatsContainer:CalculateAttackRadius(level)

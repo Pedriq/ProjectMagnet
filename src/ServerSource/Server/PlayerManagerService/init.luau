@@ -302,10 +302,6 @@ function PlayerManagerService:GetPlayerRange(player)
 	return ProfileService:GetData(player, { "Stats", "Range" })
 end
 
-function PlayerManagerService:GetPlayerAgility(player)
-	return ProfileService:GetData(player, { "Stats", "Agility" })
-end
-
 function PlayerManagerService:GetPlayerCapacity(player)
 	return ProfileService:GetData(player, { "Stats", "Capacity" })
 end
@@ -318,7 +314,6 @@ end
 -- который слушает PlayerStatsInitializer и пересчитывает PlayerStatsContainer.
 local STAT_LEVEL_ATTRIBUTE = {
 	Range = "RangeLevel",
-	Agility = "AgilityLevel",
 	Capacity = "CapacityLevel",
 	Mobility = "MobilityLevel",
 }
@@ -471,6 +466,15 @@ end
 -- Клиент просит ребёрс: сервер сам проверит уровень (RebirthHandler:CanRebirth).
 function PlayerManagerService.Client:Rebirth(player)
 	self.Server:RebirthPlayer(player)
+end
+
+function PlayerManagerService:PromptSkipRebirth(player)
+	self.Components.RebirthHandler:PromptSkip(player)
+end
+
+-- Клиент жмёт Skip: сервер сам выберет ступень по числу реберсов и покажет покупку.
+function PlayerManagerService.Client:PromptSkipRebirth(player)
+	self.Server:PromptSkipRebirth(player)
 end
 
 -- Телепорт игрока на респавн его мира (кнопка Base в HUD).

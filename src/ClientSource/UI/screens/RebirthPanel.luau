@@ -235,7 +235,10 @@ local function RebirthPanel(props: Props)
 				}),
 				WideButton({
 					LayoutOrder = 2,
-					Text = "Skip",
+					-- цена — ступень Skip по числу реберсов (RebirthConfig.SkipStepFor)
+					Text = function()
+						return `Skip R$ {RebirthConfig.SkipStepFor(Data.rebirths()).Price}`
+					end,
 					Size = UDim2.fromOffset(176, 58),
 					Color = Theme.ButtonGold,
 					TextColor = Theme.Text,

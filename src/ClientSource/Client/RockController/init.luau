@@ -52,10 +52,10 @@ function RockController:HitRock(model)
 	self.Components.VisualEffects:HitRock(model)
 	-- Анимация удара — на каждый РЕАЛЬНЫЙ автоудар сервера (HitRock фирится
 	-- только своему игроку и только когда атака физически попала по камню).
-	-- Кулдаун атаки зависит от Agility (та же формула, что на сервере —
+	-- Кулдаун атаки фиксированный (та же формула, что на сервере —
 	-- PlayerStatsContainer:CalculateAttackCooldown), анимация подгоняется под него.
 	self.Components.RockAttackAnimation:PlayAttack(
-		PlayerStatsContainer:CalculateAttackCooldown(player:GetAttribute("AgilityLevel"))
+		PlayerStatsContainer:CalculateAttackCooldown()
 	)
 	sfx.play("Hit", { jitter = 0.1 })
 end

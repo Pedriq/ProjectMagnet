@@ -17,7 +17,7 @@ local create = vide.create
 	  ┌─ Upgrades ───────────────────────────────── [X] ┐
 	  │  [icon] Range   Lv.32   +7.5% Atk. Radius  [$..] │
 	  │                                           [R$..] │  ← прокручиваемый список
-	  │  [icon] Agility Lv.31   +10% Atk. Speed    [$..] │
+	  │  [icon] Capacity Lv.31  +100 Capacity      [$..] │
 	  │  ...                                             │
 	  └─────────────────────────────────────────────────┘
 
@@ -65,7 +65,9 @@ local function UpgradesPanel(props: Props)
 				return if atMax() then "MAX" else "$" .. Format.short(cost())
 			end,
 			RobuxText = function()
-				return if cfg.RobuxPrice > 0 then `R$ {cfg.RobuxPrice}` else "R$ Buy"
+				-- цена зависит от ступени, соответствующей текущему уровню стата
+				local step = StatUpgradesConfig.RobuxStepFor(statKey, level())
+				return if step and step.Price > 0 then `R$ {step.Price}` else "R$ Buy"
 			end,
 
 			MoneyDisabled = function()

@@ -12,7 +12,6 @@ local ProfileTemplate = {
 
 	Stats = {
 		Range = 1,
-		Agility = 1,
 		Capacity = 1,
 		Mobility = 1,
 

@@ -22,15 +22,11 @@ function PlayerStatsInitializer:InitPlayerStats(player)
 
 	player:SetAttribute("RangeLevel", PlayerManagerService:GetPlayerRange(player))
 
-	player:SetAttribute("AgilityLevel", PlayerManagerService:GetPlayerAgility(player))
-
 	player:SetAttribute("CapacityLevel", PlayerManagerService:GetPlayerCapacity(player))
 
 	player:SetAttribute("MobilityLevel", PlayerManagerService:GetPlayerMobility(player))
 
 	stats:UpdateRange(player:GetAttribute("RangeLevel"))
-
-	stats:UpdateAgility(player:GetAttribute("AgilityLevel"))
 
 	stats:UpdateCapacity(player:GetAttribute("CapacityLevel"))
 
@@ -43,11 +39,6 @@ function PlayerStatsInitializer:InitPlayerStats(player)
 		PlayerManagerService:CreateMagnetHitbox(player)
 		-- пересоздаёт модель оружия с масштабом под новый уровень (RangeScale.Multiplier)
 		PlayerManagerService:GiveMagnet(player)
-	end)
-
-	-- кулдаун читается заново на каждом тике StartPlayerLoop — пересоздавать ничего не нужно
-	player:GetAttributeChangedSignal("AgilityLevel"):Connect(function()
-		stats:UpdateAgility(player:GetAttribute("AgilityLevel"))
 	end)
 
 	player:GetAttributeChangedSignal("CapacityLevel"):Connect(function()

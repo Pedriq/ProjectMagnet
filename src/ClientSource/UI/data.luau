@@ -28,7 +28,7 @@ Data.rebirths = source(0)
 Data.level = source(1)
 Data.carryCount = source(0) -- суммарный вес руды, которую игрок несёт (ещё не сохранена)
 Data.carryCapacity = source(1) -- вместимость переноски, в единицах веса
-Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прокачиваемых статов (Range/Agility/Capacity/Mobility)
+Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прокачиваемых статов (Range/Capacity/Mobility)
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.pressOres = source({}) -- руда в прессе (profile.Press.Ores): map[oreId] = вес — окно Press Queue
@@ -58,7 +58,7 @@ end
 
 local started = false
 
-local UPGRADE_STATS = { "Range", "Agility", "Capacity", "Mobility" }
+local UPGRADE_STATS = { "Range", "Capacity", "Mobility" }
 
 -- === полные множители (для ПРЕВЬЮ на клиенте — попап прироста силы при клике/
 -- ударе/автозоне, цены в панели Sell) === Сервер — источник правды (см.

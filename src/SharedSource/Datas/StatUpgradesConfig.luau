@@ -2,7 +2,7 @@
 	StatUpgradesConfig — конфиг панели Upgrades (прокачка статов за деньги / донат).
 	Единый источник для сервера (StatUpgradeHandler) и клиента (UpgradesPanel).
 
-	Стат = уровень в профиле Stats.<key> (Range / Agility / Capacity / Mobility),
+	Стат = уровень в профиле Stats.<key> (Range / Capacity / Mobility),
 	его читает PlayerStatsInitializer через атрибут "<key>Level" и пересчитывает
 	реальные значения в PlayerStatsContainer.
 
@@ -22,6 +22,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
+-- Ступень платной прокачки: действует, пока текущий уровень стата >= FromLevel
+-- (до FromLevel следующей ступени). Последняя ступень действует на все уровни выше —
+-- цена дальше не растёт.
+export type RobuxStep = {
+	FromLevel: number, -- с какого текущего уровня стата ступень действует
+	ProductId: number, -- дев-продукт ступени
+	Price: number, -- Robux — ТОЛЬКО для подписи на кнопке (цена продукта задаётся в Roblox)
+	Levels: number, -- сколько уровней даёт одна покупка этой ступени
+}
+
 export type StatConfig = {
 	Title: string,
 	Bonus: string, -- статичный текст бонуса за 1 уровень, напр. "+10% Atk. Speed"
@@ -34,12 +44,16 @@ export type StatConfig = {
 	RobuxProductId: number, -- id дев-продукта для «купить за донат» (0 = не заведён)
 	RobuxLevels: number, -- сколько уровней даёт одна покупка за донат
 	RobuxPrice: number, -- цена в Robux — ТОЛЬКО для подписи на кнопке (0 = "?")
+	-- Ступенчатая платная прокачка (см. RobuxStepFor). Если задана, RobuxProductId /
+	-- RobuxLevels / RobuxPrice выше игнорируются; если нет — они же работают как одна
+	-- ступень на все уровни.
+	RobuxSteps: { RobuxStep }?,
 }
 
 local StatUpgradesConfig = {}
 
 -- порядок карточек в панели
-StatUpgradesConfig.Order = { "Range", "Agility", "Capacity", "Mobility" }
+StatUpgradesConfig.Order = { "Range", "Capacity", "Mobility" }
 
 StatUpgradesConfig.Stats = {
 	Range = {
@@ -48,19 +62,18 @@ StatUpgradesConfig.Stats = {
 		Icon = "140721207149628",
 		BaseCost = "9000",
 		MaxLevel = 500,
-		RobuxProductId = 0,
-		RobuxLevels = 10,
+		RobuxProductId = 0, -- не используется: платные ступени — в RobuxSteps
+		RobuxLevels = 5,
 		RobuxPrice = 0,
-	},
-	Agility = {
-		Title = "Agility",
-		Bonus = "+10% Atk. Speed",
-		Icon = "98428961100824",
-		BaseCost = "22500",
-		MaxLevel = 500,
-		RobuxProductId = 0,
-		RobuxLevels = 10,
-		RobuxPrice = 0,
+		-- 4 ступени по 6 уровней (1-6, 7-12, 13-18, 19+), покупка даёт 5 уровней. Размер
+		-- хитбокса растёт до 21-го уровня (RangeScale: 2 шага по 10 уровней), так что путь
+		-- 1->6->11->16->21 (24, 24, 48, 96) выбирает весь реальный бонус; с 19-го — 189.
+		RobuxSteps = {
+			{ FromLevel = 1, ProductId = 3716677165, Price = 24, Levels = 5 }, -- Range 1
+			{ FromLevel = 7, ProductId = 3716677189, Price = 48, Levels = 5 }, -- Range 2
+			{ FromLevel = 13, ProductId = 3716677208, Price = 96, Levels = 5 }, -- Range 3
+			{ FromLevel = 19, ProductId = 3716677224, Price = 189, Levels = 5 }, -- Range 4 и дальше
+		},
 	},
 	Capacity = {
 		Title = "Capacity",
@@ -69,9 +82,18 @@ StatUpgradesConfig.Stats = {
 		BaseCost = "150",
 		Curve = "Bumps",
 		MaxLevel = 200,
-		RobuxProductId = 0,
+		RobuxProductId = 0, -- не используется: платные ступени — в RobuxSteps
 		RobuxLevels = 10,
 		RobuxPrice = 0,
+		-- 4 ступени по 12 уровней (1-12, 13-24, 25-36, 37+), покупка даёт 10 уровней (+1000
+		-- вместимости), так что ступень можно купить дважды подряд. Capacity нужна всю игру
+		-- (в симуляции баланса ~65 уровней к финалу), поэтому покупка крупнее, чем у Range.
+		RobuxSteps = {
+			{ FromLevel = 1, ProductId = 3716676962, Price = 24, Levels = 10 }, -- Capacity 1
+			{ FromLevel = 13, ProductId = 3716676980, Price = 48, Levels = 10 }, -- Capacity 2
+			{ FromLevel = 25, ProductId = 3716676998, Price = 96, Levels = 10 }, -- Capacity 3
+			{ FromLevel = 37, ProductId = 3716677024, Price = 189, Levels = 10 }, -- Capacity 4 и дальше
+		},
 	},
 	-- Скорость пресса (profile.Press.CraftSpeed). НЕ в Order — карточка живёт в окне
 	-- Press Queue, покупка — PressService:BuySpeedUpgrade. Здесь только цена по
@@ -93,11 +115,51 @@ StatUpgradesConfig.Stats = {
 		Icon = "107940225956071",
 		BaseCost = "15000",
 		MaxLevel = 100,
-		RobuxProductId = 0,
-		RobuxLevels = 10,
+		RobuxProductId = 0, -- не используется: платные ступени — в RobuxSteps
+		RobuxLevels = 5,
 		RobuxPrice = 0,
+		-- 4 ступени, каждая действует 6 уровней (1-6, 7-12, 13-18, 19+), покупка даёт 5 уровней,
+		-- так что ступень можно купить дважды подряд. Скорость бега растёт до
+		-- 20-го уровня (PlayerStatsContainer: WalkSpeed + min(level, 20)); путь 1->6->11->16->21
+		-- (24, 24, 48, 96) выбирает весь реальный бонус. С 19-го уровня и дальше — 189.
+		RobuxSteps = {
+			{ FromLevel = 1, ProductId = 3716674364, Price = 24, Levels = 5 }, -- Mobility 1
+			{ FromLevel = 7, ProductId = 3716674334, Price = 48, Levels = 5 }, -- Mobility 2
+			{ FromLevel = 13, ProductId = 3716674319, Price = 96, Levels = 5 }, -- Mobility 3
+			{ FromLevel = 19, ProductId = 3716674287, Price = 189, Levels = 5 }, -- Mobility 4 и дальше
+		},
 	},
 } :: { [string]: StatConfig }
+
+-- Ступени платной прокачки стата (RobuxSteps, а если их нет — одна ступень из
+-- RobuxProductId / RobuxLevels / RobuxPrice). Пусто, если продукт не заведён.
+function StatUpgradesConfig.RobuxSteps(statKey: string): { RobuxStep }
+	local cfg = StatUpgradesConfig.Stats[statKey]
+	if not cfg then
+		return {}
+	end
+	if cfg.RobuxSteps then
+		return cfg.RobuxSteps
+	end
+	if cfg.RobuxProductId ~= 0 then
+		return {
+			{ FromLevel = 1, ProductId = cfg.RobuxProductId, Price = cfg.RobuxPrice, Levels = cfg.RobuxLevels },
+		}
+	end
+	return {}
+end
+
+-- Ступень, которая действует при текущем уровне стата `level` (последняя с
+-- FromLevel <= level; выше последней — она же). nil — платной прокачки нет.
+function StatUpgradesConfig.RobuxStepFor(statKey: string, level: number): RobuxStep?
+	local current: RobuxStep? = nil
+	for _, step in ipairs(StatUpgradesConfig.RobuxSteps(statKey)) do
+		if step.FromLevel <= level then
+			current = step
+		end
+	end
+	return current or StatUpgradesConfig.RobuxSteps(statKey)[1]
+end
 
 -- через сколько уровней происходит рывок цены, и насколько сильно
 local TIER_SIZE = 10
