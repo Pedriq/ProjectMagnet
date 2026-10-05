@@ -273,7 +273,7 @@ local Magnets: { [string]: Magnet } = {
 		Display = "Wraithcoil",
 		Rare = "Secret",
 		Dynamic = { Multiplier = 2 }, -- +100% силы самого сильного меча
-		GamePassId = 1985637086,
+		GamePassId = 2006109604,
 		Icon = "",
 	},
 	WarringWingcoil = {
@@ -281,7 +281,7 @@ local Magnets: { [string]: Magnet } = {
 		Display = "Warring Wingcoil",
 		Rare = "Godly",
 		Dynamic = { Multiplier = 4 }, -- +300% силы самого сильного меча
-		GamePassId = 1982529455,
+		GamePassId = 2005443563,
 		Icon = "",
 	},
 
