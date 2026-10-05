@@ -4,7 +4,8 @@
 	Язык цвета (одинаковый во всём UI — игрок по цвету понимает смысл):
 	  Steel*    — поверхности: тёмный графит / оружейный металл (панели, карточки, треки);
 	  Electric* — МАГНИТ: сила (Magnetism), магазин магнитов, прокачки, основные действия;
-	  Copper*   — МЕТАЛЛОЛОМ И ПРЕСС: руда, инвентарь, очередь пресса, переработка;
+	  Copper*   — МЕТАЛЛОЛОМ: руда, инвентарь, индикаторы переноски;
+	  Teal*     — ГИДРАВЛИЧЕСКИЙ ПРЕСС: тайтлы окон Press Queue / Press Upgrade;
 	  Money*    — ДЕНЬГИ: суммы, цены за Money, продажа, сбор;
 	  Gold*     — ПРЕМИУМ: покупки за Robux, донат-множители;
 	  Rebirth*  — ребёрс (фиолетовый, «трансформация»);
@@ -38,7 +39,14 @@ Theme.ElectricDeep = Color3.fromRGB(22, 78, 150)
 Theme.Electric = Color3.fromRGB(46, 156, 255)
 Theme.ElectricBright = Color3.fromRGB(130, 210, 255)
 
----- металлолом / пресс: ржавчина и медь
+---- гидравлический пресс (рамка/тайтл окон Press Queue / Press Upgrade): холодная
+-- сине-зелёная «нержавеющая сталь» — чище и дороже ржавой меди, в тон магнитной
+-- технике (рядом с Electric, но зеленее, чтобы не путать с магазином магнитов)
+Theme.TealDeep = Color3.fromRGB(18, 98, 120)
+Theme.Teal = Color3.fromRGB(38, 186, 204)
+Theme.TealBright = Color3.fromRGB(128, 236, 242)
+
+---- металлолом: ржавчина и медь (руда, индикаторы руды)
 Theme.CopperDeep = Color3.fromRGB(112, 52, 22)
 Theme.Copper = Color3.fromRGB(206, 104, 44)
 Theme.CopperBright = Color3.fromRGB(246, 156, 86)
@@ -112,7 +120,7 @@ Theme.PanelStrokeThickness = 2.5
 Theme.PanelTitleTexture = "rbxassetid://119993804734501"
 Theme.PanelTitleTextureTransparency = 0.3 -- тайтл почти непрозрачного цвета: при 0.6 новая текстура терялась
 
--- Акцент заголовка панели по смыслу окна: "Electric" | "Copper" | "Money" | "Gold" | "Rebirth".
+-- Акцент заголовка панели по смыслу окна: "Electric" | "Copper" | "Teal" | "Money" | "Gold" | "Rebirth".
 -- Тёмный тон (Deep), чтобы заголовок был «окрашенной сталью», а не кислотным пятном.
 function Theme.titleColor(accent: string): Color3
 	return (Theme :: any)[accent .. "Deep"] or Theme.Steel600

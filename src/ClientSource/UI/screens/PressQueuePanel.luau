@@ -42,7 +42,7 @@ export type Props = {
 	OnRemove: (oreId: string) -> (),
 }
 
--- пресс = медь/ржавчина (UI.theme); удаление — опасность
+-- пресс = холодная «нержавеющая сталь» (UI.theme, Teal) — оба окна пресса одного цвета
 local ROW_COLOR = Theme.Steel700
 local TRACK_COLOR = Theme.Steel900
 local GOLD = Theme.CopperBright -- NEXT и «x3»
@@ -315,8 +315,8 @@ local function PressQueuePanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Press Queue",
-			TitleColor = Theme.titleColor("Copper"),
-			BodyColor = Theme.bodyColor("Copper"),
+			TitleColor = Theme.titleColor("Teal"),
+			BodyColor = Theme.bodyColor("Teal"),
 			BodyTransparency = Theme.PanelBodyTransparency,
 			StrokeColor = Theme.Outline,
 			TitleImage = Theme.PanelTitleTexture,

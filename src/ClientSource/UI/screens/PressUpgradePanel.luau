@@ -88,9 +88,9 @@ local function PressUpgradePanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Press Upgrade",
-			-- пресс = медь/ржавчина (UI.theme), как окно Press Queue
-			TitleColor = Theme.titleColor("Copper"),
-			BodyColor = Theme.bodyColor("Copper"),
+			-- пресс = холодная «нержавеющая сталь» (UI.theme, Teal) — оба окна пресса одного цвета
+			TitleColor = Theme.titleColor("Teal"),
+			BodyColor = Theme.bodyColor("Teal"),
 			BodyTransparency = Theme.PanelBodyTransparency,
 			StrokeColor = Theme.Outline,
 			TitleImage = Theme.PanelTitleTexture,
