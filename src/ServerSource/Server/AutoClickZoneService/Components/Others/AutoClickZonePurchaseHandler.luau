@@ -121,6 +121,12 @@ function AutoClickZonePurchaseHandler:IsOwned(player: Player, zoneId: string): b
 	return AutoClickZonePlayerData:IsOwned(player, zoneId)
 end
 
+-- Загрузилось ли владение игрока (профиль + Roblox). Пока нет — решений по зонам не
+-- принимаем (см. AutoClickZonePlayerData).
+function AutoClickZonePurchaseHandler:IsLoaded(player: Player): boolean
+	return AutoClickZonePlayerData:IsLoaded(player)
+end
+
 -- Единая точка запроса покупки для ОБОИХ путей (касание — AutoClickZoneHandler,
 -- магазин — PromptValidatedPurchase ниже): если зона уже куплена (по кэшу —
 -- быстро, без yield), окно покупки не открывается вообще.
@@ -132,11 +138,25 @@ function AutoClickZonePurchaseHandler:RequestPurchase(player: Player, zoneId: st
 		return
 	end
 
-	if RunService:IsStudio() then
-		print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} — открываю PromptGamePassPurchase`)
-	end
+	-- Живая перепроверка у Roblox (yield) перед окном — в отдельном потоке, чтобы не
+	-- тормозить тик Zone Manager. Кэш мог отстать (пасс куплен на другом сервере/вне игры).
+	task.spawn(function()
+		if AutoClickZonePlayerData:Refresh(player, zoneId, gamePassId) then
+			if RunService:IsStudio() then
+				print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} — владение подтвердилось вживую, окно НЕ открываю`)
+			end
+			return
+		end
+		if not player.Parent then
+			return
+		end
 
-	MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+		if RunService:IsStudio() then
+			print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} — открываю PromptGamePassPurchase`)
+		end
+
+		MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+	end)
 end
 
 -- Покупка С КЛИЕНТА (панель Shop): клиент присылает ТОЛЬКО ZoneId — сервер
@@ -175,6 +195,10 @@ end
 -- Каталог зон для панели Shop: по одной карточке на ZoneId, Title/Price — из
 -- самого Game Pass'а (GetProductInfo), а не хардкодятся в коде.
 function AutoClickZonePurchaseHandler:GetCatalog(player: Player): { any }
+	-- Purchased берётся из кэша владения — дождёмся его загрузки, иначе у уже купленных
+	-- зон будет Purchased = false в зависимости от скорости входа.
+	AutoClickZonePlayerData:WaitUntilLoaded(player, 10)
+
 	local root = zonesRoot()
 	if not root then
 		return {}

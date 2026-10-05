@@ -25,6 +25,11 @@ local ProfileTemplate = {
 
 	Items = {},
 
+	-- Купленные донатные автоклик-зоны: map[ZoneId] = true. Копия владения Game Pass'ом,
+	-- пишется при подтверждённой покупке (AutoClickZonePlayerData) — чтобы покупка
+	-- переживала перезапуск и в тест-режиме Studio, где Roblox владение не отдаёт.
+	AutoClickZones = {},
+
 	-- Сохранённая руда: map[oreId] = суммарный вес (oreId — Id из OreConfig).
 	-- Пополняется на базе из инвентаря переноски, см. PlayerOreInventory.
 	Ores = {},

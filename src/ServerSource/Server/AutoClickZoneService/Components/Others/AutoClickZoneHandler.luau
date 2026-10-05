@@ -189,31 +189,92 @@ function AutoClickZoneHandler:_Tick()
 	params.FilterDescendantsInstances = roots
 	params.MaxParts = #roots
 
-	local processed: { [Player]: boolean } = {}
+	-- Какие зоны сейчас пересекает каждый игрок. Раньше решала ПЕРВАЯ найденная зона
+	-- (порядок GetChildren), поэтому при перекрытии зон результат зависел от порядка
+	-- детей в конкретном запуске — теперь выбор детерминированный (см. _Resolve).
+	local overlapped: { [Player]: { Instance } } = {}
 
 	for _, zoneModel in ipairs(zones) do
 		local zonePart = getZonePart(zoneModel) :: BasePart
 
 		for _, hitPart in ipairs(workspace:GetPartsInPart(zonePart, params)) do
 			local player = rootToPlayer[hitPart]
+			if player then
+				overlapped[player] = overlapped[player] or {}
+				table.insert(overlapped[player], zoneModel)
+			end
+		end
+	end
 
-			if player and not processed[player] then
-				processed[player] = true
+	for _, player in ipairs(Players:GetPlayers()) do
+		local inZones = overlapped[player]
 
-				local ok, err = pcall(function()
-					if self:_HasAccess(player, zoneModel) then
-						self:_HandleGranted(player, zoneModel)
-					else
-						self:_HandleDenied(player, zoneModel)
-					end
-				end)
+		if not inZones then
+			-- вышел из всех зон: в следующий раз окно покупки снова можно показать
+			-- (раньше lastPromptedZone сбрасывался только при входе в доступную зону,
+			-- и повторный заход в ту же закрытую зону молчал)
+			lastPromptedZone[player.UserId] = nil
+			continue
+		end
 
-				if not ok then
-					warn("[AutoClickZoneHandler] ошибка обработки игрока:", err)
+		-- владение ещё грузится (профиль + Roblox) — зона может казаться «не купленной»
+		-- только из-за пустого кэша: ничего не решаем, ждём следующего тика
+		if not AutoClickZonePurchaseHandler:IsLoaded(player) then
+			continue
+		end
+
+		local ok, err = pcall(function()
+			local zoneModel, granted = self:_Resolve(player, inZones)
+			if granted then
+				self:_HandleGranted(player, zoneModel)
+			else
+				self:_HandleDenied(player, zoneModel)
+			end
+		end)
+
+		if not ok then
+			warn("[AutoClickZoneHandler] ошибка обработки игрока:", err)
+		end
+	end
+end
+
+-- Из зон, которые игрок пересекает, выбрать одну — детерминированно, не зависит от порядка
+-- детей в Workspace: доступные побеждают (самый большой multiplier), иначе — закрытая зона
+-- с наименьшим multiplier (её и предлагаем купить). Равные — по имени.
+function AutoClickZoneHandler:_Resolve(player: Player, inZones: { Instance }): (Instance, boolean)
+	local function key(zone: Instance): (number, string)
+		return tonumber(zone:GetAttribute("multiplier")) or 1, zone:GetFullName()
+	end
+
+	local bestGranted: Instance? = nil
+	local bestDenied: Instance? = nil
+	for _, zone in ipairs(inZones) do
+		local m, name = key(zone)
+		if self:_HasAccess(player, zone) then
+			if not bestGranted then
+				bestGranted = zone
+			else
+				local bm, bn = key(bestGranted)
+				if m > bm or (m == bm and name < bn) then
+					bestGranted = zone
+				end
+			end
+		else
+			if not bestDenied then
+				bestDenied = zone
+			else
+				local bm, bn = key(bestDenied)
+				if m < bm or (m == bm and name < bn) then
+					bestDenied = zone
 				end
 			end
 		end
 	end
+
+	if bestGranted then
+		return bestGranted, true
+	end
+	return bestDenied :: Instance, false
 end
 
 -- Разовая диагностика при старте сервера — чтобы сразу увидеть в Output,
