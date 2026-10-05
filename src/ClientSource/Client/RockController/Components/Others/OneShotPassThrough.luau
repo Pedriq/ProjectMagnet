@@ -4,6 +4,7 @@ local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local vide = require(ReplicatedStorage.Packages.Vide)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
+local DamageCurve = require(ReplicatedStorage.SharedSource.Datas.DamageCurve)
 
 --[[
 	OneShotPassThrough — камни, которые игрок ломает с одного удара, не мешают бежать.
@@ -15,7 +16,7 @@ local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 	магнита, без кулдауна атаки (PlayerMagnetHitboxManager:ApplyOneShots).
 	Камни, которым нужно несколько ударов, остаются твёрдыми — как раньше.
 
-	Урон — та же формула, что на сервере: max(1, round(Stats.Magnetism)).
+	Урон — та же формула, что на сервере: DamageCurve.fromMagnetism(Stats.Magnetism).
 	Клиентская сила отстаёт от серверной на пинг, т.е. урон тут не больше
 	серверного — проходимым никогда не станет камень, который сервер не сломает
 	одним ударом.
@@ -100,7 +101,7 @@ local function damageFrom(magnetism: any): number
 	local ok, value = pcall(function()
 		return EtNum.toNumber(EtNum.convert(magnetism))
 	end)
-	return math.max(1, math.floor((if ok then value else 0) + 0.5))
+	return DamageCurve.fromMagnetism(if ok then value else 0)
 end
 
 function evaluate(part: BasePart)

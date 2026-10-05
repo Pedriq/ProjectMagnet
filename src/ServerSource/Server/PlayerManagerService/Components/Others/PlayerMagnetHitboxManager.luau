@@ -10,6 +10,7 @@ local Signal = require(ReplicatedStorage.Packages.Signal)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
+local DamageCurve = require(ReplicatedStorage.SharedSource.Datas.DamageCurve)
 local PlayerMagnetHitboxManager = {}
 
 ---- Utilities
@@ -122,11 +123,11 @@ function PlayerMagnetHitboxManager:CollectTargets(player)
 end
 
 -- Урон по камню = общая накопленная сила игрока (Stats.Magnetism) ДО начисления
--- за взмах. Та же формула — у клиента (OneShotPassThrough): решает, какие камни
+-- за взмах, пропущенная через DamageCurve (урон растёт медленнее силы). Та же формула — у клиента (OneShotPassThrough): решает, какие камни
 -- для него «проходимы».
 local function currentDamage(player): number
 	local totalMagnetism = EtNum.convert(ClickerService:GetPlayerMagnetism(player))
-	return math.max(1, math.floor(EtNum.toNumber(totalMagnetism) + 0.5))
+	return DamageCurve.fromMagnetism(EtNum.toNumber(totalMagnetism))
 end
 
 -- Камни в хитбоксе, которые сейчас можно бить. nil — бить нечего/некуда класть.
