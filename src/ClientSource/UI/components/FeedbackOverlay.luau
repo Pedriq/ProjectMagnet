@@ -32,7 +32,8 @@ local untrack = vide.untrack
 	  * BAG FULL: пульсирующее предупреждение, пока инвентарь переноски полон
 	    (иначе игрок не понимает, почему магнит перестал бить камни).
 	  * Контекстные подсказки действий внизу по центру («You can buy a new
-	    magnet») — один раз, когда денег стало хватать (pushNotice).
+	    magnet» — когда денег хватает на самый дорогой доступный магнит; «Not enough
+	    rebirths» у закрытой зоны) — одно уведомление, новое заменяет текущее (pushNotice).
 	  * «+$X» при каждом приросте денег.
 	  * Вспышка экрана на LEVEL UP и Legendary+.
 ]]
@@ -60,11 +61,15 @@ local function isBagFull(): boolean
 	return Data.carryCapacity() - Data.carryCount() < MIN_PIECE_WEIGHT
 end
 
--- Следующий магнит по порядку магазина, которым игрок ещё не владеет и который
--- продаётся за Money.
-local function nextMagnetKey(): string?
+-- Самый дорогой из доступных сейчас магнитов: последний по порядку магазина, которым
+-- игрок ещё не владеет и который продаётся за Money. Подсказка «можно купить новый
+-- магнит» показывается, только когда денег хватает именно на него — а не по разу на
+-- каждый следующий магнит после каждой покупки.
+local function topMagnetKey(): string?
 	local owned = Data.ownedMagnets()
-	for _, key in ipairs(MagnetData.Order) do
+	local order = MagnetData.Order
+	for i = #order, 1, -1 do
+		local key = order[i]
 		local magnet = MagnetData[key]
 		if magnet and magnet.Price and not owned[key] then
 			return key
@@ -242,10 +247,12 @@ local function FeedbackOverlay()
 	end
 
 	--=== контекстные подсказки действий (внизу по центру) ===================
-	-- «You can buy a new magnet» и т.п.: не перебивают центральные баннеры,
-	-- а тихо выезжают снизу. Очередь по одной, одинаковые ключи не дублируются.
-	local NOTICE_HOLD = 3.5
-	local NOTICE_MAX_QUEUE = 3
+	-- «You can buy a new magnet», «Not enough rebirths» и т.п.: не перебивают центральные
+	-- баннеры, а тихо выезжают снизу. Показывается ОДНО уведомление: любое новое
+	-- сразу заменяет текущее и заново отсчитывает своё время показа (без очереди — иначе
+	-- при быстрой смене зон «Not enough rebirths» зависало и новое не появлялось).
+	local NOTICE_HOLD = 2.5 -- по умолчанию, секунд; у уведомления можно задать своё (hold)
+	local ZONE_NOTICE_HOLD = 1.6 -- «Not enough rebirths» и т.п.: коротко, чтобы не висело
 
 	local noticeHolder = Instance.new("Frame")
 	noticeHolder.Name = "ActionNotices"
@@ -257,15 +264,48 @@ local function FeedbackOverlay()
 	noticeHolder.ZIndex = 5
 	noticeHolder.Parent = root
 
-	type Notice = { key: string, title: string, subtitle: string?, color: Color3 }
-	local noticeQueue: { Notice } = {}
+	type Notice = { key: string, title: string, subtitle: string?, color: Color3, hold: number? }
 	local currentNotice: Notice? = nil
+	local currentPill: Frame? = nil
+	local noticeToken = 0 -- меняется на каждое новое уведомление; старые таймеры сверяют его и молчат
 
-	local function showNextNotice()
-		local notice = table.remove(noticeQueue, 1)
+	local function showNotice(notice: Notice)
+		-- то же уведомление (тот же ключ и текст) уже на экране — просто продлеваем показ,
+		-- без повторной анимации выезда
+		local sameAsCurrent = currentPill ~= nil
+			and currentNotice ~= nil
+			and currentNotice.key == notice.key
+			and currentNotice.title == notice.title
+			and currentNotice.subtitle == notice.subtitle
+
+		noticeToken += 1
+		local token = noticeToken
 		currentNotice = notice
-		if not notice then
+
+		if sameAsCurrent then
+			task.delay(notice.hold or NOTICE_HOLD, function()
+				if token ~= noticeToken then
+					return
+				end
+				local pill = currentPill
+				currentPill = nil
+				currentNotice = nil
+				if not pill then
+					return
+				end
+				local out = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+				TweenService:Create(pill, out, { Position = UDim2.new(0.5, 0, 1, 70) }):Play()
+				task.delay(0.27, function()
+					pill:Destroy()
+				end)
+			end)
 			return
+		end
+
+		-- другое уведомление: прежнее убираем сразу
+		if currentPill then
+			currentPill:Destroy()
+			currentPill = nil
 		end
 
 		local pill = Instance.new("Frame")
@@ -277,6 +317,7 @@ local function FeedbackOverlay()
 		pill.BackgroundTransparency = Theme.PanelBodyTransparency
 		pill.BorderSizePixel = 0
 		pill.Parent = noticeHolder
+		currentPill = pill
 
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 12)
@@ -325,33 +366,22 @@ local function FeedbackOverlay()
 			Position = UDim2.new(0.5, 0, 1, -4),
 		}):Play()
 
-		task.delay(NOTICE_HOLD, function()
+		task.delay(notice.hold or NOTICE_HOLD, function()
+			if token ~= noticeToken then
+				return -- уже заменено другим уведомлением (его pill старый показ уже убрал)
+			end
+			currentPill = nil
+			currentNotice = nil
 			local out = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 			TweenService:Create(pill, out, { Position = UDim2.new(0.5, 0, 1, 70) }):Play()
 			task.delay(0.27, function()
 				pill:Destroy()
-				showNextNotice()
 			end)
 		end)
 	end
 
 	local function pushNotice(notice: Notice)
-		if currentNotice and currentNotice.key == notice.key then
-			return
-		end
-		for i, queued in ipairs(noticeQueue) do
-			if queued.key == notice.key then
-				noticeQueue[i] = notice -- свежий текст вместо устаревшего
-				return
-			end
-		end
-		table.insert(noticeQueue, notice)
-		while #noticeQueue > NOTICE_MAX_QUEUE do
-			table.remove(noticeQueue, 1)
-		end
-		if not currentNotice then
-			showNextNotice()
-		end
+		showNotice(notice)
 	end
 
 	--=== «+$X» у денег =======================================================
@@ -570,8 +600,8 @@ local function FeedbackOverlay()
 			end
 			prevMoney = money
 
-			-- «хватает на следующий магнит» — один раз на переход
-			local key = nextMagnetKey()
+			-- «хватает на самый дорогой доступный магнит» — один раз на переход
+			local key = topMagnetKey()
 			local magnet = key and MagnetData[key]
 			local goalReady = magnet ~= nil and EtNum.meeq(money, magnet.Price)
 			if goalReady and not wasGoalReady then
@@ -580,6 +610,7 @@ local function FeedbackOverlay()
 					key = "magnet",
 					title = "You can buy a new magnet!",
 					subtitle = (magnet.Display or magnet.Name) .. " — visit the magnet shop",
+					hold = 3.5,
 					color = Theme.Electric, -- магнит
 				})
 			end
@@ -610,8 +641,8 @@ local function FeedbackOverlay()
 	)
 
 	--=== авто-зона: нет доступа («Not enough rebirths», «Not Enough Yet»…) ===
-	-- Сервер сам дебаунсит (AutoClickZoneHandler.MESSAGE_DEBOUNCE), а pushNotice
-	-- не дублирует уже показанный ключ.
+	-- Сервер дебаунсит только одинаковые сообщения (AutoClickZoneHandler.MESSAGE_DEBOUNCE);
+	-- каждое новое уведомление заменяет текущее и сбрасывает таймер. Показ короткий.
 	table.insert(
 		connections,
 		AutoClickZoneService.ShowMessage:Connect(function(text: string, subtitle: string?)
@@ -620,6 +651,7 @@ local function FeedbackOverlay()
 				title = text,
 				subtitle = subtitle,
 				color = RED,
+				hold = ZONE_NOTICE_HOLD,
 			})
 		end)
 	)

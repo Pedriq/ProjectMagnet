@@ -27,7 +27,7 @@ local AutoClickZoneHandler = {}
 
 ---- Datas
 local TICK_INTERVAL = 0.5
-local MESSAGE_DEBOUNCE = 3 -- как часто можно повторно показывать "Not Enough Yet" одному игроку
+local MESSAGE_DEBOUNCE = 3 -- как часто можно повторять ОДНО И ТО ЖЕ сообщение одному игроку (другое — сразу)
 local ZONE_MESSAGE_TEXT = "Not Enough Yet"
 local REBIRTH_MESSAGE_TEXT = "Not enough rebirths"
 
@@ -37,7 +37,7 @@ local ClickerService
 local AutoClickZoneService
 
 ---- State
-local lastMessageAt: { [number]: number } = {} -- [userId] = os.clock()
+local lastMessage: { [number]: { key: string, at: number } } = {} -- [userId] = последнее показанное сообщение
 local lastPromptedZone: { [number]: string } = {} -- [userId] = GetFullName() донат-зоны, уже предложенной за этот заход
 
 ---- Assets
@@ -89,13 +89,16 @@ end
 
 function AutoClickZoneHandler:_ShowDeniedMessage(player: Player, text: string, subtitle: string?)
 	local now = os.clock()
-	local last = lastMessageAt[player.UserId]
+	local last = lastMessage[player.UserId]
+	-- Дебаунс только для ТОЧНО такого же сообщения: другая зона (другой текст/подзаголовок)
+	-- показывается сразу и заменяет прежнее уведомление на клиенте (FeedbackOverlay).
+	local key = text .. "|" .. (subtitle or "")
 
-	if last and now - last < MESSAGE_DEBOUNCE then
+	if last and last.key == key and now - last.at < MESSAGE_DEBOUNCE then
 		return
 	end
 
-	lastMessageAt[player.UserId] = now
+	lastMessage[player.UserId] = { key = key, at = now }
 	AutoClickZoneService.Client.ShowMessage:Fire(player, text, subtitle)
 end
 
@@ -265,7 +268,7 @@ function AutoClickZoneHandler.Init()
 	AutoClickZoneService = Knit.GetService("AutoClickZoneService")
 
 	Players.PlayerRemoving:Connect(function(player)
-		lastMessageAt[player.UserId] = nil
+		lastMessage[player.UserId] = nil
 		lastPromptedZone[player.UserId] = nil
 	end)
 end
