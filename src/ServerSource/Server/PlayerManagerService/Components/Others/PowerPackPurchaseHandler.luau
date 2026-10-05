@@ -13,19 +13,27 @@ local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilitie
 	PermanentMultiplierPurchaseHandler).
 
 	В отличие от PermanentMultiplierPurchaseHandler — тут нет ступеней/owned:
-	каждая покупка просто добавляет PowerPackConfig.Packs[i].MagnetismGrant к
-	текущей силе, БЕЗ множителей (rebirth/бафф/донат) — так попросил заказчик.
+	каждая покупка просто добавляет к текущей силе PowerPackConfig.GrantFor(пак, мир
+	игрока), БЕЗ множителей (rebirth/бафф/донат) — так попросил заказчик. Мир
+	фиксируется в момент промпта, чтобы начислилось ровно то, что было на кнопке.
 ]]
 local PowerPackPurchaseHandler = {}
 
 ---- Knit Services
 local ClickerService
+local PlayerManagerService
+
+-- [userId] = { [productId] = world } — мир, который игрок видел на кнопке при промпте.
+local promptedWorld = {}
 
 function PowerPackPurchaseHandler:PromptPurchase(player: Player, productId: number)
 	if not PowerPackConfig.ByProductId(productId) then
 		warn(`[PowerPackPurchase] неизвестный productId: {productId}`)
 		return
 	end
+
+	promptedWorld[player.UserId] = promptedWorld[player.UserId] or {}
+	promptedWorld[player.UserId][productId] = PlayerManagerService:GetPlayerWorld(player)
 
 	MarketplaceService:PromptProductPurchase(player, productId)
 end
@@ -34,8 +42,16 @@ end
 -- что ClickHandler:Click (продублирована намеренно: тут нет ни оружия, ни
 -- множителя, только прибавление готовой суммы MagnetismGrant).
 function PowerPackPurchaseHandler:Grant(player: Player, pack: PowerPackConfig.Pack)
+	-- мир с момента промпта; нет записи (чек обработан после перезахода) — текущий мир
+	local prompted = promptedWorld[player.UserId]
+	local world = prompted and prompted[pack.ProductId] or PlayerManagerService:GetPlayerWorld(player)
+	if prompted then
+		prompted[pack.ProductId] = nil
+	end
+	local grant = PowerPackConfig.GrantFor(pack, world)
+
 	local magnetism = ClickerService:GetPlayerMagnetism(player) or "0"
-	local newMagnetism = EtNum.add(magnetism, pack.MagnetismGrant)
+	local newMagnetism = EtNum.add(magnetism, grant)
 
 	local currentLevel = ClickerService:GetPlayerLevel(player)
 	local leveledUp = false
@@ -61,6 +77,11 @@ end
 
 function PowerPackPurchaseHandler.Init()
 	ClickerService = Knit.GetService("ClickerService")
+	PlayerManagerService = Knit.GetService("PlayerManagerService")
+
+	game:GetService("Players").PlayerRemoving:Connect(function(player)
+		promptedWorld[player.UserId] = nil
+	end)
 end
 
 return PowerPackPurchaseHandler

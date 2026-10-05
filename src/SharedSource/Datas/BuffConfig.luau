@@ -4,9 +4,10 @@
 	(ShopPanel/BoostCard, ActiveBuffsBar).
 
 	Type — какой множитель баффает: "Magnetism" (сила за клин) или "Money"
-	(деньги за продажу). Bonus — НА СКОЛЬКО добавляется к множителю на время
-	баффа (складывается с множителем за ребёрс, см. RebirthConfig): x2 -> +1,
-	т.к. итоговый множитель = rebirthMultiplier + Bonus.
+	(деньги за продажу). Bonus = Multiplier - 1 (x2 -> 1) — так хранится в профиле.
+	В расчёте участвует ТОЧНОЕ значение баффа (Bonus + 1 = x2): итоговый множитель =
+	ребёрс (x2) + бафф (x2) + постоянный донат (x2) = x6, см.
+	PlayerManagerService:GetPlayerMagnetismMultiplier.
 ]]
 
 export type BuffEntry = {

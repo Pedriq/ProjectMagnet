@@ -20,12 +20,11 @@ function PermanentMultiplierHandler:GetOwnedMultiplier(player: Player, buffType:
 	return tonumber(ProfileService:GetData(player, { "PermanentMultipliers", buffType })) or 0
 end
 
--- Бонус к итоговому множителю от текущей купленной ступени (0, если ничего не
--- куплено) — складывается с rebirth-множителем и бонусом временного баффа в
+-- Точное значение множителя текущей купленной ступени (x2 -> 2; 0, если ничего не
+-- куплено) — слагаемое суммы множителей в
 -- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier.
-function PermanentMultiplierHandler:GetBonus(player: Player, buffType: string): number
-	local owned = self:GetOwnedMultiplier(player, buffType)
-	return owned > 0 and (owned - 1) or 0
+function PermanentMultiplierHandler:GetMultiplier(player: Player, buffType: string): number
+	return self:GetOwnedMultiplier(player, buffType)
 end
 
 -- Выдать ступень. ЗАМЕНЯЕТ текущую купленную (не складывается). tier.Multiplier

@@ -209,28 +209,28 @@ function PlayerManagerService:ChangePlayerMagnetism(player, magnetism)
 	ProfileService:ChangeData(player, { "Stats", "Magnetism" }, magnetism)
 end
 
--- Множитель денег за ребёрс + бонус активного временного баффа + бонус
--- постоянного донат-множителя (все складываются, см. BuffHandler:GetBonus /
--- BuffConfig, PermanentMultiplierHandler:GetBonus / PermanentMultiplierConfig).
+-- Итоговый множитель денег = ТОЧНЫЕ значения множителей, сложенные вместе:
+-- ребёрс (x2 за 2 ребёрса) + активный временный бафф (x2) + постоянный донат (x2) = x6.
+-- Нет баффа/покупки — слагаемое 0. Дальше база умножается на эту сумму один раз
+-- (см. BuffHandler:GetMultiplier, PermanentMultiplierHandler:GetMultiplier).
 function PlayerManagerService:GetPlayerCashMultiplier(player)
 	local base = tonumber(ProfileService:GetData(player, { "Multipliers", "Cash" })) or 1
 	return base
-		+ self.Components.BuffHandler:GetBonus(player, "Money")
-		+ self.Components.PermanentMultiplierHandler:GetBonus(player, "Money")
+		+ self.Components.BuffHandler:GetMultiplier(player, "Money")
+		+ self.Components.PermanentMultiplierHandler:GetMultiplier(player, "Money")
 end
 
 function PlayerManagerService:ChangePlayerCashMultiplier(player, multiplier)
 	ProfileService:ChangeData(player, { "Multipliers", "Cash" }, multiplier)
 end
 
--- Множитель силы за ребёрс + бонус активного временного баффа + бонус
--- постоянного донат-множителя (все складываются, см. BuffHandler:GetBonus /
--- BuffConfig, PermanentMultiplierHandler:GetBonus / PermanentMultiplierConfig).
+-- Итоговый множитель силы — по тому же правилу, что и деньги (см. выше):
+-- ребёрс + временный бафф + постоянный донат, точные значения складываются.
 function PlayerManagerService:GetPlayerMagnetismMultiplier(player)
 	local base = tonumber(ProfileService:GetData(player, { "Multipliers", "Magnetism" })) or 1
 	return base
-		+ self.Components.BuffHandler:GetBonus(player, "Magnetism")
-		+ self.Components.PermanentMultiplierHandler:GetBonus(player, "Magnetism")
+		+ self.Components.BuffHandler:GetMultiplier(player, "Magnetism")
+		+ self.Components.PermanentMultiplierHandler:GetMultiplier(player, "Magnetism")
 end
 
 function PlayerManagerService:ChangePlayerMagnetismMultiplier(player, multiplier)
@@ -276,6 +276,20 @@ end
 
 function PlayerManagerService.Client:PromptSellBoostPurchase(player)
 	self.Server:PromptSellBoostPurchase(player)
+end
+
+-- Самый дальний открытый мир игрока (1 по умолчанию). Масштабирует Magnetism-паки
+-- (PowerPackConfig.GrantFor).
+function PlayerManagerService:GetPlayerWorld(player)
+	return tonumber(ProfileService:GetData(player, { "Stats", "World" })) or 1
+end
+
+-- Открыть мир `world`: уровень мира только растёт (повторный/меньший — игнорируется).
+-- Вызывать из кода, который пускает игрока в новый мир.
+function PlayerManagerService:UnlockWorld(player, world)
+	if world > self:GetPlayerWorld(player) then
+		ProfileService:ChangeData(player, { "Stats", "World" }, world)
+	end
 end
 
 function PlayerManagerService:GetPlayerRebirths(player)

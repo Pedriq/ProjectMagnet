@@ -27,7 +27,7 @@ local asset = Format.asset
 
 export type Props = {
 	Icon: string, -- rbxassetid картинки-кнопки
-	Text: string, -- подпись под картинкой, напр. "+100k"
+	Text: string | (() -> string), -- подпись под картинкой, напр. "+100K" (функция — реактивно)
 	Price: number, -- цена в Robux для бейджа
 
 	HeightScale: number?, -- доля высоты родителя под весь слот (иконка + подпись), по умолч. 0.3267 (3 слота + 2 паддинга по 0.01 = вся высота PowerColumn)

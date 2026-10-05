@@ -18,6 +18,7 @@ local ProfileTemplate = {
 		Level = 1,
 		Magnetism = "0",
 		Rebirth = 0,
+		World = 1, -- самый дальний открытый мир (от него зависит размер Magnetism-паков, см. PowerPackConfig)
 
 		Money = "140",
 	},

@@ -6,14 +6,14 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 	BuffHandler — временные баффы к множителям (Magnetism / Money), см. BuffConfig.
 
 	Кэшируется в памяти (PlayerManagerService.PlayerBuffs[userId][buffType]) для
-	быстрого чтения в GetBonus, но ИСТОЧНИК ПРАВДЫ — profile.Buffs (ProfileService):
+	быстрого чтения в GetMultiplier, но ИСТОЧНИК ПРАВДЫ — profile.Buffs (ProfileService):
 	туда пишется абсолютное время истечения (os.time()), так что бафф переживает
 	выход/вход и рестарт сервера — см. Grant/RestorePlayer.
 
 	Повторная покупка/выдача того же типа баффа ПРОДЛЕВАЕТ время (складывается
 	с уже оставшимся), а не перезапускает таймер — см. Grant.
 
-	Клиенту (и внутри GetBonus) время отдаётся как workspace:GetServerTimeNow()
+	Клиенту (и внутри GetMultiplier) время отдаётся как workspace:GetServerTimeNow()
 	момент истечения (синхронизировано клиент/сервер, не зависит от системных
 	часов игрока; тот же приём, что в TreasureBillboard) — RestorePlayer
 	пересчитывает сохранённый os.time() в текущий workspace-момент при входе.
@@ -97,9 +97,10 @@ function BuffHandler:GetActiveBuffs(player: Player): { [string]: { ExpiresAt: nu
 	return active
 end
 
--- Текущий бонус к множителю этого типа (0, если баффа нет/истёк) — складывается
--- с базовым множителем за ребёрс в GetPlayer{Magnetism,Cash}Multiplier.
-function BuffHandler:GetBonus(player: Player, buffType: string): number
+-- Точное значение множителя баффа этого типа (x2 -> 2; 0, если баффа нет/истёк) —
+-- слагаемое суммы множителей в GetPlayer{Magnetism,Cash}Multiplier. В профиле/конфиге
+-- хранится Bonus = Multiplier - 1 (x2 -> 1), поэтому тут +1.
+function BuffHandler:GetMultiplier(player: Player, buffType: string): number
 	local buffs = PlayerManagerService.PlayerBuffs[player.UserId]
 	local buff = buffs and buffs[buffType]
 	if not buff then
@@ -110,7 +111,7 @@ function BuffHandler:GetBonus(player: Player, buffType: string): number
 		return 0
 	end
 
-	return buff.Bonus
+	return buff.Bonus + 1
 end
 
 function BuffHandler.Start() end

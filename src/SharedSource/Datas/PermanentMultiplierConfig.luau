@@ -7,11 +7,10 @@
 	предыдущую (см. PermanentMultiplierHandler:Grant) — купил x8, x2 и x4 уже
 	не нужны, x8 полностью их перекрывает.
 
-	Bonus — на сколько текущая ступень добавляет к итоговому множителю
-	(складывается с rebirth-множителем и бонусом временного баффа, см.
-	PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier):
-	x2 -> +1, т.к. итоговый множитель = rebirthMultiplier + tempBuffBonus + Bonus
-	(тот же принцип, что у BuffConfig.Bonus).
+	Итоговый множитель = сумма ТОЧНЫХ значений: rebirth (x2) + временный бафф (x2) +
+	постоянный Multiplier (x2) = x6, см.
+	PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier.
+	Bonus (= Multiplier - 1) в расчёте больше не участвует, оставлен для справки.
 
 	Единый источник для сервера (PermanentMultiplierHandler/PurchaseHandler) и
 	клиента (BuffBuyButton через Data.permanentMultipliers).
@@ -28,19 +27,19 @@ local PermanentMultiplierConfig = {}
 
 PermanentMultiplierConfig.Tiers = {
 	Magnetism = {
-		{ Multiplier = 2, Bonus = 1, Price = 2, ProductId = 3713994531 },
-		{ Multiplier = 4, Bonus = 3, Price = 8, ProductId = 3713994566 },
-		{ Multiplier = 8, Bonus = 7, Price = 29, ProductId = 3713994603 },
-		{ Multiplier = 16, Bonus = 15, Price = 59, ProductId = 3713994614 },
-		{ Multiplier = 32, Bonus = 31, Price = 139, ProductId = 3713994644 },
-		{ Multiplier = 64, Bonus = 63, Price = 299, ProductId = 3713994681 },
+		{ Multiplier = 2, Bonus = 1, Price = 2, ProductId = 3716681110 },
+		{ Multiplier = 4, Bonus = 3, Price = 8, ProductId = 3716681188 },
+		{ Multiplier = 8, Bonus = 7, Price = 29, ProductId = 3716681249 },
+		{ Multiplier = 16, Bonus = 15, Price = 59, ProductId = 3716681307 },
+		{ Multiplier = 32, Bonus = 31, Price = 139, ProductId = 3716681334 },
+		{ Multiplier = 64, Bonus = 63, Price = 299, ProductId = 3716681381 },
 	},
 	Money = {
-		{ Multiplier = 2, Bonus = 1, Price = 89, ProductId = 3713994738 },
-		{ Multiplier = 4, Bonus = 3, Price = 249, ProductId = 3713994754 },
-		{ Multiplier = 8, Bonus = 7, Price = 599, ProductId = 3713994785 },
-		{ Multiplier = 16, Bonus = 15, Price = 1299, ProductId = 3713994815 },
-		{ Multiplier = 32, Bonus = 31, Price = 2799, ProductId = 3713994843 },
+		{ Multiplier = 2, Bonus = 1, Price = 89, ProductId = 3716681688 },
+		{ Multiplier = 4, Bonus = 3, Price = 249, ProductId = 3716681728 },
+		{ Multiplier = 8, Bonus = 7, Price = 599, ProductId = 3716681794 },
+		{ Multiplier = 16, Bonus = 15, Price = 1299, ProductId = 3716681855 },
+		{ Multiplier = 32, Bonus = 31, Price = 2799, ProductId = 3716681881 },
 	},
 } :: { [string]: { Tier } }
 

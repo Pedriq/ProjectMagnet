@@ -32,6 +32,7 @@ Data.upgradeLevels = source({}) -- map[statKey] = number: уровни прок�
 Data.items = source({}) -- сохранённые предметы (склад): map[id] = itemData
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.pressOres = source({}) -- руда в прессе (profile.Press.Ores): map[oreId] = вес — окно Press Queue
+Data.world = source(1) -- самый дальний открытый мир (profile.Stats.World): размер Magnetism-паков, см. PowerPackConfig
 Data.pressSpeedLevel = source(1) -- уровень скорости пресса (profile.Press.CraftSpeed), см. PressConfig
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
 Data.magnet = source({ Name = "FridgeMagnet", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
@@ -63,10 +64,10 @@ local UPGRADE_STATS = { "Range", "Capacity", "Mobility" }
 -- === полные множители (для ПРЕВЬЮ на клиенте — попап прироста силы при клике/
 -- ударе/автозоне, цены в панели Sell) === Сервер — источник правды (см.
 -- PlayerManagerService:GetPlayerCashMultiplier/GetPlayerMagnetismMultiplier),
--- тут та же формула: base (ребёрс) + бонус активного временного баффа + бонус
--- постоянного донат-множителя. Раньше превью считало только ребёрс-множитель,
--- игнорируя баффы и донат-множитель — показывало заниженное число.
-local function activeBuffBonus(buffType: string): number
+-- тут то же правило: ТОЧНЫЕ значения множителей складываются — ребёрс (x2) +
+-- активный временный бафф (x2) + постоянный донат (x2) = x6; нет баффа/покупки —
+-- слагаемое 0.
+local function activeBuffMultiplier(buffType: string): number
 	local buff = Data.buffs()[buffType]
 	if not buff then
 		return 0
@@ -74,26 +75,25 @@ local function activeBuffBonus(buffType: string): number
 	if buff.ExpiresAt <= Workspace:GetServerTimeNow() then
 		return 0
 	end
-	return buff.Bonus or 0
+	return (buff.Bonus or 0) + 1 -- хранится Bonus = Multiplier - 1
 end
 
-local function permanentBonus(buffType: string): number
-	local owned = Data.permanentMultipliers()[buffType] or 0
-	return owned > 0 and (owned - 1) or 0
+local function permanentMultiplier(buffType: string): number
+	return Data.permanentMultipliers()[buffType] or 0
 end
 
 -- Множитель силы за клик/удар/автозону: тот же rebirth-множитель, что считает
 -- RebirthHandler (1 + rebirths * MagnetismMultiplierPerRebirth), + баффы.
 function Data.fullMagnetismMultiplier(): number
 	local base = 1 + Data.rebirths() * RebirthConfig.MagnetismMultiplierPerRebirth
-	return base + activeBuffBonus("Magnetism") + permanentBonus("Magnetism")
+	return base + activeBuffMultiplier("Magnetism") + permanentMultiplier("Magnetism")
 end
 
 -- Множитель денег: base читаем из профиля напрямую (Multipliers.Cash, его
 -- меняет только RebirthHandler), + баффы.
 function Data.fullCashMultiplier(): number
 	local base = tonumber(Data.cashMultiplier()) or 1
-	return base + activeBuffBonus("Money") + permanentBonus("Money")
+	return base + activeBuffMultiplier("Money") + permanentMultiplier("Money")
 end
 
 local function applyStats(stats: { [string]: any })
@@ -105,6 +105,9 @@ local function applyStats(stats: { [string]: any })
 	end
 	if stats.Rebirth ~= nil then
 		Data.rebirths(stats.Rebirth)
+	end
+	if stats.World ~= nil then
+		Data.world(tonumber(stats.World) or 1)
 	end
 	if stats.Level ~= nil then
 		Data.level(stats.Level)

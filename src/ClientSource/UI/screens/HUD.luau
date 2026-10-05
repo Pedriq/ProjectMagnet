@@ -150,6 +150,7 @@ local function onPermanentTierActivated(buffType: string)
 end
 
 -- === разовая покупка силы (PowerBuyButton) — без ступеней/владения, см. PowerPackConfig ===
+-- Сумма и подпись зависят от мира игрока (Data.world -> PowerPackConfig.LabelFor).
 local function onPowerPackActivated(index: number)
 	local pack = PowerPackConfig.Packs[index]
 	if not pack then
@@ -656,7 +657,9 @@ local function HUD()
 				PowerBuyButton({
 					LayoutOrder = 1,
 					Icon = "82923936325309",
-					Text = PowerPackConfig.Packs[1].Label,
+					Text = function()
+						return PowerPackConfig.LabelFor(PowerPackConfig.Packs[1], Data.world())
+					end,
 					Price = PowerPackConfig.Packs[1].Price,
 					OnActivated = function()
 						onPowerPackActivated(1)
@@ -665,7 +668,9 @@ local function HUD()
 				PowerBuyButton({
 					LayoutOrder = 2,
 					Icon = "82923936325309",
-					Text = PowerPackConfig.Packs[2].Label,
+					Text = function()
+						return PowerPackConfig.LabelFor(PowerPackConfig.Packs[2], Data.world())
+					end,
 					Price = PowerPackConfig.Packs[2].Price,
 					OnActivated = function()
 						onPowerPackActivated(2)
@@ -674,7 +679,9 @@ local function HUD()
 				PowerBuyButton({
 					LayoutOrder = 3,
 					Icon = "82923936325309",
-					Text = PowerPackConfig.Packs[3].Label,
+					Text = function()
+						return PowerPackConfig.LabelFor(PowerPackConfig.Packs[3], Data.world())
+					end,
 					Price = PowerPackConfig.Packs[3].Price,
 					OnActivated = function()
 						onPowerPackActivated(3)
