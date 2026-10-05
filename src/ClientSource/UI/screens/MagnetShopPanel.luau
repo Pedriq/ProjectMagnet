@@ -11,6 +11,7 @@ local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 
 local create = vide.create
+local show = vide.show
 
 -- Модель может быть названа Display/Name/ключом — см. findMagnetModel ниже
 -- и MagnetData.assetNameCandidates (та же логика, что у MagnetHandler:GiveMagnet
@@ -75,17 +76,35 @@ local function findMagnetModel(key: string): Instance?
 	return nil
 end
 
+-- Донатные (Game Pass) мечи, самый сильный первым: у них нет Magnetism в конфиге —
+-- сила считается от лучшего обычного меча игрока (MagnetData.effectiveMagnetism).
+local function opMagnetKeys(): { string }
+	local keys = table.clone(MagnetData.GamePassMagnets)
+	table.sort(keys, function(a, b)
+		local ma = MagnetData[a].Dynamic and MagnetData[a].Dynamic.Multiplier or 0
+		local mb = MagnetData[b].Dynamic and MagnetData[b].Dynamic.Multiplier or 0
+		return ma > mb
+	end)
+	return keys
+end
+
 local function MagnetShopPanel(props: Props)
-	local function makeCard(name: string, order: number)
+	-- premium = купленный донатный меч: тёмно-синяя карточка, поднимается наверх списка
+	local function makeCard(name: string, order: number, premium: boolean?)
 		local cfg = MagnetData[name]
 		local fx = MagnetData.effectsFor(cfg)
 
 		return MagnetCard({
 			LayoutOrder = order,
+			Premium = premium,
 			Display = cfg.Display or cfg.Name,
 			Rarity = cfg.Rare,
 			RarityColor = RarityColors.get(cfg.Rare),
-			MagnetismText = "+" .. Format.short(cfg.Magnetism) .. " Magnetism",
+			MagnetismText = if premium
+				then function()
+					return "+" .. Format.short(MagnetData.effectiveMagnetism(name, Data.ownedMagnets())) .. " Magnetism"
+				end
+				else "+" .. Format.short(cfg.Magnetism) .. " Magnetism",
 			Model = findMagnetModel(name),
 
 			Purchasable = cfg.Price ~= nil,
@@ -123,6 +142,23 @@ local function MagnetShopPanel(props: Props)
 
 	return function()
 		local cards = {}
+
+		-- Купленные OP-магниты — в самом верху (отрицательный LayoutOrder). Карточка
+		-- появляется ТОЛЬКО когда владение подтверждено: Data.ownedMagnets обновляется
+		-- сервером после успешной покупки Game Pass (MagnetGamePassPurchaseHandler ->
+		-- SetMagnetOwned) и при входе из сохранённого профиля.
+		local opKeys = opMagnetKeys()
+		for i, name in ipairs(opKeys) do
+			table.insert(
+				cards,
+				show(function()
+					return owns(name)
+				end, function()
+					return makeCard(name, i - #opKeys - 1, true)
+				end)
+			)
+		end
+
 		for i, name in ipairs(MagnetData.Order) do
 			table.insert(cards, makeCard(name, i))
 		end

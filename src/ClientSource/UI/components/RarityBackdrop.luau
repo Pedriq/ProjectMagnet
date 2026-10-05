@@ -50,6 +50,7 @@ type Style = {
 	Floor: number, -- яркость «постамента» 0..1
 	Rim: number?, -- прозрачность рамки; nil — без рамки
 	Cycle: boolean?, -- цвет свечения переливается (Mythic и выше)
+	Accent: Color3?, -- цвет рамки (по умолч. цвет редкости из RarityColors)
 	Hue: { number }?, -- {от, до} диапазон оттенка при Cycle (по умолч. красный..розово-оранжевый)
 	Saturation: number?, -- насыщенность переливающегося цвета (по умолч. 0.62)
 }
@@ -140,6 +141,24 @@ local STYLES: { [string]: Style } = {
 		Floor = 0.65,
 		Rim = 0.2,
 	},
+	-- "OP" — купленный донатный меч в панели Magnets: тёмно-синяя «премиум» сцена
+	OP = {
+		Top = rgb(24, 52, 124),
+		Bottom = rgb(7, 14, 42),
+		Glow = rgb(96, 164, 255),
+		GlowStrength = 0.9,
+		PulseSpeed = 1.6,
+		Motes = 5,
+		MoteSize = 2.5,
+		MoteSpeed = 0.16,
+		Twinkles = 2,
+		RayLines = 0,
+		RaySpeed = 0,
+		Sweep = true,
+		Floor = 0.6,
+		Rim = 0.35,
+		Accent = rgb(120, 180, 255),
+	},
 	-- Secret / Godly — донатные OP-мечи (OPMagnetCard): самый «дорогой» вид
 	Secret = {
 		Top = rgb(104, 20, 96),
@@ -212,7 +231,7 @@ local function RarityBackdrop(props: Props)
 	local rarity = props.Rarity or "Common"
 	local style = STYLES[rarity] or STYLES.Common
 	local radius = props.Radius or UDim.new(0, 5)
-	local accent = RarityColors.get(rarity)
+	local accent = style.Accent or RarityColors.get(rarity)
 
 	-- цвет свечения: у Mythic плавно переливается между красным, оранжевым и маджентой
 	local function glowColor(): Color3

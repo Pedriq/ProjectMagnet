@@ -63,6 +63,10 @@ export type Props = {
 	TextEffect: number?,
 	CardEffect: number?,
 
+	-- Купленный донатный (Game Pass) меч в панели Magnets: тёмно-синяя анимированная
+	-- карточка с мягким бликом и свечением вместо цвета редкости (CardEffect игнорируется)
+	Premium: boolean?,
+
 	LayoutOrder: number?,
 }
 
@@ -78,6 +82,11 @@ local ROBUX_COLOR = Theme.ButtonGold
 local EQUIP_COLOR = Theme.ButtonElectric
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
+
+-- премиум (купленный OP-меч): тёмно-синяя схема
+local NAVY_DEEP = Color3.fromRGB(10, 22, 54)
+local NAVY_LIGHT = Color3.fromRGB(22, 56, 128)
+local PREMIUM_ACCENT = Color3.fromRGB(110, 172, 255)
 
 local PILL = UDim.new(0.5, 0) -- кнопки-«таблетки»: никаких квадратных углов на фоне скруглённого UI
 
@@ -120,7 +129,8 @@ end
 local function MagnetCard(props: Props)
 	local radius = UDim.new(0, 6)
 	local infoLeft = ICON_PAD + ICON_SIZE + ICON_PAD
-	local cardEffect = props.CardEffect or 0
+	local premium = props.Premium == true
+	local cardEffect = if premium then 0 else (props.CardEffect or 0)
 	local rColor = props.RarityColor
 
 	-- вертикальная растушёвка «верх сочный / низ в тень» — как у остальных карточек
@@ -195,6 +205,133 @@ local function MagnetCard(props: Props)
 			create("UICorner")({ CornerRadius = radius }),
 			shineBar(0.0, 68, 0.32),
 			shineBar(0.42, 50, 0.42),
+		})
+	end
+
+	--== премиум: тёмно-синяя анимированная карточка ========================
+	-- Фон медленно «дышит» между двумя оттенками синего; блик проезжает раз в несколько
+	-- секунд; мягкое свечение за иконкой и тонкая пульсирующая рамка. Всё приглушённое —
+	-- заметно, но не слепит и не отвлекает от меча.
+	local function premiumBackground()
+		if not premium then
+			return nil
+		end
+		return create("Frame")({
+			Name = "PremiumBackground",
+			ZIndex = 0,
+			Size = UDim2.fromScale(1, 1),
+			BorderSizePixel = 0,
+			BackgroundColor3 = function()
+				return NAVY_DEEP:Lerp(NAVY_LIGHT, 0.5 + 0.5 * math.sin(clock() * 0.6))
+			end,
+
+			create("UICorner")({ CornerRadius = radius }),
+			vshade(),
+		})
+	end
+
+	local function premiumFx()
+		if not premium then
+			return nil
+		end
+		return create("CanvasGroup")({
+			Name = "PremiumFx",
+			ZIndex = 2,
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			ClipsDescendants = true,
+
+			create("UICorner")({ CornerRadius = radius }),
+
+			-- свечение за иконкой меча
+			create("Frame")({
+				Name = "IconGlow",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0, ICON_PAD + ICON_SIZE / 2, 0.5, 0),
+				Size = UDim2.fromOffset(ICON_SIZE + 70, CARD_HEIGHT + 30),
+				BorderSizePixel = 0,
+				BackgroundColor3 = PREMIUM_ACCENT,
+				BackgroundTransparency = function()
+					return 0.86 - 0.05 * (0.5 + 0.5 * math.sin(clock() * 1.5))
+				end,
+
+				create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
+			}),
+
+			-- медленный диагональный блик (за ~6 с пересекает карточку и пропадает)
+			create("Frame")({
+				Name = "Shimmer",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Size = UDim2.new(0, 80, 2.2, 0),
+				Rotation = 14,
+				BorderSizePixel = 0,
+				BackgroundColor3 = WHITE,
+				BackgroundTransparency = 0.88,
+				Position = function()
+					local p = (clock() * 0.16) % 1
+					return UDim2.fromScale(-0.15 + p * 1.3, 0.5)
+				end,
+
+				create("UIGradient")({
+					Rotation = 0,
+					Transparency = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 1),
+						NumberSequenceKeypoint.new(0.5, 0),
+						NumberSequenceKeypoint.new(1, 1),
+					}),
+				}),
+			}),
+		})
+	end
+
+	local function premiumRim()
+		if not premium then
+			return nil
+		end
+		-- рамка внутри границ карточки (отступ 2px), чёрная внешняя обводка остаётся
+		return create("Frame")({
+			Name = "PremiumRim",
+			ZIndex = 5,
+			Position = UDim2.fromOffset(2, 2),
+			Size = UDim2.new(1, -4, 1, -4),
+			BackgroundTransparency = 1,
+
+			create("UICorner")({ CornerRadius = UDim.new(0, 5) }),
+			create("UIStroke")({
+				Thickness = 1.5,
+				Color = PREMIUM_ACCENT,
+				Transparency = function()
+					return 0.4 + 0.2 * math.sin(clock() * 1.8)
+				end,
+			}),
+		})
+	end
+
+	-- маленькая плашка «OP» в правом верхнем углу — отличает купленный донатный меч
+	local function premiumTag()
+		if not premium then
+			return nil
+		end
+		return create("Frame")({
+			Name = "OpTag",
+			ZIndex = 5,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -12, 0, 7),
+			Size = UDim2.fromOffset(38, 17),
+			BackgroundColor3 = NAVY_DEEP,
+			BackgroundTransparency = 0.1,
+			BorderSizePixel = 0,
+
+			create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
+			create("UIStroke")({ Thickness = 1.2, Color = PREMIUM_ACCENT, Transparency = 0.2 }),
+			create("TextLabel")({
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				Font = Enum.Font.GothamBlack,
+				Text = "OP",
+				TextSize = 13,
+				TextColor3 = rarityFx.lighten(PREMIUM_ACCENT, 0.55),
+			}),
 		})
 	end
 
@@ -276,13 +413,14 @@ local function MagnetCard(props: Props)
 		Name = "MagnetCard",
 		LayoutOrder = props.LayoutOrder,
 		Size = UDim2.new(1, -6, 0, CARD_HEIGHT),
-		BackgroundColor3 = props.RarityColor,
+		BackgroundColor3 = if premium then NAVY_DEEP else props.RarityColor,
 
 		create("UICorner")({ CornerRadius = radius }),
 		vshade(),
 		create("UIStroke")({ Thickness = 3, Color = BLACK, Transparency = 0.1 }),
 
 		fxBackground(),
+		premiumBackground(),
 
 		create("ImageLabel")({
 			Name = "Texture",
@@ -291,13 +429,19 @@ local function MagnetCard(props: Props)
 			Size = UDim2.fromScale(1, 1),
 			ScaleType = Enum.ScaleType.Tile,
 			TileSize = UDim2.fromOffset(CARD_HEIGHT, CARD_HEIGHT),
-			ImageTransparency = if cardEffect == 1 or cardEffect == 3 or cardEffect == 4 then 0.86 else 0.76,
+			ImageTransparency = if premium
+				then 0.88
+				elseif cardEffect == 1 or cardEffect == 3 or cardEffect == 4 then 0.86
+				else 0.76,
 			Image = asset("119993804734501"),
 
 			create("UICorner")({ CornerRadius = radius }),
 		}),
 
 		lightBars(),
+		premiumFx(),
+		premiumRim(),
+		premiumTag(),
 
 		--== иконка меча ===================================================
 		create("Frame")({
@@ -313,7 +457,7 @@ local function MagnetCard(props: Props)
 
 			-- фон превью в стиле редкости (свечение, лучи, частицы — см. RarityBackdrop);
 			-- сам меч выше по ZIndex и остаётся главным
-			RarityBackdrop({ Rarity = props.Rarity, Radius = UDim.new(0, 5) }),
+			RarityBackdrop({ Rarity = if premium then "OP" else props.Rarity, Radius = UDim.new(0, 5) }),
 
 			ModelViewport({
 				ZIndex = 2,
