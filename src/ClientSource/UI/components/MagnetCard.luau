@@ -79,6 +79,8 @@ local EQUIP_COLOR = Theme.ButtonElectric
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 
+local PILL = UDim.new(0.5, 0) -- кнопки-«таблетки»: никаких квадратных углов на фоне скруглённого UI
+
 local MAGNETISM_ICON = "82923936325309" -- та же иконка «силы», что в MultiplierRow
 
 local function textStroke(thickness: number?)
@@ -216,6 +218,7 @@ local function MagnetCard(props: Props)
 				Text = props.MoneyText,
 				Size = UDim2.fromOffset(BUTTONS_WIDTH, 36),
 				TextSize = 18,
+				CornerRadius = PILL,
 				Color = MONEY_COLOR,
 				DisabledColor = MONEY_COLOR,
 				TextColor = WHITE,
@@ -228,6 +231,7 @@ local function MagnetCard(props: Props)
 				Text = props.RobuxText,
 				Size = UDim2.fromOffset(BUTTONS_WIDTH, 36),
 				TextSize = 18,
+				CornerRadius = PILL,
 				Color = ROBUX_COLOR,
 				TextColor = WHITE,
 				TextureTransparency = 0.66,
@@ -251,6 +255,7 @@ local function MagnetCard(props: Props)
 				Text = text,
 				Size = UDim2.fromOffset(BUTTONS_WIDTH, 44),
 				TextSize = 20,
+				CornerRadius = PILL,
 				Color = EQUIP_COLOR,
 				DisabledColor = EQUIP_COLOR,
 				TextureTransparency = 0.66,

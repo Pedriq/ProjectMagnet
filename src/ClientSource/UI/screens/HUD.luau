@@ -471,6 +471,13 @@ local function HUD()
 					OnEquipOPMagnet = function(magnetKey)
 						Knit.GetService("PlayerManagerService"):EquipMagnet(magnetKey):catch(warn)
 					end,
+					-- Платные автоклик-зоны (Game Pass). Сервер сам не откроет окно покупки,
+					-- если зона уже куплена; «Owned» в Shop и доступ при касании — одно
+					-- состояние (Data.ownedZones <- profile.AutoClickZones).
+					OnBuyZone = function(zoneId)
+						sfx.play("Buy")
+						Knit.GetService("AutoClickZoneService"):PromptZonePurchase(zoneId):catch(warn)
+					end,
 				}),
 				rebirth = RebirthPanel({
 					OnClose = closePanel,

@@ -49,7 +49,9 @@ type Style = {
 	Sweep: boolean, -- проезжающий блик
 	Floor: number, -- яркость «постамента» 0..1
 	Rim: number?, -- прозрачность рамки; nil — без рамки
-	Cycle: boolean?, -- цвет свечения переливается (Mythic)
+	Cycle: boolean?, -- цвет свечения переливается (Mythic и выше)
+	Hue: { number }?, -- {от, до} диапазон оттенка при Cycle (по умолч. красный..розово-оранжевый)
+	Saturation: number?, -- насыщенность переливающегося цвета (по умолч. 0.62)
 }
 
 local WHITE = Color3.new(1, 1, 1)
@@ -138,6 +140,45 @@ local STYLES: { [string]: Style } = {
 		Floor = 0.65,
 		Rim = 0.2,
 	},
+	-- Secret / Godly — донатные OP-мечи (OPMagnetCard): самый «дорогой» вид
+	Secret = {
+		Top = rgb(104, 20, 96),
+		Bottom = rgb(30, 6, 48),
+		Glow = rgb(255, 92, 200),
+		GlowStrength = 1.25,
+		PulseSpeed = 2.4,
+		Motes = 10,
+		MoteSize = 3,
+		MoteSpeed = 0.28,
+		Twinkles = 4,
+		RayLines = 4,
+		RaySpeed = 12,
+		Sweep = true,
+		Floor = 0.8,
+		Rim = 0.1,
+		Cycle = true,
+		Hue = { 0.8, 0.93 }, -- фиолетовый <-> маджента
+		Saturation = 0.6,
+	},
+	Godly = {
+		Top = rgb(30, 40, 96),
+		Bottom = rgb(10, 14, 44),
+		Glow = rgb(255, 240, 150),
+		GlowStrength = 1.4,
+		PulseSpeed = 2.2,
+		Motes = 12,
+		MoteSize = 3,
+		MoteSpeed = 0.26,
+		Twinkles = 5,
+		RayLines = 5,
+		RaySpeed = 8,
+		Sweep = true,
+		Floor = 0.9,
+		Rim = 0.05,
+		Cycle = true,
+		Hue = { 0.1, 0.16 }, -- тёплое золото <-> светло-жёлтое
+		Saturation = 0.5,
+	},
 	Mythic = {
 		Top = rgb(122, 24, 44),
 		Bottom = rgb(44, 8, 24),
@@ -176,8 +217,9 @@ local function RarityBackdrop(props: Props)
 	-- цвет свечения: у Mythic плавно переливается между красным, оранжевым и маджентой
 	local function glowColor(): Color3
 		if style.Cycle then
-			local hue = 0.99 + 0.12 * (0.5 + 0.5 * math.sin(clock() * 0.35)) -- ~0.99..1.11 -> красный..оранжево-розовый
-			return Color3.fromHSV(hue % 1, 0.62, 1)
+			local range = style.Hue or { 0.99, 1.11 } -- красный..оранжево-розовый (Mythic)
+			local hue = range[1] + (range[2] - range[1]) * (0.5 + 0.5 * math.sin(clock() * 0.35))
+			return Color3.fromHSV(hue % 1, style.Saturation or 0.62, 1)
 		end
 		return style.Glow
 	end

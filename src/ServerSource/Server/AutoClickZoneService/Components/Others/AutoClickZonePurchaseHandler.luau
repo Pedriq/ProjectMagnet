@@ -127,6 +127,22 @@ function AutoClickZonePurchaseHandler:IsLoaded(player: Player): boolean
 	return AutoClickZonePlayerData:IsLoaded(player)
 end
 
+-- Окно покупки уже открыто у игрока: [userId] = { gamePassId, at }. Касание зоны и кнопка
+-- в Shop идут через ОДНУ функцию openPrompt, поэтому одновременно два окна на один пасс
+-- не откроются (иначе можно было бы нажать «купить» дважды). Запись снимается, когда
+-- Roblox сообщит о закрытии окна (PromptGamePassPurchaseFinished) — или по таймауту.
+local PROMPT_TIMEOUT = 60
+local openPrompts: { [number]: { gamePassId: number, at: number } } = {}
+
+local function openPrompt(player: Player, gamePassId: number)
+	local open = openPrompts[player.UserId]
+	if open and open.gamePassId == gamePassId and os.clock() - open.at < PROMPT_TIMEOUT then
+		return
+	end
+	openPrompts[player.UserId] = { gamePassId = gamePassId, at = os.clock() }
+	MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+end
+
 -- Единая точка запроса покупки для ОБОИХ путей (касание — AutoClickZoneHandler,
 -- магазин — PromptValidatedPurchase ниже): если зона уже куплена (по кэшу —
 -- быстро, без yield), окно покупки не открывается вообще.
@@ -155,7 +171,11 @@ function AutoClickZonePurchaseHandler:RequestPurchase(player: Player, zoneId: st
 			print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} — открываю PromptGamePassPurchase`)
 		end
 
-		MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+		-- владение могло появиться, пока шёл запрос
+		if AutoClickZonePlayerData:IsOwned(player, zoneId) then
+			return
+		end
+		openPrompt(player, gamePassId)
 	end)
 end
 
@@ -177,7 +197,9 @@ function AutoClickZonePurchaseHandler:PromptValidatedPurchase(player: Player, zo
 		return
 	end
 
-	local owned = AutoClickZonePlayerData:Refresh(player, zoneId, gamePassId)
+	-- Кэш/профиль — общее состояние с касанием зоны; живая проверка Roblox — подстраховка.
+	local owned = AutoClickZonePlayerData:IsOwned(player, zoneId)
+		or AutoClickZonePlayerData:Refresh(player, zoneId, gamePassId)
 	if RunService:IsStudio() then
 		print(
 			`[AutoClickZonePurchase][trace] PromptValidatedPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} owned(live)={owned}`
@@ -185,11 +207,12 @@ function AutoClickZonePurchaseHandler:PromptValidatedPurchase(player: Player, zo
 	end
 
 	if owned then
+		-- повторно не списываем: окно покупки не открывается вообще
 		AutoClickZoneService.Client.ShowMessage:Fire(player, "Already Owned")
 		return
 	end
 
-	MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+	openPrompt(player, gamePassId)
 end
 
 -- Каталог зон для панели Shop: по одной карточке на ZoneId, Title/Price — из
@@ -220,6 +243,7 @@ function AutoClickZonePurchaseHandler:GetCatalog(player: Player): { any }
 					ZoneId = zoneId,
 					Title = info.Name,
 					Price = info.PriceInRobux,
+					Multiplier = tonumber(zoneModel:GetAttribute("multiplier")) or 1,
 					Icon = zoneModel:GetAttribute("icon") or DEFAULT_ICON,
 					Purchased = AutoClickZonePlayerData:IsOwned(player, zoneId),
 				})
@@ -227,12 +251,16 @@ function AutoClickZonePurchaseHandler:GetCatalog(player: Player): { any }
 		end
 	end
 
+	-- От меньшего множителя к большему (x10 -> x25 -> x100 ...); при равенстве — по цене.
 	table.sort(catalog, function(a, b)
+		if a.Multiplier ~= b.Multiplier then
+			return a.Multiplier < b.Multiplier
+		end
 		return a.Price < b.Price
 	end)
 
-	-- Tier = позиция в отсортированном (по цене) списке — карточки идут от
-	-- слабой к сильной, и это же задаёт цвет/эффект карточки (TrainingZoneCard).
+	-- Tier = позиция в отсортированном списке — карточки идут от слабой к сильной, и это
+	-- же задаёт цвет/эффект карточки (UI.components.ZoneCard).
 	-- Раньше Tier читался из Attribute "tier" на модели зоны, но он нигде не был
 	-- выставлен (всегда nil -> все карточки выглядели одинаково).
 	for index, entry in ipairs(catalog) do
@@ -285,6 +313,11 @@ function AutoClickZonePurchaseHandler.Start()
 	-- у Developer Product): несколько :Connect() спокойно сосуществуют, не
 	-- нужен общий роутер вроде MarketplaceReceiptRouter.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+		-- окно закрылось (купили или отменили) — можно открывать новое
+		if player and openPrompts[player.UserId] and openPrompts[player.UserId].gamePassId == gamePassId then
+			openPrompts[player.UserId] = nil
+		end
+
 		-- БЕЗУСЛОВНЫЙ трейс — печатается для КАЖДОГО срабатывания события, даже
 		-- если это не наш gamePassId или покупку отменили. Если этой строки нет
 		-- в Output вообще после покупки — событие в принципе не долетает
@@ -343,6 +376,7 @@ function AutoClickZonePurchaseHandler.Init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
+		openPrompts[player.UserId] = nil
 		AutoClickZonePlayerData:ClearPlayer(player)
 	end)
 end

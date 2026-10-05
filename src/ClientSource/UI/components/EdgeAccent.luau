@@ -41,6 +41,9 @@ local function EdgeAccent(props: Props?)
 	local lightThickness = p.LightThickness or 3.5
 	local lightTop = math.clamp(p.LightTransparency or 0.35, 0, 1)
 	local inset = math.max(lightThickness, 1.5)
+	-- «таблетка» (радиус от 30% меньшей стороны): плоская полоска во всю ширину торчала бы
+	-- квадратными углами за скруглённые края — для таблетки делаем её короче и скруглённой
+	local isPill = radius.Scale >= 0.3
 
 	return create("Frame")({
 		Name = "EdgeAccent",
@@ -82,11 +85,14 @@ local function EdgeAccent(props: Props?)
 			Visible = p.Underline ~= false,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, 0),
-			Size = (if p.ScaleLayout then UDim2.fromScale(1, 0.09) else UDim2.new(1, -radius.Offset, 0, p.UnderlineThickness or 3)),
+			Size = (if isPill
+				then (if p.ScaleLayout then UDim2.fromScale(0.62, 0.09) else UDim2.new(0.62, 0, 0, p.UnderlineThickness or 3))
+				elseif p.ScaleLayout then UDim2.fromScale(1, 0.09)
+				else UDim2.new(1, -radius.Offset, 0, p.UnderlineThickness or 3)),
 			BackgroundColor3 = p.UnderlineColor or Color3.new(0, 0, 0),
 			BorderSizePixel = 0,
 
-			create("UICorner")({ CornerRadius = radius }),
+			create("UICorner")({ CornerRadius = if isPill then UDim.new(1, 0) else radius }),
 			create("UIGradient")({
 				Rotation = 90,
 				Transparency = NumberSequence.new({
