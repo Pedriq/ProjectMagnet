@@ -114,14 +114,14 @@ local function RebirthPanel(props: Props)
 				Color = MAGNETISM,
 				From = strFrom,
 				To = strTo,
-				Icon = "74885498760042",
+				Icon = "82923936325309",
 			}),
 			MultiplierRow({
 				LayoutOrder = 2,
 				Color = MONEY,
 				From = cashFrom,
 				To = cashTo,
-				Icon = "117287387544386",
+				Icon = "83220021403316",
 			}),
 
 			create("TextLabel")({
@@ -183,7 +183,7 @@ local function RebirthPanel(props: Props)
 						ZIndex = 2, -- поверх GradientSpan
 						BackgroundTransparency = 1,
 						Size = UDim2.fromScale(1, 1),
-						Image = asset("137638295200351"),
+						Image = asset("119993804734501"),
 						ImageTransparency = 0.45,
 						ScaleType = Enum.ScaleType.Tile,
 						TileSize = UDim2.fromOffset(46, 46),

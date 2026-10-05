@@ -82,7 +82,7 @@ local function MultiplierRow(props: Props)
 				ScaleType = Enum.ScaleType.Tile,
 				TileSize = UDim2.fromOffset(pillH, pillH),
 				ImageTransparency = 0.68,
-				Image = asset("137638295200351"),
+				Image = asset("119993804734501"),
 			}),
 
 			-- содержимое: [pad] иконка [gap] число [pad] — оно и задаёт ширину пилюли

@@ -22,9 +22,9 @@ export type BuffEntry = {
 local BuffConfig = {}
 
 BuffConfig.Boosts = {
-	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "74885498760042" },
-	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "74885498760042" },
-	{ Type = "Money", Title = "2x Money", Minutes = 10, Bonus = 1, Price = 39, ProductId = 3713418304, Icon = "117287387544386" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 10, Bonus = 1, Price = 9, ProductId = 3713418230, Icon = "82923936325309" },
+	{ Type = "Magnetism", Title = "2x Magnetism", Minutes = 30, Bonus = 1, Price = 24, ProductId = 3713418270, Icon = "82923936325309" },
+	{ Type = "Money", Title = "2x Money", Minutes = 10, Bonus = 1, Price = 39, ProductId = 3713418304, Icon = "83220021403316" },
 } :: { BuffEntry }
 
 -- Одна карточка на Type — для отображения в ActiveBuffsBar (иконка одна и та же

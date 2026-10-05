@@ -129,7 +129,7 @@ local function MagnetShopPanel(props: Props)
 
 		return Panel({
 			ZIndex = 10,
-			Icon = "74885498760042",
+			Icon = "82923936325309",
 			Size = UDim2.fromOffset(620, 560),
 			OnClose = props.OnClose,
 

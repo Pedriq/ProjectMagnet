@@ -105,7 +105,7 @@ local function SellItemCard(props: Props)
 			ScaleType = Enum.ScaleType.Tile,
 			TileSize = UDim2.fromOffset(CARD_HEIGHT, CARD_HEIGHT),
 			ImageTransparency = 0.76,
-			Image = asset("137638295200351"),
+			Image = asset("119993804734501"),
 
 			create("UICorner")({ CornerRadius = radius }),
 		}),

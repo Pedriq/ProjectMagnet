@@ -77,7 +77,7 @@ local EQUIP_COLOR = Theme.ButtonElectric
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 
-local MAGNETISM_ICON = "74885498760042" -- та же иконка «силы», что в MultiplierRow
+local MAGNETISM_ICON = "82923936325309" -- та же иконка «силы», что в MultiplierRow
 
 local function textStroke(thickness: number?)
 	return create("UIStroke")({
@@ -285,7 +285,7 @@ local function MagnetCard(props: Props)
 			ScaleType = Enum.ScaleType.Tile,
 			TileSize = UDim2.fromOffset(CARD_HEIGHT, CARD_HEIGHT),
 			ImageTransparency = if cardEffect == 1 or cardEffect == 3 or cardEffect == 4 then 0.86 else 0.76,
-			Image = asset("137638295200351"),
+			Image = asset("119993804734501"),
 
 			create("UICorner")({ CornerRadius = radius }),
 		}),

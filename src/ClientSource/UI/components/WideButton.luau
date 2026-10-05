@@ -13,7 +13,7 @@ local read = vide.read -- read(x): x() если это источник, ина�
 local asset = Format.asset
 
 -- Общая тайловая текстура проекта (та же, что на прогресс-баре и пилюлях).
-local DEFAULT_TEXTURE = "137638295200351"
+local DEFAULT_TEXTURE = "119993804734501"
 
 --[[
 	WideButton — широкая кнопка-пилюля только с текстом (Rebirth / Skip и т.п.).

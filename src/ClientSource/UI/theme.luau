@@ -109,8 +109,8 @@ end)()
 ---- поверхности панелей (Panel props)
 Theme.PanelBodyTransparency = 0.12 -- тёмный полупрозрачный металл
 Theme.PanelStrokeThickness = 2.5
-Theme.PanelTitleTexture = "rbxassetid://137638295200351"
-Theme.PanelTitleTextureTransparency = 0.6 -- как было во всех панелях (0.78 почти не читалась)
+Theme.PanelTitleTexture = "rbxassetid://119993804734501"
+Theme.PanelTitleTextureTransparency = 0.3 -- тайтл почти непрозрачного цвета: при 0.6 новая текстура терялась
 
 -- Акцент заголовка панели по смыслу окна: "Electric" | "Copper" | "Money" | "Gold" | "Rebirth".
 -- Тёмный тон (Deep), чтобы заголовок был «окрашенной сталью», а не кислотным пятном.

@@ -139,7 +139,7 @@ local function SellPanel(props: Props)
 				ScaleType = Enum.ScaleType.Tile,
 				TileSize = UDim2.fromOffset(96, 96),
 				ImageTransparency = 0.76,
-				Image = Format.asset("137638295200351"),
+				Image = Format.asset("119993804734501"),
 				create("UICorner")({ CornerRadius = UDim.new(0, 6) }),
 			}),
 

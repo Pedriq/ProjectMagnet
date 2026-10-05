@@ -88,7 +88,7 @@ local function UpgradesPanel(props: Props)
 
 		return Panel({
 			ZIndex = 10,
-			Icon = "136736672080005",
+			Icon = "87906503353258",
 			Size = UDim2.fromOffset(560, 520),
 			OnClose = props.OnClose,
 

@@ -27,7 +27,7 @@ local AutoClickZoneService
 
 -- Иконка по умолчанию для карточки в Shop, если на модели зоны не задан
 -- Attribute "icon" — переиспользуем существующий boost-ассет "Strength".
-local DEFAULT_ICON = "74885498760042"
+local DEFAULT_ICON = "82923936325309"
 
 -- GetProductInfo — сетевой вызов; кэшируем на весь ран сервера (цена/название
 -- Game Pass'а в рантайме не меняются).

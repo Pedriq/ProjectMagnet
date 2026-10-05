@@ -36,7 +36,7 @@ local RIPPLE_GROW = 1.9
 local RIPPLE_TIME = 0.45
 local RIPPLE_COLOR = Color3.fromRGB(255, 255, 255)
 
-local GAIN_ICON = "rbxassetid://74885498760042"
+local GAIN_ICON = "rbxassetid://82923936325309"
 local GAIN_ICON_SIZE = 30
 local GAIN_TEXT_SIZE = 20
 -- крупнее для попапов без привязки к клику (удар/автозона) — их видно не под курсором,

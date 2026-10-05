@@ -134,7 +134,7 @@ local function OPMagnetCard(props: Props)
 		}),
 		table.unpack(Surface({
 			Radius = UDim.new(0, 0),
-			Texture = "rbxassetid://137638295200351",
+			Texture = "rbxassetid://119993804734501",
 			TileSize = UDim2.fromScale(0.2, 0.3),
 			TextureTransparency = 0.63,
 			Highlight = 0,

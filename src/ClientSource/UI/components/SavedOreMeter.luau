@@ -34,7 +34,7 @@ export type Props = {
 	LayoutOrder: number?,
 }
 
-local ICON = "rbxassetid://131537567114911"
+local ICON = "rbxassetid://75588119022884"
 local HEIGHT = 46
 local ICON_SIZE = 34 -- как у Money (StatRow Large)
 

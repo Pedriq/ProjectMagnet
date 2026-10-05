@@ -34,7 +34,7 @@ local asset = Format.asset
 local GREEN_PRICE_COLOR = Theme.Money
 
 -- Общая тайловая текстура проекта (та же, что на WideButton/XpBar).
-local DEFAULT_TEXTURE = "137638295200351"
+local DEFAULT_TEXTURE = "119993804734501"
 
 local COLORS = {
 	Magnetism = { Color = Theme.ButtonElectric, Light = Theme.ElectricBright },

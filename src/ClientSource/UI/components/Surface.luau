@@ -32,7 +32,7 @@ export type Props = {
 	Radius: UDim?, -- скругление слоёв — ставь такое же, как у контейнера (по умолч. 8)
 	ZIndex: number?, -- базовый ZIndex слоёв (по умолч. 0 — под контентом)
 
-	Texture: string?, -- id текстуры (по умолч. общая "137638295200351")
+	Texture: string?, -- id текстуры (по умолч. общая "119993804734501")
 	TextureTransparency: number?, -- по умолч. 0.5
 	TextureTile: number?, -- размер плитки в пикселях (по умолч. 24)
 	TextureColor: Color3?, -- тонировка текстуры (по умолч. без тонировки)
@@ -46,7 +46,7 @@ local function Surface(props: Props)
 	local radius = props.Radius or UDim.new(0, 8)
 	local zi = props.ZIndex or 0
 
-	local texture = props.Texture or "137638295200351"
+	local texture = props.Texture or "119993804734501"
 	local texTransparency = props.TextureTransparency or 0.5
 	local tile = props.TextureTile or 24
 

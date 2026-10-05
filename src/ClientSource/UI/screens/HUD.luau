@@ -311,8 +311,8 @@ local function HUD()
 						Progress = xpProgress,
 						Current = xpCurrent,
 						Required = xpRequired,
-						TrackImage = "137638295200351",
-						FillImage = "137638295200351",
+						TrackImage = "119993804734501",
+						FillImage = "119993804734501",
 						FillGradient = Theme.LEVEL_GRADIENT, -- синий -> фиолетовый -> красный (UI.theme)
 					})
 				end, function()
@@ -423,7 +423,7 @@ local function HUD()
 				-- 4: деньги
 				StatRow({
 					LayoutOrder = 4,
-					Icon = "rbxassetid://117287387544386",
+					Icon = "rbxassetid://83220021403316",
 					Large = true,
 					TextColor = Theme.Money,
 					Text = function()
@@ -592,7 +592,7 @@ local function HUD()
 					Title = function()
 						return permanentTierTitle("Magnetism", "Magnetism")
 					end,
-					Icon = "74885498760042",
+					Icon = "82923936325309",
 					Price = function()
 						return permanentTierPrice("Magnetism")
 					end,
@@ -611,7 +611,7 @@ local function HUD()
 					Title = function()
 						return permanentTierTitle("Money", "Money")
 					end,
-					Icon = "117287387544386",
+					Icon = "83220021403316",
 					Price = function()
 						return permanentTierPrice("Money")
 					end,
@@ -649,7 +649,7 @@ local function HUD()
 				-- конфига, чтобы менять будущие значения в одном месте.
 				PowerBuyButton({
 					LayoutOrder = 1,
-					Icon = "74885498760042",
+					Icon = "82923936325309",
 					Text = PowerPackConfig.Packs[1].Label,
 					Price = PowerPackConfig.Packs[1].Price,
 					OnActivated = function()
@@ -658,7 +658,7 @@ local function HUD()
 				}),
 				PowerBuyButton({
 					LayoutOrder = 2,
-					Icon = "74885498760042",
+					Icon = "82923936325309",
 					Text = PowerPackConfig.Packs[2].Label,
 					Price = PowerPackConfig.Packs[2].Price,
 					OnActivated = function()
@@ -667,7 +667,7 @@ local function HUD()
 				}),
 				PowerBuyButton({
 					LayoutOrder = 3,
-					Icon = "74885498760042",
+					Icon = "82923936325309",
 					Text = PowerPackConfig.Packs[3].Label,
 					Price = PowerPackConfig.Packs[3].Price,
 					OnActivated = function()
