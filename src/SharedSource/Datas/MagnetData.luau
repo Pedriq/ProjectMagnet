@@ -71,7 +71,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 3,
 		Price = "310",
 		RobuxPrice = 4,
-		RobuxProductId = 3714051685,
+		RobuxProductId = 3716693910,
 		Icon = "",
 	},
 	ChefsMagneticLadle = {
@@ -81,7 +81,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 8,
 		Price = "2100",
 		RobuxPrice = 6,
-		RobuxProductId = 3714051763,
+		RobuxProductId = 3716693945,
 		Icon = "",
 	},
 	LeafyLodestone = {
@@ -91,7 +91,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 15,
 		Price = "10000",
 		RobuxPrice = 9,
-		RobuxProductId = 3714051821,
+		RobuxProductId = 3716693979,
 		Icon = "",
 	},
 	DaybreakDynamoDriver = {
@@ -101,7 +101,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 25,
 		Price = "29000",
 		RobuxPrice = 12,
-		RobuxProductId = 3714051902,
+		RobuxProductId = 3716694002,
 		Icon = "",
 	},
 	DuneNomadsCompass = {
@@ -111,7 +111,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 50,
 		Price = "97000",
 		RobuxPrice = 16,
-		RobuxProductId = 3714051983,
+		RobuxProductId = 3716694021,
 		Icon = "",
 	},
 	BlossomBarbariansBolt = {
@@ -121,7 +121,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 85,
 		Price = "340000",
 		RobuxPrice = 24,
-		RobuxProductId = 3714052066,
+		RobuxProductId = 3716694053,
 		Icon = "",
 	},
 	IronBean = {
@@ -131,7 +131,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 170,
 		Price = "1100000",
 		RobuxPrice = 34,
-		RobuxProductId = 3714052132,
+		RobuxProductId = 3716694086,
 		Icon = "",
 	},
 	SnowtrailStalkersLodestone = {
@@ -141,7 +141,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 360,
 		Price = "3100000",
 		RobuxPrice = 59,
-		RobuxProductId = 3714052185,
+		RobuxProductId = 3716694109,
 		Icon = "",
 	},
 	PanateanWarCore = {
@@ -151,7 +151,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 750,
 		Price = "9300000",
 		RobuxPrice = 79,
-		RobuxProductId = 3714052240,
+		RobuxProductId = 3716694133,
 		Icon = "",
 	},
 	LunewingFlux = {
@@ -161,7 +161,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 1500,
 		Price = "20000000",
 		RobuxPrice = 119,
-		RobuxProductId = 3714052287,
+		RobuxProductId = 3716694155,
 		Icon = "",
 	},
 	FeatheredFriendsFerrite = {
@@ -171,7 +171,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 3200,
 		Price = "46000000",
 		RobuxPrice = 159,
-		RobuxProductId = 3714052329,
+		RobuxProductId = 3716694176,
 		Icon = "",
 	},
 	BeachBuriedHorseshoe = {
@@ -181,7 +181,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 6800,
 		Price = "130000000",
 		RobuxPrice = 219,
-		RobuxProductId = 3714052389,
+		RobuxProductId = 3716694199,
 		Icon = "",
 	},
 	FieryMagnetron = {
@@ -191,7 +191,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 14100,
 		Price = "370000000",
 		RobuxPrice = 299,
-		RobuxProductId = 3714052444,
+		RobuxProductId = 3716694228,
 		Icon = "",
 	},
 	IncandescentInductor = {
@@ -201,7 +201,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 29500,
 		Price = "770000000",
 		RobuxPrice = 399,
-		RobuxProductId = 3714052485,
+		RobuxProductId = 3716694270,
 		Icon = "",
 	},
 	TwistedTransformer = {
@@ -211,7 +211,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 61500,
 		Price = "1400000000",
 		RobuxPrice = 499,
-		RobuxProductId = 3714052537,
+		RobuxProductId = 3716694297,
 		Icon = "",
 	},
 	CrystallineCore = {
@@ -221,7 +221,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 128000,
 		Price = "3700000000",
 		RobuxPrice = 599,
-		RobuxProductId = 3714052577,
+		RobuxProductId = 3716694330,
 		Icon = "",
 	},
 	EldritchElectromagnet = {
@@ -231,7 +231,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 267000,
 		Price = "8700000000",
 		RobuxPrice = 799,
-		RobuxProductId = 3714052620,
+		RobuxProductId = 3716694358,
 		Icon = "",
 	},
 	FaewindFieldWanderer = {
@@ -241,7 +241,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 558000,
 		Price = "23000000000",
 		RobuxPrice = 999,
-		RobuxProductId = 3714052672,
+		RobuxProductId = 3716694395,
 		Icon = "",
 	},
 	FloweryFlux = {
@@ -251,7 +251,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 11000000,
 		Price = "680000000000",
 		RobuxPrice = 1299,
-		RobuxProductId = 3714052717,
+		RobuxProductId = 3716694437,
 		Icon = "",
 	},
 	MoonstruckMagnetite = {
@@ -261,7 +261,7 @@ local Magnets: { [string]: Magnet } = {
 		Magnetism = 24000000,
 		Price = "1900000000000",
 		RobuxPrice = 1499,
-		RobuxProductId = 3714052779,
+		RobuxProductId = 3716694459,
 		Icon = "",
 	},
 

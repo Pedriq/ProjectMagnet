@@ -6,6 +6,7 @@ local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButt
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
 local RarityText = require(ReplicatedStorage.ClientSource.UI.components.RarityText)
 local ModelViewport = require(ReplicatedStorage.ClientSource.UI.components.ModelViewport)
+local RarityBackdrop = require(ReplicatedStorage.ClientSource.UI.components.RarityBackdrop)
 local rarityFx = require(ReplicatedStorage.ClientSource.UI.rarityFx)
 
 local create = vide.create
@@ -29,6 +30,7 @@ local clock = rarityFx.clock
 	  надет      → Equipped (погашенная)
 
 	До Mythic (CardEffect = 0) фон карточки — цвет редкости.
+	Фон ПРЕВЬЮ меча (квадрат слева) — свой для каждой редкости, см. RarityBackdrop.
 
 	Эффекты (Mythic и выше), TextEffect/CardEffect из MagnetData.effectsFor():
 	  Текст (лейбл редкости) — см. components/RarityText.
@@ -304,7 +306,12 @@ local function MagnetCard(props: Props)
 			create("UICorner")({ CornerRadius = UDim.new(0, 5) }),
 			create("UIStroke")({ Thickness = 2.5, Color = BLACK, Transparency = 0.15 }),
 
+			-- фон превью в стиле редкости (свечение, лучи, частицы — см. RarityBackdrop);
+			-- сам меч выше по ZIndex и остаётся главным
+			RarityBackdrop({ Rarity = props.Rarity, Radius = UDim.new(0, 5) }),
+
 			ModelViewport({
+				ZIndex = 2,
 				Model = props.Model,
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromScale(0.5, 0.5),
