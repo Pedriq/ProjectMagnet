@@ -1,5 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 local vide = require(ReplicatedStorage.Packages.Vide)
+local AutoCollectPassConfig = require(ReplicatedStorage.SharedSource.Datas.AutoCollectPassConfig)
+local sfx = require(ReplicatedStorage.ClientSource.sfx)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local rarityFx = require(ReplicatedStorage.ClientSource.UI.rarityFx)
 
@@ -12,7 +15,7 @@ local asset = Format.asset
 
 --[[
 	OPAutoCollectButton — премиум-кнопка «OP Auto Collect» в колонке донат-кнопок HUD
-	(BuffButtons, самая верхняя). ПОКА ТОЛЬКО ВИЗУАЛ: покупки и логики нет.
+	(BuffButtons, самая верхняя). Клик — покупка Game Pass (AutoCollectPassConfig); кнопку HUD прячет, когда пасс куплен.
 
 	Стиль — глянцевая пластиковая кнопка: радужный градиент плавно перетекает
 	по кругу оттенков, сверху глянцевая полоса, раз в несколько секунд проезжает мягкий
@@ -25,11 +28,11 @@ local asset = Format.asset
 export type Props = {
 	LayoutOrder: number?,
 	HeightScale: number?, -- доля высоты родителя под весь блок (цена + кнопка), по умолч. 0.17
-	OnActivated: (() -> ())?, -- пока не используется
+	OnActivated: (() -> ())?, -- клик: HUD просит сервер показать покупку Game Pass
 }
 
 local WHITE = Color3.new(1, 1, 1)
-local TEST_PRICE = 199 -- ВРЕМЕННО: тестовая цена в Robux, пока нет продукта
+local FALLBACK_PRICE = "?" -- пока цена Game Pass не пришла (или запрос не удался)
 local TEXTURE = "119993804734501"
 local RAINBOW_STEPS = 8 -- ключевых точек на круг оттенков (ColorSequence: максимум 20)
 
@@ -51,6 +54,17 @@ end
 
 local function OPAutoCollectButton(props: Props)
 	local heightScale = props.HeightScale or 0.17
+
+	-- реальная цена Game Pass из Roblox (асинхронно, без блокировки интерфейса)
+	local price = source(FALLBACK_PRICE :: string | number)
+	task.spawn(function()
+		local ok, info = pcall(function()
+			return MarketplaceService:GetProductInfo(AutoCollectPassConfig.GamePassId, Enum.InfoType.GamePass)
+		end)
+		if ok and type(info) == "table" and info.PriceInRobux then
+			price(info.PriceInRobux)
+		end
+	end)
 
 	local pressed = source(false)
 	local hovered = source(false)
@@ -76,7 +90,9 @@ local function OPAutoCollectButton(props: Props)
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamBlack,
 			TextColor3 = WHITE, -- цвет задаёт радужный UIGradient ниже
-			Text = `\u{E002}{TEST_PRICE}`,
+			Text = function()
+				return `\u{E002}{price()}`
+			end,
 			TextScaled = true,
 
 			create("UIStroke")({ Thickness = 1, Color = Color3.new(0, 0, 0), Transparency = 0.1 }),
@@ -196,6 +212,12 @@ local function OPAutoCollectButton(props: Props)
 			end,
 			MouseEnter = function()
 				hovered(true)
+			end,
+			Activated = function()
+				sfx.play("ClickUI")
+				if props.OnActivated then
+					props.OnActivated()
+				end
 			end,
 			MouseLeave = function()
 				pressed(false)

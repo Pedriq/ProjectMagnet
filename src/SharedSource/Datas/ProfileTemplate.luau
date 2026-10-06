@@ -68,6 +68,10 @@ local ProfileTemplate = {
 	-- Ключи те же, что у BuffConfig.Type/BuffHandler ("Magnetism"/"Money") — НЕ
 	-- "Cash" (так исторически называется только базовый множитель за ребёрс,
 	-- см. Multipliers.Cash выше).
+	-- Game Pass «OP Auto Collect» куплен (AutoCollectPassHandler): деньги пресса зачисляются
+	-- автоматически (PressCollectHandler), кнопка в HUD скрыта навсегда.
+	AutoCollectPass = false,
+
 	PermanentMultipliers = {
 		Magnetism = 0,
 		Money = 0,

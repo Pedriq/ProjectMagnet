@@ -604,7 +604,19 @@ local function HUD()
 			}),
 
 			-- Самая верхняя кнопка колонки: OP Auto Collect (пока только визуал, без покупки).
-			OPAutoCollectButton({ LayoutOrder = 0, HeightScale = 0.17 }),
+			-- Скрыта навсегда, как только куплен Game Pass (profile.AutoCollectPass, сохраняется
+			-- и восстанавливается при входе; до загрузки профиля тоже скрыта — без «мигания»).
+			show(function()
+				return Data.ready() and not Data.autoCollectPass()
+			end, function()
+				return OPAutoCollectButton({
+					LayoutOrder = 0,
+					HeightScale = 0.17,
+					OnActivated = function()
+						Knit.GetService("PlayerManagerService"):PromptAutoCollectPass():catch(warn)
+					end,
+				})
+			end),
 
 			-- Постоянный донат-множитель силы: кнопка скрывается сама, когда
 			-- куплена последняя ступень (PermanentMultiplierConfig.Tiers.Magnetism).

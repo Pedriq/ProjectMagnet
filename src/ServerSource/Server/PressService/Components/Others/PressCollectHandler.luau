@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
@@ -10,6 +11,10 @@ local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 	profile.Press.Unclaimed. Пока HumanoidRootPart игрока над
 	Workspace.HydraulicPress.Collect (см. PressConfig.COLLECT_NAMES), накопленное
 	переносится в Stats.Money, а клиенту уходит MoneyCollected.
+
+	Владельцам Game Pass «OP Auto Collect» (AutoCollectPassConfig) деньги зачисляются сами,
+	без захода на Collect; MoneyCollected для них не шлём (баннер/тряска на каждый предмет
+	были бы спамом) — рост Money виден по «+$X».
 ]]
 local PressCollectHandler = {}
 
@@ -23,7 +28,7 @@ local TICK = 0.1
 ---- State
 local watching = false
 
-function PressCollectHandler:_CollectFor(player: Player)
+function PressCollectHandler:_CollectFor(player: Player, silent: boolean?)
 	local unclaimed = PressService:GetUnclaimed(player)
 	if not EtNum.me(unclaimed, "0") then
 		return
@@ -37,14 +42,27 @@ function PressCollectHandler:_CollectFor(player: Player)
 	PressService:SetUnclaimed(player, "0")
 	PlayerManagerService:ChangePlayerMoney(player, EtNum.toString(EtNum.add(unclaimed, money)))
 	-- unclaimed уже EtNum-строка из профиля (EtNum.toString принимает только EtNum-объект)
-	PressService.Client.MoneyCollected:Fire(player, unclaimed)
+	if not silent then
+		PressService.Client.MoneyCollected:Fire(player, unclaimed)
+	end
 end
 
 function PressCollectHandler:_Tick()
-	for player in pairs(PressService:GetPlayersOnPads(PressConfig.COLLECT_NAMES)) do
+	local onPads = PressService:GetPlayersOnPads(PressConfig.COLLECT_NAMES)
+	for player in pairs(onPads) do
 		local ok, err = pcall(self._CollectFor, self, player)
 		if not ok then
 			warn("[PressCollectHandler] collect failed:", err)
+		end
+	end
+
+	-- OP Auto Collect: остальные игроки с пассом
+	for _, player in ipairs(Players:GetPlayers()) do
+		if not onPads[player] and PressService:IsProfileLoaded(player) and PlayerManagerService:HasAutoCollect(player) then
+			local ok, err = pcall(self._CollectFor, self, player, true)
+			if not ok then
+				warn("[PressCollectHandler] auto-collect failed:", err)
+			end
 		end
 	end
 end

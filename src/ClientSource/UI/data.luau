@@ -33,6 +33,7 @@ Data.items = source({}) -- сохранённые предметы (склад):
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.pressOres = source({}) -- руда в прессе (profile.Press.Ores): map[oreId] = вес — окно Press Queue
 Data.world = source(1) -- самый дальний открытый мир (profile.Stats.World): размер Magnetism-паков, см. PowerPackConfig
+Data.autoCollectPass = source(false) -- куплен Game Pass «OP Auto Collect» (profile.AutoCollectPass): кнопка в HUD скрыта навсегда
 Data.ownedZones = source({}) -- map[ZoneId] = true: купленные донатные автоклик-зоны (profile.AutoClickZones) — ОДНО состояние и для Shop, и для касания зоны
 Data.zoneCatalog = source({}) -- список зон для Shop (от меньшего множителя к большему), см. AutoClickZoneService:GetZoneCatalog
 Data.pressSpeedLevel = source(1) -- уровень скорости пресса (profile.Press.CraftSpeed), см. PressConfig
@@ -183,6 +184,7 @@ function Data.start()
 		Data.pressSpeedLevel(tonumber(profile.Press and profile.Press.CraftSpeed) or 1)
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ownedZones(table.clone(profile.AutoClickZones or {}))
+		Data.autoCollectPass(profile.AutoCollectPass == true)
 		Data.ready(true)
 	end)
 	Profile.GetData:Fire()
@@ -211,6 +213,8 @@ function Data.start()
 			local t = table.clone(Data.permanentMultipliers())
 			t[path[2]] = a
 			Data.permanentMultipliers(t)
+		elseif path[1] == "AutoCollectPass" and path[2] == nil then
+			Data.autoCollectPass(a == true)
 		elseif path[1] == "AutoClickZones" and path[2] ~= nil then
 			local t = table.clone(Data.ownedZones())
 			t[path[2]] = if a == true then true else nil

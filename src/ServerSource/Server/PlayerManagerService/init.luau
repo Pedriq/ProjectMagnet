@@ -364,6 +364,19 @@ function PlayerManagerService.Client:PromptStatRobuxUpgrade(player, statKey)
 	self.Server:PromptStatRobuxUpgrade(player, statKey)
 end
 
+-- Клиент жмёт «OP Auto Collect»: сервер сам вызывает промпт Game Pass'а.
+function PlayerManagerService:PromptAutoCollectPass(player)
+	self.Components.AutoCollectPassHandler:PromptPurchase(player)
+end
+
+function PlayerManagerService.Client:PromptAutoCollectPass(player)
+	self.Server:PromptAutoCollectPass(player)
+end
+
+function PlayerManagerService:HasAutoCollect(player): boolean
+	return self.Components.AutoCollectPassHandler:Owns(player)
+end
+
 function PlayerManagerService:GetPlayerStatsValues(player)
 	return self.PlayerStats[player.UserId]
 end
