@@ -34,7 +34,7 @@ local SoundService = game:GetService("SoundService")
 ]]
 
 local SFX = SoundService:WaitForChild("SFX") :: SoundGroup
-SFX.Volume = 0.4
+SFX.Volume = 1.2 -- звуки игры на первом плане: музыка (MusicController.MUSIC_VOLUME) намного тише
 
 -- Точечные переопределения громкости отдельных звуков.
 local VOLUME_OVERRIDES: { [string]: number } = {
