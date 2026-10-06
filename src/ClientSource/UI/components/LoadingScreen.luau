@@ -64,6 +64,9 @@ local SILVER_SHADE = Color3.fromRGB(150, 158, 174)
 local MAGNET_COUNT = 24
 local STUD_CELL = 96 -- шаг сетки шипов, px (в масштабируемых единицах UI)
 local STUD_SIZE = 56
+-- Фон выходит за видимую область на BLEED с каждой стороны: даже если область ScreenGui чуть меньше физического экрана
+-- (вырезы, скруглённые углы, округление масштаба) по краям не остаётся голых полос.
+local BLEED = 0.12
 
 local function darken(color: Color3, amount: number): Color3
 	return color:Lerp(Color3.new(0, 0, 0), amount)
@@ -356,8 +359,8 @@ local function Background(elapsed: () -> number, guiScale: () -> number, blockin
 	local camera = workspace.CurrentCamera
 	local viewport = if camera then camera.ViewportSize else Vector2.new(1280, 720)
 	local scale = math.max(guiScale(), 0.01)
-	local cols = math.ceil(viewport.X / scale / STUD_CELL) + 1
-	local rows = math.ceil(viewport.Y / scale / STUD_CELL) + 1
+	local cols = math.ceil(viewport.X / scale * (1 + 2 * BLEED) / STUD_CELL) + 1
+	local rows = math.ceil(viewport.Y / scale * (1 + 2 * BLEED) / STUD_CELL) + 1
 
 	local studs = {}
 	for i = 1, cols * rows do
@@ -383,7 +386,8 @@ local function Background(elapsed: () -> number, guiScale: () -> number, blockin
 
 	return create("Frame")({
 		Name = "Background",
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(-BLEED, -BLEED),
+		Size = UDim2.fromScale(1 + 2 * BLEED, 1 + 2 * BLEED),
 		BackgroundColor3 = WHITE,
 		BorderSizePixel = 0,
 		Active = blocking, -- не пропускаем клики в мир, пока идёт загрузка; после Duration выключается
@@ -551,6 +555,13 @@ local function LoadingScreen(props: Props?)
 
 		group,
 	}) :: ScreenGui
+
+	-- IgnoreGuiInset убирает только верхнюю панель; на телефонах ScreenGui по умолчанию ещё и сжимается до «безопасной
+	-- зоны» устройства (вырезы по бокам) — отсюда пустые поля слева и справа. ScreenInsets.None растягивает его на весь
+	-- экран. Через pcall: свойство/enum есть не во всех версиях клиента, без него остаётся прежнее поведение.
+	pcall(function()
+		(screenGui :: any).ScreenInsets = (Enum :: any).ScreenInsets.None
+	end)
 
 	local connection: RBXScriptConnection? = nil
 	local finished = false
