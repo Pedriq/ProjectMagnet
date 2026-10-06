@@ -10,34 +10,34 @@ local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgr
 	    -> 1 предмет-эквивалент тира k+1. Единица — «предмет» = OreConfig.WeightPerItem
 	    (то, что и показывает Press Queue: «x3»). Руда хранится весом, поэтому и
 	    дробный остаток, и дробный ratio (2.9:1) работают без особых случаев.
-	  * Берётся максимум полных групп: 7 предметов Uncommon при 3:1 -> 2 Rare + 1 Uncommon.
+	  * Берётся максимум полных групп: 9 предметов Uncommon при 4:1 -> 2 Rare + 1 Uncommon.
 	  * Выше самого высокого достигнутого тира (HighestIndex) не поднимается никогда.
 	  * Только по нажатию игрока (кнопка Merge в строке руды / Merge All) — не авто.
 
 	Баланс (почему это чистка мусора, а не бесплатная руда):
 	  Вес предмета растёт от тира к тиру всего в ~1.3-1.6 раза (OreConfig: 50, 60, 96,
-	  120, ...), а merge тратит `ratio` >= 2 предметов. То есть тир k+1 через merge
-	  обходится в ~1.5-2.4 раза БОЛЬШЕ веса руды, чем добыча руды k+1 напрямую, а вес —
+	  120, ...), а merge тратит `ratio` >= 3 предметов. То есть тир k+1 через merge
+	  обходится в ~2.3-3.1 раза БОЛЬШЕ веса руды, чем добыча руды k+1 напрямую, а вес —
 	  главный лимит игрока (вместимость сумки). Merge строго невыгоден как способ
 	  добычи и годится только чтобы пристроить уже лежащий в очереди мусор. Поэтому
-	  ratio никогда не опускается ниже MIN_RATIO = 2 (1:1 был бы выгодным) — это
+	  ratio никогда не опускается ниже MIN_RATIO = 3 (чем ближе к 1:1, тем выгоднее merge) — это
 	  инвариант, который обеспечивает GetRatio.
 
 	Прокачка «Merge Efficiency» (Press Upgrade, за Money): 8 покупок, ratio плавно
-	3 -> 2.9 -> ... -> 2:1. Цена — по кривой Press Speed на заданных уровнях
+	4 -> 3.9 -> ... -> 3:1. Цена — по кривой Press Speed на заданных уровнях
 	(StatUpgradesConfig.CostFor("PressSpeed", ...)), т.е. в масштабе остальной
-	прогрессии; последняя покупка (2:1) — самая дорогая.
+	прогрессии; последняя покупка (3:1) — самая дорогая.
 ]]
 
 local PressMergeConfig = {}
 
-PressMergeConfig.MIN_RATIO = 2
--- ratio по уровню прокачки (уровень 1 = база 3:1).
-PressMergeConfig.Ratios = { 3, 2.9, 2.8, 2.65, 2.5, 2.35, 2.2, 2.1, 2 }
+PressMergeConfig.MIN_RATIO = 3
+-- ratio по уровню прокачки (уровень 1 = база 4:1, потолок прокачки — 3:1).
+PressMergeConfig.Ratios = { 4, 3.9, 3.8, 3.7, 3.55, 3.4, 3.25, 3.1, 3 }
 PressMergeConfig.MaxLevel = #PressMergeConfig.Ratios
 
 -- Уровень Press Speed, по чьей цене продаётся улучшение `level -> level + 1`.
-local COST_AS_PRESS_SPEED_LEVEL = { 10, 13, 16, 19, 23, 27, 31, 36 }
+local COST_AS_PRESS_SPEED_LEVEL = { 11, 14, 17, 20, 24, 28, 32, 37 }
 
 local EPS = 1e-9
 
@@ -49,7 +49,7 @@ function PressMergeConfig.GetRatio(level: any): number
 	return math.max(PressMergeConfig.Ratios[PressMergeConfig.ClampLevel(level)], PressMergeConfig.MIN_RATIO)
 end
 
--- "3:1", "2.9:1"
+-- "4:1", "3.9:1"
 function PressMergeConfig.RatioText(level: any): string
 	return string.format("%g:1", PressMergeConfig.GetRatio(level))
 end

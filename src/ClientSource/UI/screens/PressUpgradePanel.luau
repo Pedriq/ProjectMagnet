@@ -88,7 +88,7 @@ local function SpeedUpgradeCard(onUpgrade: () -> (), onBuyRobux: () -> ())
 	})
 end
 
--- Merge Efficiency: ratio Ore Merge 3:1 -> 2:1 (PressMergeConfig), цена — за Money
+-- Merge Efficiency: ratio Ore Merge 4:1 -> 3:1 (PressMergeConfig), цена — за Money
 local function MergeUpgradeCard(onUpgrade: () -> ())
 	local function level()
 		return Data.pressMergeLevel()

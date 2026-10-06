@@ -43,10 +43,26 @@ local PIECES_PER_ROCK = 15
 local DEFAULT_PIECE_WEIGHT = 10
 local DEFAULT_PIECES_PER_ITEM = 10
 
--- HP по порядку в списке: round(BASE_HP * RATIO ^ (index - 1)). Баланс не финальный —
+-- HP по порядку в списке: round(BASE_HP * RATIO ^ (index - 1) * MID_HP_MULT[index]). Баланс не финальный —
 -- у конкретной руды можно задать MaxHp явно, тогда формула для неё не используется.
 local BASE_HP = 10
 local RATIO = 6.4
+
+-- «Горб» середины игры: добавочный множитель HP по номеру руды в списке (1 = Common).
+-- Зоны 1-3 не трогаем (старт быстрый, DamageCurve.SOFT_CAP рассчитан на HP зоны 3 — 410),
+-- зоны 4-9 (Epic-Divine) заметно крепче — игрок дольше добирает силу в средних зонах, —
+-- а дальше множитель плавно сходит к 1, так что поздние зоны остаются как были (игрок
+-- просто приходит к ним позже). Крутить баланс середины — только этой таблицей.
+local MID_HP_MULT: { [number]: number } = {
+	[4] = 1.2, -- Epic
+	[5] = 1.4, -- Legendary
+	[6] = 1.55, -- Mythic
+	[7] = 1.65, -- Secret
+	[8] = 1.65, -- Godly
+	[9] = 1.5, -- Divine
+	[10] = 1.3, -- Celestial
+	[11] = 1.15, -- Eternal
+}
 
 type Entry = {
 	Id: string,
@@ -92,7 +108,7 @@ for index, entry in ipairs(List) do
 	byId[entry.Id] = {
 		Id = entry.Id,
 		Model = entry.Model,
-		MaxHp = entry.MaxHp or math.floor(BASE_HP * RATIO ^ (index - 1) + 0.5),
+		MaxHp = entry.MaxHp or math.floor(BASE_HP * RATIO ^ (index - 1) * (MID_HP_MULT[index] or 1) + 0.5),
 		PieceWeight = pieceWeight,
 		PiecesPerItem = piecesPerItem,
 		WeightPerItem = pieceWeight * piecesPerItem,
