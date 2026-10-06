@@ -5,7 +5,8 @@ local AutoClickZoneService = Knit.CreateService({
 	Client = {
 		-- Fire(player, text) — показать игроку красное предупреждение (например "Not Enough Yet").
 		ShowMessage = Knit.CreateSignal(),
-		-- Fire(player, teslaCoil) — проиграть визуальный эффект пульсации катушки Теслы зоны.
+		-- Fire(player, teslaCoil, gain?) — проиграть визуальный эффект пульсации катушки Теслы зоны;
+		-- gain — прирост силы за этот автоклик (EtNum-строка) для числа над персонажем.
 		ZonePulse = Knit.CreateSignal(),
 		-- Fire(player, zoneId) — зона куплена (наступил ИЛИ через Shop), см.
 		-- AutoClickZonePurchaseHandler.Start (ProcessReceipt). Обновляет "Owned" в панели Shop.

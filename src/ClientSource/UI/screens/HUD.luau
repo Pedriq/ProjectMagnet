@@ -411,10 +411,10 @@ local function HUD()
 
 				-- 1: заполненность инвентаря переноса — полоска, «+N», пульс у
 				-- максимума, вспышка «SAVED!» при опустошении (см. CarryMeter)
-				CarryMeter({ LayoutOrder = 1 }),
+				CarryMeter({ LayoutOrder = 2 }),
 				-- 2: реберсы
 				StatRow({
-					LayoutOrder = 2,
+					LayoutOrder = 3,
 					Icon = "rbxassetid://80993270685237",
 					Text = function()
 						return tostring(Data.rebirths())
@@ -422,7 +422,7 @@ local function HUD()
 				}),
 				-- 3: вся сохранённая руда (profile.Ores) — растёт от сейва рюкзака,
 				-- обнуляется выгрузкой в пресс (см. SavedOreMeter)
-				SavedOreMeter({ LayoutOrder = 3 }),
+				SavedOreMeter({ LayoutOrder = 1 }),
 				-- 4: деньги
 				StatRow({
 					LayoutOrder = 4,

@@ -53,7 +53,8 @@ end
 ---- Assets
 -- extraMultiplier — доп. множитель поверх обычного клика (например, AutoClickZone.multiplier).
 -- manual — клик игрока по экрану (комбо/криты/лимит частоты), а не автоудар/автозона.
-function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?)
+-- Возвращает прирост силы за клик (EtNum-строка) или nil, если клик не засчитан.
+function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?): string?
 	extraMultiplier = extraMultiplier or 1
 
 	local crit = false
@@ -98,6 +99,8 @@ function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?)
 	if crit then
 		ClickerService.Client.CritClick:Fire(player, EtNum.toString(magnetismGain))
 	end
+
+	return EtNum.toString(magnetismGain)
 end
 
 function ClickHandler.Start() end

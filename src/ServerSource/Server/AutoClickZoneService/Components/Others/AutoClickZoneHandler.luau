@@ -148,11 +148,12 @@ function AutoClickZoneHandler:_HandleGranted(player: Player, zoneModel: Instance
 	-- RockAttackAnimation) — сервер тут не проигрывает её сам, а полагается на
 	-- ZonePulse ниже, который на клиенте (AutoClickZoneController) запускает тот
 	-- же свинг, что и обычный удар по камню.
-	ClickerService:Click(player, multiplier)
+	local gain = ClickerService:Click(player, multiplier)
 
 	local teslaCoil = getTeslaCoil(zoneModel)
 	if teslaCoil then
-		AutoClickZoneService.Client.ZonePulse:Fire(player, teslaCoil)
+		-- gain — сколько силы дал этот автоклик (EtNum-строка): клиент показывает его числом
+		AutoClickZoneService.Client.ZonePulse:Fire(player, teslaCoil, gain)
 	end
 end
 

@@ -32,8 +32,9 @@ end
 
 -- Серверный клик от имени игрока с доп. множителем (например, AutoClickZone).
 -- Переиспользует ту же логику начисления силы, что и обычный клик игрока.
-function ClickerService:Click(player, multiplier: number?)
-	self.Components.ClickHandler:Click(player, multiplier)
+-- Возвращает прирост силы за этот клик (EtNum-строка) — AutoClickZone показывает его числом.
+function ClickerService:Click(player, multiplier: number?): string?
+	return self.Components.ClickHandler:Click(player, multiplier)
 end
 
 function ClickerService:GetPlayerMagnetism(player)
