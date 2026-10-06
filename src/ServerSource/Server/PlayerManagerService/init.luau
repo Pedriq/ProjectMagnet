@@ -580,6 +580,19 @@ function PlayerManagerService:ApplyWalkSpeed(player)
 	humanoid.WalkSpeed = self.PlayerStats[player.UserId]["WalkSpeed"]
 end
 
+-- Прыжка в игре нет: обнуляем силу/высоту прыжка (реплицируется клиенту, кнопка прыжка
+-- на мобильных и пробел ничего не делают) и выключаем состояние Jumping.
+function PlayerManagerService:DisableJump(character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
+	if not humanoid then
+		return
+	end
+	humanoid.UseJumpPower = true
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+end
+
 function PlayerManagerService:KnitStart()
 	-- следит за зонами с тегом "SaveItemsZone": сохраняет принесённые предметы
 	-- игроков в зоне и возвращает им срубленный камень
@@ -616,6 +629,14 @@ function PlayerManagerService:KnitInit()
 
 	-- ==== Player Init ====
 	Players.PlayerAdded:Connect(function(player: Player)
+		-- без прыжка: и для уже заспавненного персонажа, и для всех следующих
+		if player.Character then
+			task.spawn(self.DisableJump, self, player.Character)
+		end
+		player.CharacterAdded:Connect(function(character)
+			task.spawn(self.DisableJump, self, character)
+		end)
+
 		-- В фоне, НЕ блокируя остальной PlayerAdded: чинит старые ключи магнитов
 		-- в профиле (см. _MigrateLegacyMagnetKeys). ChangeData/GetData внутри неё
 		-- могут ненадолго заблокироваться (ProfileService:WaitUntilProfileLoaded,
