@@ -93,19 +93,10 @@ local function zoneSection(order: number, props: Props)
 		LayoutOrder = order,
 		Size = UDim2.fromScale(0.93, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 1, -- фона у самой секции нет (у карточек зон он свой)
 		BorderSizePixel = 0,
 
 		create("UICorner")({ CornerRadius = UDim.new(0, 10) }),
-		create("UIGradient")({
-			Rotation = 90,
-			Color = ColorSequence.new(Color3.fromRGB(34, 24, 66), Color3.fromRGB(14, 22, 44)),
-		}),
-		create("UIStroke")({
-			Thickness = 3,
-			Color = GOLD,
-			Transparency = 0.15,
-		}),
 		create("UIPadding")({
 			PaddingTop = UDim.new(0, 12),
 			PaddingBottom = UDim.new(0, 14),
