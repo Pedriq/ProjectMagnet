@@ -19,6 +19,7 @@ local XpBar = require(ReplicatedStorage.ClientSource.UI.components.XpBar)
 local ActionButton = require(ReplicatedStorage.ClientSource.UI.components.ActionButton)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local BuffBuyButton = require(ReplicatedStorage.ClientSource.UI.components.BuffBuyButton)
+local OPAutoCollectButton = require(ReplicatedStorage.ClientSource.UI.components.OPAutoCollectButton)
 local PowerBuyButton = require(ReplicatedStorage.ClientSource.UI.components.PowerBuyButton)
 local ShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.ShopPanel)
 local RebirthPanel = require(ReplicatedStorage.ClientSource.UI.screens.RebirthPanel)
@@ -590,15 +591,20 @@ local function HUD()
 			Name = "BuffButtons",
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.fromScale(0.995, 0.5),
-			Size = UDim2.fromScale(0.14, 0.55),
+			-- 0.65 (было 0.55): место под верхнюю кнопку OP Auto Collect; доли детей ниже
+			-- пересчитаны так, чтобы абсолютные размеры старых кнопок остались прежними
+			Size = UDim2.fromScale(0.14, 0.65),
 			BackgroundTransparency = 1,
 
 			create("UIListLayout")({
 				FillDirection = Enum.FillDirection.Vertical,
 				SortOrder = Enum.SortOrder.LayoutOrder,
 				HorizontalAlignment = Enum.HorizontalAlignment.Center,
-				Padding = UDim.new(0.015, 0),
+				Padding = UDim.new(0.013, 0),
 			}),
+
+			-- Самая верхняя кнопка колонки: OP Auto Collect (пока только визуал, без покупки).
+			OPAutoCollectButton({ LayoutOrder = 0, HeightScale = 0.17 }),
 
 			-- Постоянный донат-множитель силы: кнопка скрывается сама, когда
 			-- куплена последняя ступень (PermanentMultiplierConfig.Tiers.Magnetism).
@@ -607,6 +613,7 @@ local function HUD()
 			end, function()
 				return BuffBuyButton({
 					LayoutOrder = 1,
+					HeightScale = 0.17,
 					Type = "Magnetism",
 					Title = function()
 						return permanentTierTitle("Magnetism", "Magnetism")
@@ -626,6 +633,7 @@ local function HUD()
 			end, function()
 				return BuffBuyButton({
 					LayoutOrder = 2,
+					HeightScale = 0.17,
 					Type = "Money",
 					Title = function()
 						return permanentTierTitle("Money", "Money")
@@ -645,7 +653,7 @@ local function HUD()
 			create("Frame")({
 				Name = "PowerColumnSpacer",
 				LayoutOrder = 3,
-				Size = UDim2.fromScale(1, 0.02),
+				Size = UDim2.fromScale(1, 0.017),
 				BackgroundTransparency = 1,
 			}),
 
@@ -653,7 +661,7 @@ local function HUD()
 			create("Frame")({
 				Name = "PowerColumn",
 				LayoutOrder = 4,
-				Size = UDim2.fromScale(1, 0.57),
+				Size = UDim2.fromScale(1, 0.485),
 				BackgroundTransparency = 1,
 
 				create("UIListLayout")({
