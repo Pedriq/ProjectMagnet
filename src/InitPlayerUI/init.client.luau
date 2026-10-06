@@ -15,19 +15,36 @@ local ClientSource = ReplicatedStorage.ClientSource
 local vide = require(Packages.Vide)
 local Knit = require(Packages.Knit)
 local App = require(ClientSource.UI.App)
+local LoadingScreen = require(ClientSource.UI.components.LoadingScreen)
 local Data = require(ClientSource.UI.data)
 local WorldState = require(ClientSource.UI.worldState)
 local Tutorial = require(ClientSource.UI.tutorial)
+
+-- PlayerGui - не require(), статическая типизация тут ни на что не влияет,
+-- а WaitForChild остаётся уместной защитой на случай гонки при старте.
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Экран загрузки (заглушка на 3.5 с) показываем ДО старта Knit — чтобы игрок видел его с первого кадра,
+-- а не пустой мир. Сам растворяется и снимает себя по окончании (OnFinished).
+local unmountLoading: (() -> ())? = nil
+unmountLoading = vide.mount(function()
+	return LoadingScreen({
+		OnFinished = function()
+			task.defer(function()
+				if unmountLoading then
+					unmountLoading()
+					unmountLoading = nil
+				end
+			end)
+		end,
+	})
+end, playerGui)
 
 -- UI читает данные через Knit-сервисы — ждём старт Knit и поднимаем стор
 Knit.OnStart():await()
 Data.start()
 WorldState.start()
 Tutorial.start() -- сам дождётся профиля и не запустится, если обучение уже пройдено
-
--- PlayerGui - не require(), статическая типизация тут ни на что не влияет,
--- а WaitForChild остаётся уместной защитой на случай гонки при старте.
-local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local unmount = vide.mount(App, playerGui)
 
