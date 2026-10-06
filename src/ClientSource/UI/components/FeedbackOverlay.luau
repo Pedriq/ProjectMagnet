@@ -18,6 +18,7 @@ local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local RebirthConfig = require(ReplicatedStorage.SharedSource.Datas.RebirthConfig)
+local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
 
 local create = vide.create
 local effect = vide.effect
@@ -30,8 +31,10 @@ local untrack = vide.untrack
 	  * Баннеры (очередь, по одному): LEVEL UP, REBIRTH READY, рубежи комбо,
 	    сбор денег с пресса.
 	  * Счётчик комбо ручного клика с убывающей полоской-таймером.
-	  * BAG FULL: пульсирующее предупреждение, пока инвентарь переноски полон
-	    (иначе игрок не понимает, почему магнит перестал бить камни).
+	  * BAG FULL: пульсирующее предупреждение, пока инвентарь переноски полон. Если место ещё
+	    есть, но руда слишком тяжёлая (сервер шлёт CarryBlocked) — «ORE TOO HEAVY!» с весом руды и
+	    доступным местом. Состояние всегда берётся из текущего инвентаря: после сброса на
+	    чекпоинте предупреждение пропадает сразу. Рядом — кнопка Level Up Capacity (Game Pass-скип).
 	  * Контекстные подсказки действий внизу по центру («You can buy a new
 	    magnet» — когда денег хватает на самый дорогой доступный магнит; «Not enough
 	    rebirths» у закрытой зоны) — одно уведомление, новое заменяет текущее (pushNotice).
@@ -104,6 +107,7 @@ local function FeedbackOverlay()
 	local player = Players.LocalPlayer
 	local PressService = Knit.GetService("PressService")
 	local AutoClickZoneService = Knit.GetService("AutoClickZoneService")
+	local PlayerManagerService = Knit.GetService("PlayerManagerService")
 
 	local guiScale = viewportScale()
 
@@ -507,7 +511,7 @@ local function FeedbackOverlay()
 	bagAlert.Name = "BagFull"
 	bagAlert.AnchorPoint = Vector2.new(0.5, 0.5)
 	bagAlert.Position = UDim2.fromScale(0.5, 0.36)
-	bagAlert.Size = UDim2.fromOffset(520, 90)
+	bagAlert.Size = UDim2.fromOffset(520, 150)
 	bagAlert.BackgroundTransparency = 1
 	bagAlert.Visible = false
 	bagAlert.Parent = root
@@ -529,22 +533,141 @@ local function FeedbackOverlay()
 	local bagScale = Instance.new("UIScale")
 	bagScale.Parent = bagAlert
 
+	-- Кнопка «купить Capacity» (дев-продукт ступени, как в панели Upgrades): видна вместе с
+	-- предупреждением, т.е. ровно когда игроку не хватает места.
+	local buyCapacity = Instance.new("TextButton")
+	buyCapacity.Name = "BuyCapacity"
+	buyCapacity.AnchorPoint = Vector2.new(0.5, 0)
+	buyCapacity.Position = UDim2.new(0.5, 0, 0, 90)
+	buyCapacity.Size = UDim2.fromOffset(330, 48)
+	buyCapacity.AutoButtonColor = false
+	buyCapacity.BackgroundColor3 = WHITE
+	buyCapacity.Font = Enum.Font.GothamBlack
+	buyCapacity.TextSize = 22
+	buyCapacity.TextColor3 = WHITE
+	buyCapacity.Text = ""
+	buyCapacity.Parent = bagAlert
+	do
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0.5, 0)
+		c.Parent = buyCapacity
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Color = ColorSequence.new(Theme.ButtonGold:Lerp(WHITE, 0.3), Theme.ButtonGold)
+		g.Parent = buyCapacity
+		local st = Instance.new("UIStroke")
+		st.Thickness = 2.5
+		st.Color = Color3.new(0, 0, 0)
+		st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		st.Parent = buyCapacity
+		local ts = Instance.new("UIStroke")
+		ts.Thickness = 2
+		ts.Color = Color3.new(0, 0, 0)
+		ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+		ts.Parent = buyCapacity
+	end
+
+	local function refreshBuyCapacityText()
+		local level = Data.upgradeLevels()["Capacity"] or 1
+		local step = StatUpgradesConfig.RobuxStepFor("Capacity", level)
+		local price = step and step.Price > 0 and tostring(step.Price) or "?"
+		buyCapacity.Text = `Level Up Capacity  \u{E002}{price}`
+	end
+	refreshBuyCapacityText()
+
+	local capacityHovered = false
+	buyCapacity.MouseEnter:Connect(function()
+		capacityHovered = true
+	end)
+	buyCapacity.MouseLeave:Connect(function()
+		capacityHovered = false
+	end)
+	buyCapacity.Activated:Connect(function()
+		sfx.play("ClickUI")
+		PlayerManagerService:PromptStatRobuxUpgrade("Capacity"):catch(warn)
+	end)
+
+	-- Состояние предупреждения ВСЕГДА выводится из текущего инвентаря (Data.carryCount /
+	-- Data.carryCapacity), а не из «последнего события»: сохранили руду на чекпоинте / выбросили
+	-- в пресс — свободного места снова хватает, и предупреждение пропадает в тот же кадр.
+	--   * BAG FULL      — свободного места меньше самого лёгкого кусочка руды (isBagFull);
+	--   * ORE TOO HEAVY — место ещё есть, но меньше веса кусочка руды, которую игрок пытается
+	--                     собрать (его присылает сервер сигналом CarryBlocked): показываем вес
+	--                     руды и сколько места доступно.
+	local BLOCKED_HOLD = 4 -- сколько держим «too heavy» после последней попытки (и пока курсор над кнопкой)
+	local blockedUntil = 0
+	local blockedNeed = 0 -- вес кусочка, который не влез
+	table.insert(
+		connections,
+		PlayerManagerService.CarryBlocked:Connect(function(needed)
+			if WorldState.inSaveZone() then
+				return
+			end
+			blockedNeed = needed or 0
+			blockedUntil = os.clock() + BLOCKED_HOLD
+			refreshBuyCapacityText()
+		end)
+	)
+
+	local function freeSpace(): number
+		return math.max(Data.carryCapacity() - Data.carryCount(), 0)
+	end
+
+	-- nil — предупреждение не нужно; иначе "full" | "heavy"
+	local function bagMode(): string?
+		if not Data.ready() or WorldState.inSaveZone() then
+			return nil
+		end
+		if isBagFull() then
+			return "full"
+		end
+		if blockedNeed > 0 and os.clock() < blockedUntil then
+			if freeSpace() < blockedNeed then
+				return "heavy"
+			end
+			-- места снова хватает (чекпоинт/сохранение) — забываем попытку
+			blockedNeed = 0
+			blockedUntil = 0
+		end
+		return nil
+	end
+
+	local WARNING = Theme.Warning
 	local bagPulse = 0
-	local wasFull = false
+	local shownMode: string? = nil
 	table.insert(
 		connections,
 		RunService.Heartbeat:Connect(function(dt)
-			local full = Data.ready() and isBagFull() and not WorldState.inSaveZone()
-			if full ~= wasFull then
-				wasFull = full
-				bagAlert.Visible = full
-				if full then
-					sfx.play("BagFull")
-					juice.shake(0.3)
-					flashScreen(RED, 0.25)
+			if capacityHovered and shownMode ~= nil then
+				blockedUntil = math.max(blockedUntil, os.clock() + 1)
+			end
+
+			local mode = bagMode()
+			if mode ~= shownMode then
+				local previous = shownMode
+				shownMode = mode
+				bagAlert.Visible = mode ~= nil
+				if mode then
+					refreshBuyCapacityText()
+					if previous == nil then
+						sfx.play("BagFull")
+						juice.shake(0.3)
+						flashScreen(if mode == "full" then RED else WARNING, 0.25)
+					end
 				end
 			end
-			if full then
+
+			if mode == "full" then
+				bagTitle.Text = "BAG FULL!"
+				bagTitle.TextColor3 = RED
+				bagHint.Text = "Return to base to save your ore"
+			elseif mode == "heavy" then
+				bagTitle.Text = "ORE TOO HEAVY!"
+				bagTitle.TextColor3 = WARNING
+				bagHint.Text = `Ore Weight: {blockedNeed} | Available: {math.floor(freeSpace())}`
+			end
+
+			if mode then
 				bagPulse += dt * 5
 				bagScale.Scale = 1 + math.abs(math.sin(bagPulse)) * 0.08
 			end

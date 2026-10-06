@@ -21,6 +21,9 @@ local PlayerManagerService = Knit.CreateService({
 		-- даже если этим взмахом задето сразу несколько стеблей.
 		-- Для UI-фидбека начисления силы (ClickEffect) — не привязан к конкретному камню.
 		AttackHit = Knit.CreateSignal(),
+		-- Fire(player, neededWeight, freeWeight) — магнит дотянулся до камня, но кусочек руды не
+		-- влезает в свободное место (полоска может быть и не на 100%): клиент показывает BAG FULL.
+		CarryBlocked = Knit.CreateSignal(),
 		-- Инвентарь для ПЕРЕНОСА (не склад): Fire(player, count, capacity)
 		CarryInventoryChanged = Knit.CreateSignal(),
 		-- Fire(player, friendsCount, bonusPercent) — сколько друзей сейчас в сессии

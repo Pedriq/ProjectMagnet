@@ -27,6 +27,8 @@ local ONE_SHOT_SWEEP_INTERVAL = 0.1
 
 ---- State
 local lastReward = {} -- [player] = os.clock() последнего засчитанного взмаха
+local lastBlocked = {} -- [player] = os.clock() последнего уведомления «не влезает» (CarryBlocked)
+local BLOCKED_NOTIFY_INTERVAL = 0.75 -- не чаще, чтобы не слать сигнал на каждый тик хитбокса
 
 ---- Assets
 function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
@@ -130,23 +132,47 @@ local function currentDamage(player): number
 	return DamageCurve.fromMagnetism(EtNum.toNumber(totalMagnetism))
 end
 
--- Камни в хитбоксе, которые сейчас можно бить. nil — бить нечего/некуда класть.
-function PlayerMagnetHitboxManager:_HittableTargets(player)
-	-- Инвентарь полон — магнит не бьёт камни, пока игрок не сохранит руду на базе
-	-- (иначе отколотые кусочки пропадали бы впустую, а камни — ломались зря).
-	if PlayerManagerService:IsCarryFull(player) then
-		return nil
+-- Игрок дотянулся до камня, но кусочек не влезает: сообщаем клиенту (BAG FULL + покупка
+-- Capacity). Не чаще BLOCKED_NOTIFY_INTERVAL; на сбор руды, когда место есть, не влияет.
+function PlayerMagnetHitboxManager:_NotifyBlocked(player, neededWeight: number)
+	local now = os.clock()
+	if now - (lastBlocked[player] or 0) < BLOCKED_NOTIFY_INTERVAL then
+		return
 	end
+	lastBlocked[player] = now
 
-	-- Камни, чей кусочек не влезает в свободное место, не бьём: у руд разный вес
-	-- кусочка, и при остатке меньше него удар ломал бы камень, а руда пропадала бы.
+	local inventory = PlayerManagerService.Components.PlayerOreInventory
+	local free = math.max(inventory:GetCapacity(player) - inventory:GetTotalWeight(player), 0)
+	PlayerManagerService.Client.CarryBlocked:Fire(player, neededWeight, free)
+end
+
+-- Камни в хитбоксе, которые сейчас можно бить. nil — бить нечего/некуда класть.
+-- Камни, чей кусочек не влезает в свободное место, не бьём: у руд разный вес кусочка, и при
+-- остатке меньше него удар ломал бы камень, а руда пропадала бы. Если бить нечего ТОЛЬКО из-за
+-- нехватки места — уведомляем игрока (_NotifyBlocked), даже когда полоска ещё не на 100%.
+function PlayerMagnetHitboxManager:_HittableTargets(player)
+	local full = PlayerManagerService:IsCarryFull(player)
 	local targets = {}
+	local blockedNeed: number? = nil
 	for _, target in ipairs(self:CollectTargets(player)) do
-		if PlayerManagerService:CanCarryOrePiece(player, target.part:GetAttribute("Section")) then
+		local oreId = target.part:GetAttribute("Section")
+		if not full and PlayerManagerService:CanCarryOrePiece(player, oreId) then
 			table.insert(targets, target)
+		else
+			local ore = OreConfig.Get(oreId)
+			if ore then
+				blockedNeed = math.min(blockedNeed or math.huge, ore.PieceWeight)
+			end
 		end
 	end
-	return if #targets > 0 then targets else nil
+
+	if #targets > 0 then
+		return targets
+	end
+	if blockedNeed then
+		self:_NotifyBlocked(player, blockedNeed)
+	end
+	return nil
 end
 
 -- Нанести урон списку камней. reward — засчитать взмах (сила за клик + попап
@@ -284,6 +310,7 @@ function PlayerMagnetHitboxManager.Init()
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastReward[player] = nil
+		lastBlocked[player] = nil
 	end)
 end
 

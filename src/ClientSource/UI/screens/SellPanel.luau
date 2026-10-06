@@ -66,7 +66,8 @@ local function groupedItems()
 		local name = item.Name or "Unknown"
 		local g = groups[name]
 		if not g then
-			g = { Name = name, Price = item.Price or "0", -- EtNum-строка (число из старых сохранений EtNum тоже понимает) Rarity = item.Rarity, Count = 0, Ids = {} }
+			-- Price — EtNum-строка (числа из старых сохранений EtNum тоже понимает)
+			g = { Name = name, Price = item.Price or "0", Rarity = item.Rarity, Count = 0, Ids = {} }
 			groups[name] = g
 			table.insert(order, name)
 		end
