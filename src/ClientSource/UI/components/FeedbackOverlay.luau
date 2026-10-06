@@ -9,6 +9,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
+local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
 local viewportScale = require(ReplicatedStorage.ClientSource.UI.viewportScale)
 local combo = require(ReplicatedStorage.ClientSource.combo)
 local juice = require(ReplicatedStorage.ClientSource.juice)
@@ -485,6 +486,15 @@ local function FeedbackOverlay()
 	}) :: Frame
 	comboFrame.Parent = root
 
+	-- Цель туториала занимает низ экрана: комбо и уведомления встают над ней с прежним шагом между собой
+	effect(function()
+		local lift = if Tutorial.active() and Tutorial.message() ~= nil then Tutorial.PILL_RESERVE else 0
+		noticeHolder.Position = UDim2.new(0.5, 0, 1, -16 - lift)
+		comboFrame.Position = UDim2.new(0.5, 0, 1, -96 - lift)
+	end)
+
+
+
 	local comboScale = Instance.new("UIScale")
 	comboScale.Parent = comboFrame
 	table.insert(
@@ -760,7 +770,8 @@ local function FeedbackOverlay()
 			local key = topMagnetKey()
 			local magnet = key and MagnetData[key]
 			local goalReady = magnet ~= nil and EtNum.meeq(money, magnet.Price)
-			if goalReady and not wasGoalReady then
+			-- во время обучения магнит подсказывает туториал — свой тост не дублируем
+			if goalReady and not wasGoalReady and not Tutorial.active() then
 				sfx.play("GoalReady")
 				pushNotice({
 					key = "magnet",

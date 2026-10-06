@@ -4,6 +4,7 @@ local vide = require(ReplicatedStorage.Packages.Vide)
 local HUD = require(ReplicatedStorage.ClientSource.UI.screens.HUD)
 local ClickEffect = require(ReplicatedStorage.ClientSource.UI.components.ClickEffect)
 local FeedbackOverlay = require(ReplicatedStorage.ClientSource.UI.components.FeedbackOverlay)
+local TutorialOverlay = require(ReplicatedStorage.ClientSource.UI.components.TutorialOverlay)
 
 local create = vide.create
 
@@ -30,6 +31,9 @@ local function App()
 		-- баннеры, комбо, BAG FULL, цель «следующий магнит», вспышки.
 		-- Ниже HUD: открытые панели (магазин и т.п.) всегда перекрывают этот слой.
 		Screen("Feedback", FeedbackOverlay, 0),
+		-- плашка-цель и подсказка клика обучения (см. UI/tutorial); ничего не перехватывает.
+		-- Ниже HUD: HUD и открытые панели всегда поверх туториала, а не наоборот.
+		Screen("Tutorial", TutorialOverlay, 0),
 	})
 end
 

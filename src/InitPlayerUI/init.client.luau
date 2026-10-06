@@ -17,11 +17,13 @@ local Knit = require(Packages.Knit)
 local App = require(ClientSource.UI.App)
 local Data = require(ClientSource.UI.data)
 local WorldState = require(ClientSource.UI.worldState)
+local Tutorial = require(ClientSource.UI.tutorial)
 
 -- UI читает данные через Knit-сервисы — ждём старт Knit и поднимаем стор
 Knit.OnStart():await()
 Data.start()
 WorldState.start()
+Tutorial.start() -- сам дождётся профиля и не запустится, если обучение уже пройдено
 
 -- PlayerGui - не require(), статическая типизация тут ни на что не влияет,
 -- а WaitForChild остаётся уместной защитой на случай гонки при старте.

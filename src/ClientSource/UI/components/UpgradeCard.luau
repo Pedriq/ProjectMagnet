@@ -4,6 +4,8 @@ local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
+local TutorialPulse = require(ReplicatedStorage.ClientSource.UI.components.TutorialPulse)
+local TutorialDim = require(ReplicatedStorage.ClientSource.UI.components.TutorialDim)
 
 local create = vide.create
 
@@ -38,6 +40,12 @@ export type Props = {
 	MoneyDisabled: (() -> boolean)?, -- нет денег / макс. уровень
 	OnBuyMoney: (() -> ())?,
 	OnBuyRobux: (() -> ())?,
+
+	-- Подсветка туториала: пульсирующая рамка (+ плашка HighlightLabel), пока Highlight() == true
+	Highlight: (() -> boolean)?,
+	HighlightLabel: string?,
+	-- Затемнение туториала: карточка гаснет, пока Dim() == true (подсвечена другая карточка)
+	Dim: (() -> boolean)?,
 
 	LayoutOrder: number?,
 }
@@ -87,6 +95,9 @@ local function UpgradeCard(props: Props)
 			Color = Color3.new(0, 0, 0),
 			Transparency = 0.1,
 		}),
+		-- подсветка туториала («купи эту прокачку»)
+		props.Highlight and TutorialPulse({ Active = props.Highlight, Label = props.HighlightLabel }) or nil,
+		props.Dim and TutorialDim({ Active = props.Dim }) or nil,
 		create("ImageLabel")({
 			Name = "Texture",
 			ZIndex = 0,

@@ -4,6 +4,8 @@ local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButton)
 local EdgeAccent = require(ReplicatedStorage.ClientSource.UI.components.EdgeAccent)
+local TutorialPulse = require(ReplicatedStorage.ClientSource.UI.components.TutorialPulse)
+local TutorialDim = require(ReplicatedStorage.ClientSource.UI.components.TutorialDim)
 local RarityText = require(ReplicatedStorage.ClientSource.UI.components.RarityText)
 local ModelViewport = require(ReplicatedStorage.ClientSource.UI.components.ModelViewport)
 local RarityBackdrop = require(ReplicatedStorage.ClientSource.UI.components.RarityBackdrop)
@@ -66,6 +68,12 @@ export type Props = {
 	-- Купленный донатный (Game Pass) меч в панели Magnets: тёмно-синяя анимированная
 	-- карточка с мягким бликом и свечением вместо цвета редкости (CardEffect игнорируется)
 	Premium: boolean?,
+
+	-- Подсветка туториала: пульсирующая рамка (+ плашка HighlightLabel), пока Highlight() == true
+	Highlight: (() -> boolean)?,
+	HighlightLabel: string?,
+	-- Затемнение туториала: карточка гаснет, пока Dim() == true (подсвечена другая карточка)
+	Dim: (() -> boolean)?,
 
 	LayoutOrder: number?,
 }
@@ -418,6 +426,9 @@ local function MagnetCard(props: Props)
 		create("UICorner")({ CornerRadius = radius }),
 		vshade(),
 		create("UIStroke")({ Thickness = 3, Color = BLACK, Transparency = 0.1 }),
+		-- подсветка туториала («купи этот магнит»)
+		props.Highlight and TutorialPulse({ Active = props.Highlight, Label = props.HighlightLabel }) or nil,
+		props.Dim and TutorialDim({ Active = props.Dim, CornerRadius = radius }) or nil,
 
 		fxBackground(),
 		premiumBackground(),

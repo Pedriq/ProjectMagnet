@@ -30,6 +30,8 @@ local PressQueuePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressQ
 local PressUpgradePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressUpgradePanel)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
+local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
+local TutorialPulse = require(ReplicatedStorage.ClientSource.UI.components.TutorialPulse)
 local BaseStructures = require(ReplicatedStorage.ClientSource.UI.baseStructures)
 local viewportScale = require(ReplicatedStorage.ClientSource.UI.viewportScale)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
@@ -221,6 +223,13 @@ local function HUD()
 	local function closePanel()
 		openPanel(nil)
 	end
+	-- туториал следит, какое окно открыто (подсветка карточек, прячет мировую стрелку)
+	effect(function()
+		Tutorial.panel(openPanel())
+	end)
+	cleanup(function()
+		Tutorial.panel(nil)
+	end)
 
 	--=== NPC-триггеры окон ===================================================
 	-- Окна magnets / upgrades / sell / pressUpgrade открываются не кнопками HUD, а ProximityPrompt'ами
@@ -294,11 +303,24 @@ local function HUD()
 
 			create("UIScale")({ Scale = guiScale }),
 
+			-- туториал: пока подсвечена кнопка Base, остальной HUD притемнён (панели — ZIndex 9-10, выше;
+			-- Experience с кнопкой — ZIndex 6, выше затемнения)
+			show(Tutorial.pulseBase, function()
+				return create("Frame")({
+					Name = "TutorialDim",
+					ZIndex = 5,
+					Size = UDim2.fromScale(1, 1),
+					BackgroundColor3 = Color3.new(0, 0, 0),
+					BackgroundTransparency = 0.5,
+				})
+			end),
+
 			--=== ВЕРХ ПО ЦЕНТРУ: полоса опыта / силы, либо кнопка Base =============
 			-- Пока игрок «на вылазке» (прошёл Entrance) и не стоит в SaveItemsZone —
 			-- вместо XpBar показываем кнопку Base: телепорт на респавн мира.
 			create("Frame")({
 				Name = "Experience",
+				ZIndex = 6,
 				AnchorPoint = Vector2.new(0.5, 0),
 				Position = UDim2.new(0.5, 0, 0, 16),
 				Size = UDim2.fromOffset(360, 0),
@@ -330,14 +352,23 @@ local function HUD()
 							HorizontalAlignment = Enum.HorizontalAlignment.Center,
 						}),
 
-						WideButton({
-							Text = "Base",
+						-- держатель того же размера, что кнопка: на него ложится рамка-подсветка туториала
+						create("Frame")({
+							Name = "BaseButtonHolder",
 							Size = UDim2.fromOffset(200, 46),
-							TextSize = 24,
-							Color = Theme.ButtonNav, -- яркий электрический: кнопка явно активна
-							OnActivated = function()
-								Knit.GetService("PlayerManagerService"):TeleportToWorldSpawn():catch(warn)
-							end,
+							BackgroundTransparency = 1,
+
+							WideButton({
+								Text = "Base",
+								Size = UDim2.fromOffset(200, 46),
+								TextSize = 24,
+								Color = Theme.ButtonNav, -- яркий электрический: кнопка явно активна
+								OnActivated = function()
+									Tutorial.notifyBaseClicked()
+									Knit.GetService("PlayerManagerService"):TeleportToWorldSpawn():catch(warn)
+								end,
+							}),
+							TutorialPulse({ Active = Tutorial.pulseBase, CornerRadius = UDim.new(0.5, 0) }),
 						}),
 					})
 				end)

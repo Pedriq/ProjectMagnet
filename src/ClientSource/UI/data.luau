@@ -43,6 +43,7 @@ Data.pressSpeedLevel = source(1) -- уровень скорости пресса
 Data.cashMultiplier = source("1") -- множитель денег (за ребёрсы), EtNum-строка/число
 Data.magnet = source({ Name = "FridgeMagnet", Magnetism = 5 }) -- текущий меч { Name, Magnetism }
 Data.ownedMagnets = source({}) -- купленные мечи: map[magnetName] = true
+Data.tutorialCompleted = source(false) -- обучение пройдено (profile.Tutorial.Completed), см. UI/tutorial
 Data.ready = source(false) -- пришёл ли первый снапшот профиля
 Data.friendBonusPercent = source(0) -- бонус к силе за клик от друзей в сессии, в процентах
 Data.buffs = source({}) -- активные временные баффы: map[buffType] = { ExpiresAt: number, Bonus: number }
@@ -199,6 +200,7 @@ function Data.start()
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ownedZones(table.clone(profile.AutoClickZones or {}))
 		Data.autoCollectPass(profile.AutoCollectPass == true)
+		Data.tutorialCompleted(type(profile.Tutorial) == "table" and profile.Tutorial.Completed == true)
 		Data.ready(true)
 	end)
 	Profile.GetData:Fire()
@@ -229,6 +231,8 @@ function Data.start()
 			Data.permanentMultipliers(t)
 		elseif path[1] == "AutoCollectPass" and path[2] == nil then
 			Data.autoCollectPass(a == true)
+		elseif path[1] == "Tutorial" and path[2] == "Completed" then
+			Data.tutorialCompleted(a == true)
 		elseif path[1] == "AutoClickZones" and path[2] ~= nil then
 			local t = table.clone(Data.ownedZones())
 			t[path[2]] = if a == true then true else nil

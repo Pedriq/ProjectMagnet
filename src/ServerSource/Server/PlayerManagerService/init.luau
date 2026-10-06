@@ -125,6 +125,15 @@ function PlayerManagerService:EquipMagnet(player, magnetName)
 	return self.Components.MagnetShopHandler:EquipMagnet(player, magnetName)
 end
 
+-- Обучение пройдено: сохраняем в профиле навсегда (клиент сам решает, когда оно закончено).
+function PlayerManagerService:CompleteTutorial(player)
+	ProfileService:ChangeData(player, { "Tutorial", "Completed" }, true)
+end
+
+function PlayerManagerService.Client:CompleteTutorial(player)
+	self.Server:CompleteTutorial(player)
+end
+
 function PlayerManagerService.Client:BuyMagnet(player, magnetName)
 	return self.Server:BuyMagnet(player, magnetName)
 end

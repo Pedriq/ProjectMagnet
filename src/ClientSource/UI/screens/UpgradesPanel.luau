@@ -6,6 +6,7 @@ local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
 local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local UpgradeCard = require(ReplicatedStorage.ClientSource.UI.components.UpgradeCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
+local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
 
@@ -59,6 +60,16 @@ local function UpgradesPanel(props: Props)
 			Title = cfg.Title,
 			Bonus = cfg.Bonus,
 			Icon = cfg.Icon,
+
+			-- туториал: подсветить прокачку, которую он сейчас просит купить (Capacity)
+			Highlight = function()
+				return Tutorial.highlightStat() == statKey
+			end,
+			HighlightLabel = "UPGRADE THIS",
+			Dim = function()
+				local target = Tutorial.highlightStat()
+				return target ~= nil and target ~= statKey
+			end,
 
 			Level = level,
 			CostText = function()

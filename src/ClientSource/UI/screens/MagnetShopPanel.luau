@@ -6,6 +6,7 @@ local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
 local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local MagnetCard = require(ReplicatedStorage.ClientSource.UI.components.MagnetCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
+local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
@@ -106,6 +107,19 @@ local function MagnetShopPanel(props: Props)
 				end
 				else "+" .. Format.short(cfg.Magnetism) .. " Magnetism",
 			Model = findMagnetModel(name),
+
+			-- туториал: «это следующий магнит, который стоит купить»
+			Highlight = if premium
+				then nil
+				else function()
+					return Tutorial.highlightMagnet() == name
+				end,
+			HighlightLabel = "BUY THIS",
+			-- остальные карточки гаснут, пока туториал подсвечивает один магнит
+			Dim = function()
+				local target = Tutorial.highlightMagnet()
+				return target ~= nil and target ~= name
+			end,
 
 			Purchasable = cfg.Price ~= nil,
 			Owned = function()

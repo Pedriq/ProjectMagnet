@@ -57,6 +57,8 @@ Theme.Money = Color3.fromRGB(78, 214, 104)
 Theme.MoneyBright = Color3.fromRGB(150, 245, 160)
 
 ---- премиум (Robux, донат)
+-- Туториал: максимально контрастный акцент (контур, стрелка, пульс)
+Theme.TutorialAccent = Color3.fromRGB(255, 232, 0)
 Theme.GoldDeep = Color3.fromRGB(140, 92, 14)
 Theme.Gold = Color3.fromRGB(246, 186, 52)
 Theme.GoldBright = Color3.fromRGB(255, 226, 130)
