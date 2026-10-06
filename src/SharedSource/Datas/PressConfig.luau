@@ -126,7 +126,7 @@ end
 
 -- Случайный предмет редкости `rarity` (ItemsConfig = TreasuresConfig). nil — если
 -- для редкости нет предметов.
-function PressConfig.RollItem(rarity: string): { Name: string, Price: number }?
+function PressConfig.RollItem(rarity: string): { Name: string, Price: string }?
 	local items = TreasuresConfig[rarity]
 	if not items or #items == 0 then
 		return nil

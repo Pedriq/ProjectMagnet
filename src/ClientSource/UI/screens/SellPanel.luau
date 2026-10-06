@@ -66,7 +66,7 @@ local function groupedItems()
 		local name = item.Name or "Unknown"
 		local g = groups[name]
 		if not g then
-			g = { Name = name, Price = tonumber(item.Price) or 0, Rarity = item.Rarity, Count = 0, Ids = {} }
+			g = { Name = name, Price = item.Price or "0", -- EtNum-строка (число из старых сохранений EtNum тоже понимает) Rarity = item.Rarity, Count = 0, Ids = {} }
 			groups[name] = g
 			table.insert(order, name)
 		end
@@ -75,7 +75,7 @@ local function groupedItems()
 	end
 
 	table.sort(order, function(a, b)
-		return groups[a].Price * groups[a].Count > groups[b].Price * groups[b].Count
+		return EtNum.me(EtNum.mul(groups[a].Price, groups[a].Count), EtNum.mul(groups[b].Price, groups[b].Count))
 	end)
 
 	local list = {}
@@ -100,13 +100,13 @@ local function isEmpty(): boolean
 	return true
 end
 
--- Сумма всех Price (числом) без множителя. Заблокированные предметы не
+-- Сумма всех Price (EtNum) без множителя. Заблокированные предметы не
 -- считаются — Sell All/Sell x2 их всё равно не продают (см. PlayerTreasureManager).
-local function rawTotal(): number
-	local sum = 0
+local function rawTotal(): any
+	local sum: any = "0"
 	for _, item in pairs(Data.items()) do
 		if not isLocked(item.Name) then
-			sum += tonumber(item.Price) or 0
+			sum = EtNum.add(sum, item.Price or "0")
 		end
 	end
 	return sum
@@ -261,7 +261,7 @@ local function SellPanel(props: Props)
 						end,
 						PriceText = function()
 							local g = group()
-							return "+$" .. Format.short(EtNum.mul(g.Price * g.Count, Data.fullCashMultiplier()))
+							return "+$" .. Format.short(EtNum.mul(EtNum.mul(g.Price, g.Count), Data.fullCashMultiplier()))
 						end,
 						Locked = function()
 							return isLocked(group().Name)
