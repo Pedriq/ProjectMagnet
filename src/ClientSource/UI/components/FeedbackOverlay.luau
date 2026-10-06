@@ -65,18 +65,18 @@ local function isBagFull(): boolean
 	return Data.carryCapacity() - Data.carryCount() < MIN_PIECE_WEIGHT
 end
 
--- Самый дорогой из доступных сейчас магнитов: последний по порядку магазина, которым
--- игрок ещё не владеет и который продаётся за Money. Подсказка «можно купить новый
--- магнит» показывается, только когда денег хватает именно на него — а не по разу на
--- каждый следующий магнит после каждой покупки.
+-- Самый сильный магнит, продающийся за Money (последний по порядку магазина), если он ещё НЕ
+-- куплен; nil — если он уже куплен. Подсказка «можно купить новый магнит» относится только к нему:
+-- купив самый сильный, игрок больше не получает подсказок про более слабые магниты, которые
+-- ещё не куплены (раньше после покупки верхнего поиск «проваливался» на следующий слабее).
 local function topMagnetKey(): string?
 	local owned = Data.ownedMagnets()
 	local order = MagnetData.Order
 	for i = #order, 1, -1 do
 		local key = order[i]
 		local magnet = MagnetData[key]
-		if magnet and magnet.Price and not owned[key] then
-			return key
+		if magnet and magnet.Price then
+			return if owned[key] then nil else key
 		end
 	end
 	return nil
