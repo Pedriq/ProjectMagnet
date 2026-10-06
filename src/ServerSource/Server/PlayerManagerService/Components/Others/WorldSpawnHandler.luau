@@ -11,6 +11,7 @@ local SPAWN_HEIGHT_OFFSET = 3
 
 ---- State
 local lastTeleport = {} -- [userId] = os.clock()
+local cachedSpawn: BasePart? = nil -- найденный SpawnLocation: обход всего Workspace на каждый телепорт дорог
 
 ---- Assets
 -- Точка спавна мира, в котором сейчас игрок. Пока мир один: берём
@@ -22,8 +23,13 @@ function WorldSpawnHandler:GetWorldSpawn(player: Player): BasePart?
 		return respawn
 	end
 
+	if cachedSpawn and cachedSpawn:IsDescendantOf(Workspace) then
+		return cachedSpawn
+	end
+
 	for _, inst in ipairs(Workspace:GetDescendants()) do
 		if inst:IsA("SpawnLocation") then
+			cachedSpawn = inst
 			return inst
 		end
 	end

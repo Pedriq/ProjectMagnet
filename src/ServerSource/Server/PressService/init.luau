@@ -6,6 +6,7 @@ local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
 local PressMergeConfig = require(ReplicatedStorage.SharedSource.Datas.PressMergeConfig)
+local RateLimiter = require(ReplicatedStorage.SharedSource.Utilities.RateLimiter)
 
 --[[
 	PressService — гидравлический пресс (Workspace.HydraulicPress, см. PressConfig).
@@ -132,10 +133,16 @@ function PressService:MergeOres(player, oreId: string?): boolean
 end
 
 function PressService.Client:MergeOre(player, oreId)
+	if type(oreId) ~= "string" or not RateLimiter.Allow(player, "Merge", 0.3) then
+		return false
+	end
 	return self.Server:MergeOres(player, oreId)
 end
 
 function PressService.Client:MergeAll(player)
+	if not RateLimiter.Allow(player, "Merge", 0.3) then
+		return false
+	end
 	return self.Server:MergeOres(player, nil)
 end
 
@@ -161,6 +168,9 @@ function PressService:BuyMergeUpgrade(player): boolean
 end
 
 function PressService.Client:BuyMergeUpgrade(player)
+	if not RateLimiter.Allow(player, "PressBuy", 0.15) then
+		return false
+	end
 	return self.Server:BuyMergeUpgrade(player)
 end
 
@@ -185,7 +195,30 @@ end
 -- внутри, иначе в детект попал бы декоративный вращающийся ZoneDashedOutline.
 -- Если ZoneFloor нет (старые/другие зоны без такой структуры) — падаем назад на
 -- поиск по всем BasePart, как раньше.
+local PAD_CACHE_TTL = 1 -- секунд; площадки сами не двигаются, но могут подгрузиться стримингом
+local padCache: { [{ string }]: { At: number, Parts: { BasePart } } } = {}
+
 function PressService:GetPadParts(names: { string }): { BasePart }
+	local cached = padCache[names]
+	if cached and os.clock() - cached.At < PAD_CACHE_TTL then
+		local valid = true
+		for _, part in ipairs(cached.Parts) do
+			if not part:IsDescendantOf(workspace) then
+				valid = false
+				break
+			end
+		end
+		if valid then
+			return cached.Parts
+		end
+	end
+
+	local parts = self:_ScanPadParts(names)
+	padCache[names] = { At = os.clock(), Parts = parts }
+	return parts
+end
+
+function PressService:_ScanPadParts(names: { string }): { BasePart }
 	local press = workspace:FindFirstChild(PressConfig.PRESS_NAME)
 	local parts = {}
 	if not press then
@@ -305,6 +338,9 @@ function PressService:RemoveOre(player, oreId): boolean
 end
 
 function PressService.Client:RemoveOre(player, oreId)
+	if type(oreId) ~= "string" or not RateLimiter.Allow(player, "RemoveOre", 0.2) then
+		return false
+	end
 	return self.Server:RemoveOre(player, oreId)
 end
 
@@ -352,6 +388,9 @@ function PressService:GrantSpeedLevels(player, amount: number): number
 end
 
 function PressService.Client:BuySpeedUpgrade(player)
+	if not RateLimiter.Allow(player, "PressBuy", 0.15) then
+		return false
+	end
 	return self.Server:BuySpeedUpgrade(player)
 end
 

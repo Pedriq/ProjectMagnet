@@ -48,7 +48,7 @@ end
 
 -- Клиент шлёт ТОЛЬКО имя меча — сервер сам находит его GamePassId в MagnetData.
 function MagnetGamePassPurchaseHandler:PromptPurchase(player: Player, magnetName: string)
-	local cfg = magnetName and MagnetData[magnetName]
+	local cfg = MagnetData.isMagnet(magnetName) and MagnetData[magnetName]
 	if not cfg or not cfg.GamePassId then
 		warn(`[MagnetGamePassPurchase] "{tostring(magnetName)}" не продаётся за Game Pass (нет GamePassId)`)
 		return

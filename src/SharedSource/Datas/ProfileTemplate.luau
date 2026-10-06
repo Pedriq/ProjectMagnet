@@ -1,4 +1,8 @@
 local ProfileTemplate = {
+	-- Обработанные чеки донат-продуктов: map[PurchaseId] = os.time() (MarketplaceReceiptRouter) —
+	-- повторная доставка чека (падение сервера до сохранения) не выдаёт покупку второй раз.
+	Receipts = {},
+
 	Magnet = {
 		Name = "FridgeMagnet",
 		Magnetism = 1,

@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
+local RateLimiter = require(ReplicatedStorage.SharedSource.Utilities.RateLimiter)
 local AutoClickZoneService = Knit.CreateService({
 	Name = "AutoClickZoneService",
 	Client = {
@@ -33,6 +34,10 @@ function AutoClickZoneService:GetZoneCatalog(player)
 end
 
 function AutoClickZoneService.Client:GetZoneCatalog(player)
+	-- каталог ходит в MarketplaceService:GetProductInfo — не даём молотить им
+	if not RateLimiter.Allow(player, "GetZoneCatalog", 2) then
+		return {}
+	end
 	return self.Server:GetZoneCatalog(player)
 end
 
@@ -44,6 +49,10 @@ function AutoClickZoneService:PromptZonePurchase(player, zoneId)
 end
 
 function AutoClickZoneService.Client:PromptZonePurchase(player, zoneId)
+	-- PromptValidatedPurchase при необходимости делает живой запрос UserOwnsGamePassAsync (сетевой, с лимитами Roblox)
+	if type(zoneId) ~= "string" or #zoneId > 64 or not RateLimiter.Allow(player, "PromptZonePurchase", 1.5) then
+		return
+	end
 	self.Server:PromptZonePurchase(player, zoneId)
 end
 

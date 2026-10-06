@@ -34,7 +34,7 @@ local function robuxMagnets(): { [number]: string }
 end
 
 function MagnetRobuxPurchaseHandler:PromptPurchase(player: Player, magnetName: string)
-	local cfg = magnetName and MagnetData[magnetName]
+	local cfg = MagnetData.isMagnet(magnetName) and MagnetData[magnetName]
 	if not cfg or not cfg.RobuxProductId then
 		warn(`[MagnetRobuxPurchase] "{tostring(magnetName)}" не продаётся за Robux (нет RobuxProductId)`)
 		return

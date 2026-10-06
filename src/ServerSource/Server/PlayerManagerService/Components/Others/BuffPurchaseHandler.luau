@@ -16,6 +16,9 @@ local BuffPurchaseHandler = {}
 local PlayerManagerService
 
 function BuffPurchaseHandler:PromptPurchase(player: Player, productId: number)
+	if type(productId) ~= "number" then
+		return
+	end
 	if not BuffConfig.ByProductId(productId) then
 		warn(`[BuffPurchase] неизвестный productId для баффа: {productId}`)
 		return

@@ -36,7 +36,9 @@ function RockHitboxManager:CreateStripHitboxes(player, strip)
 	local startZ = strip.zPos - RockGeometry.GetRowWidth() / 2
 
 	for rockIndex = 1, strip.rockCount do
-		if PlayerManagerService:GetRockState(player.UserId, strip.stripId, rockIndex).cut then
+		local rockState = PlayerManagerService:GetRockState(player.UserId, strip.stripId, rockIndex)
+		-- нет состояния камня (данные игрока уже очищены) или камень разбит — хитбокс не нужен
+		if not rockState or rockState.cut then
 			continue
 		end
 
@@ -65,7 +67,7 @@ function RockHitboxManager:CreateStripHitboxes(player, strip)
 		hitbox:SetAttribute("RockIndex", rockIndex)
 		hitbox:SetAttribute("Section", strip.section)
 		hitbox:SetAttribute("MaxHp", strip.rockMaxHp)
-		hitbox:SetAttribute("Hp", PlayerManagerService:GetRockState(player.UserId, strip.stripId, rockIndex).hp)
+		hitbox:SetAttribute("Hp", rockState.hp)
 	end
 end
 
@@ -119,10 +121,14 @@ function RockHitboxManager:UpdatePlayer(player, nearbyStrips)
 	local current = RockService.ActiveStrips[userId]
 	local nearby = {}
 
+	-- папка игрока создаётся при входе; пока её нет — полосы НЕ помечаем построенными, иначе хитбоксов не будет
+	-- до тех пор, пока игрок не выйдет из зоны полосы и не вернётся
+	local folderReady = PlayersRockFolder:FindFirstChild(userId .. "_Rock") ~= nil
+
 	for _, strip in ipairs(nearbyStrips) do
 		nearby[strip.stripId] = strip
 
-		if not current[strip.stripId] then
+		if folderReady and not current[strip.stripId] then
 			self:CreateStripHitboxes(player, strip)
 
 			current[strip.stripId] = true

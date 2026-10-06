@@ -68,7 +68,8 @@ function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?):
 	end
 
 	local magnetism = ClickerService:GetPlayerMagnetism(player)
-	local magnetMagnetism = PlayerManagerService:GetPlayerMagnet(player).Magnetism
+	local equipped = PlayerManagerService:GetPlayerMagnet(player)
+	local magnetMagnetism = equipped and equipped.Magnetism
 	if not magnetism or not magnetMagnetism then
 		return
 	end

@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Knit = require(ReplicatedStorage.Packages.Knit)
+local RateLimiter = require(ReplicatedStorage.SharedSource.Utilities.RateLimiter)
 
 local ProfileService = Knit.CreateService({
 	Name = "ProfileService",
@@ -162,10 +163,9 @@ function ProfileService:GetData(player, redirectories)
 	return directData
 end
 
-function ProfileService.Client:GetOtherPlayer_ProfileData(player, otherPlayer)
-	local _, profileData = ProfileService:GetProfile(otherPlayer)
-	return profileData
-end
+-- Раньше тут был Client:GetOtherPlayer_ProfileData(player, otherPlayer): любой клиент мог вытянуть ПОЛНЫЙ профиль
+-- любого игрока (деньги, покупки, чеки) и подвесить серверные потоки произвольным аргументом. Клиент его нигде
+-- не использовал — удалён. Свои данные клиент получает снапшотом GetData и точечными UpdateSpecificData.
 
 function ProfileService.Client:GetProfileAge(player)
 	local profile = ProfileService:GetProfile(player)
@@ -188,10 +188,21 @@ function ProfileService:KnitStart()
 	Players.PlayerRemoving:Connect(HandlePlayerRemoving)
 
 	-- Handle client data requests
+	-- Не чаще раза в 2 с и не больше одного ожидающего запроса на игрока: клиент шлёт GetData один раз при старте,
+	-- а спам из эксплойта иначе плодил бы потоки WaitUntilProfileLoaded и слал бы полный профиль в цикле.
+	local getDataPending: { [Player]: boolean } = {}
 	ProfileService.Client.GetData:Connect(function(player)
+		if getDataPending[player] or not RateLimiter.Allow(player, "GetData", 2) then
+			return
+		end
+		getDataPending[player] = true
+
 		ProfileService:WaitUntilProfileLoaded(player)
 		local _, profileData = ProfileService:GetProfile(player)
-		ProfileService.Client.GetData:Fire(player, profileData)
+		getDataPending[player] = nil
+		if profileData and player.Parent then
+			ProfileService.Client.GetData:Fire(player, profileData)
+		end
 	end)
 end
 

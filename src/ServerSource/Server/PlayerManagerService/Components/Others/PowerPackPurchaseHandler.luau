@@ -27,6 +27,9 @@ local PlayerManagerService
 local promptedWorld = {}
 
 function PowerPackPurchaseHandler:PromptPurchase(player: Player, productId: number)
+	if type(productId) ~= "number" then
+		return
+	end
 	if not PowerPackConfig.ByProductId(productId) then
 		warn(`[PowerPackPurchase] неизвестный productId: {productId}`)
 		return

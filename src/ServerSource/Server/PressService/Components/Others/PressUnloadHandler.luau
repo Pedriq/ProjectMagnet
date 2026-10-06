@@ -28,7 +28,7 @@ local PlayerManagerService
 
 ---- Datas
 local TICK = 0.1
-local DEBUG = true -- диагностика в Output (выключить, когда всё заработает)
+local DEBUG = false -- диагностика в Output (включать только при отладке)
 
 ---- State
 local watching = false

@@ -17,6 +17,9 @@ local PermanentMultiplierPurchaseHandler = {}
 local PlayerManagerService
 
 function PermanentMultiplierPurchaseHandler:PromptPurchase(player: Player, productId: number)
+	if type(productId) ~= "number" then
+		return
+	end
 	local buffType = PermanentMultiplierConfig.ByProductId(productId)
 	if not buffType then
 		warn(`[PermanentMultiplierPurchase] неизвестный productId: {productId}`)

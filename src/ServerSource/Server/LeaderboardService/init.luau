@@ -75,6 +75,8 @@ end
 	входе/выходе и периодически для тех, кто ещё в игре (см. KnitStart) — не на каждое
 	изменение стата (Magnetism/Money меняются на каждый клик), чтобы не упереться в лимиты DataStore.
 ]]
+local lastWritten: { [string]: number } = {} -- [userId .. statKey] = последнее записанное значение
+
 local function syncPlayer(player: Player)
 	local _, profileData = ProfileService:GetProfile(player)
 	if not profileData then
@@ -85,10 +87,16 @@ local function syncPlayer(player: Player)
 	for _, stat in ipairs(STATS) do
 		local rawValue = getStatValue(profileData, stat.path)
 		local encoded = math.floor(EtNum.lbencode(rawValue))
+		local cacheKey = key .. stat.key
+		if lastWritten[cacheKey] == encoded then
+			continue -- с прошлой записи не изменилось — SetAsync не нужен
+		end
 		local ok, err = pcall(function()
 			stat.store:SetAsync(key, encoded)
 		end)
-		if not ok then
+		if ok then
+			lastWritten[cacheKey] = encoded
+		else
 			warn(
 				("LeaderboardService: не удалось записать %s для %s: %s"):format(
 					stat.key,
@@ -355,7 +363,13 @@ function LeaderboardService:KnitStart()
 		syncPlayer(player)
 	end)
 
-	Players.PlayerRemoving:Connect(syncPlayer)
+	Players.PlayerRemoving:Connect(function(player)
+		syncPlayer(player)
+		-- кэш последней записи больше не нужен (иначе копился бы по записи на каждого побывавшего игрока)
+		for _, stat in ipairs(STATS) do
+			lastWritten[tostring(player.UserId) .. stat.key] = nil
+		end
+	end)
 
 	-- Периодическая досинхронизация тех, кто ещё в игре: без этого стат, записанный
 	-- при входе, залипает на старом значении до самого выхода игрока.

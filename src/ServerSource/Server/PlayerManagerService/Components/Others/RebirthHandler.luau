@@ -62,8 +62,7 @@ function RebirthHandler:PromptSkip(player)
 end
 
 function RebirthHandler.Start()
-	-- TODO: идемпотентность чеков (как у StatUpgradeHandler) — повторная обработка
-	-- чека после падения сервера выдала бы второй ребёрс.
+	-- Повторная доставка чека второй ребёрс не выдаёт — идемпотентность в MarketplaceReceiptRouter.
 	-- Каждая ступень — свой дев-продукт, все дают один ребёрс без проверки уровня.
 	for _, step in ipairs(RebirthConfig.SkipSteps) do
 		if step.ProductId ~= 0 then

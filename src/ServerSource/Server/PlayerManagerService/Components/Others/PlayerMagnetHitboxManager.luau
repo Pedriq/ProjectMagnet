@@ -32,7 +32,6 @@ local BLOCKED_NOTIFY_INTERVAL = 0.75 -- не чаще, чтобы не слат�
 
 ---- Assets
 function PlayerMagnetHitboxManager:CreateMagnetHitbox(player, magnetName)
-	print("In create magnet hitbox")
 	local character = player.Character or player.CharacterAdded:Wait()
 	local root = character:FindFirstChild("HumanoidRootPart")
 
@@ -222,7 +221,14 @@ function PlayerMagnetHitboxManager:ApplyHit(player)
 	if not targets then
 		return
 	end
-	self:_HitTargets(player, targets, currentDamage(player), true)
+
+	-- Награда не чаще раза в AttackCooldown НА ВСЕ пути удара: раньше сюда ходил и цикл взмахов, и свип «с одного
+	-- удара» (ApplyOneShots) — если свип успевал наградить прямо перед тиком цикла, сила начислялась дважды за
+	-- один кулдаун. 0.9 — допуск на дрожание task.wait, чтобы обычный ритм взмахов не терял награду.
+	local stats = PlayerManagerService:GetPlayerStatsValues(player)
+	local cooldown = stats and stats.AttackCooldown or 0
+	local reward = os.clock() - (lastReward[player] or 0) >= cooldown * 0.9
+	self:_HitTargets(player, targets, currentDamage(player), reward)
 end
 
 -- Камни «с одного удара» ломаются СРАЗУ, как только попали в хитбокс, без
@@ -283,8 +289,14 @@ end
 function PlayerMagnetHitboxManager:StartPlayerLoop(player)
 	PlayerManagerService.PlayerThreads[player.UserId] = task.spawn(function()
 		while player.Parent do
-			self:ApplyHit(player)
-			task.wait(PlayerManagerService:GetPlayerStatsValues(player).AttackCooldown)
+			local ok, err = pcall(self.ApplyHit, self, player)
+			if not ok then
+				warn("[PlayerMagnetHitboxManager] swing failed:", err)
+			end
+			-- статы могли быть уже очищены (игрок выходит) — тогда ждём по умолчанию, а не падаем; нижняя граница
+			-- не даёт цикл-«вхолостую», если кулдаун когда-нибудь станет 0
+			local stats = PlayerManagerService:GetPlayerStatsValues(player)
+			task.wait(math.max(stats and stats.AttackCooldown or 0.5, 0.05))
 		end
 	end)
 

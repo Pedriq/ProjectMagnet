@@ -26,7 +26,10 @@ end
 
 ---- Assets
 function RockDistanceCheck:CheckDistance(player)
-	local character = player.Character or player.CharacterAdded:Wait()
+	-- Без Wait: этот вызов идёт из ОБЩЕГО цикла RockService по всем игрокам. Игрок без персонажа (только зашёл /
+	-- респавнится / вышел во время ожидания) заморозил бы появление камней у ВСЕХ, пока не заспавнится (а вышедший —
+	-- навсегда). Нет персонажа — просто нет ближних полос в этом тике.
+	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 
 	if not root then

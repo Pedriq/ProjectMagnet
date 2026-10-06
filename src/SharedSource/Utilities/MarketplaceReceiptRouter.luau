@@ -1,5 +1,6 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --[[
 	MarketplaceReceiptRouter — единственный держатель MarketplaceService.ProcessReceipt
@@ -29,6 +30,41 @@ local specificHandlers: { [number]: (Player, number) -> Enum.ProductPurchaseDeci
 local fallbackHandlers: { (Player, number) -> Enum.ProductPurchaseDecision? } = {}
 local claimed = false
 
+-- Идемпотентность чеков: Roblox может доставить один и тот же чек повторно (сервер упал после выдачи, но до
+-- сохранения профиля). Выданные PurchaseId лежат в profile.Receipts; повторный чек сразу закрывается как
+-- выданный, без повторной выдачи. Хранится не больше RECEIPT_KEEP последних записей (профиль не раздувается).
+local RECEIPT_KEEP = 200
+local inFlight: { [string]: boolean } = {} -- чек обрабатывается прямо сейчас (хендлер может yield-ить)
+
+local function profileFor(player: Player): any
+	local ok, ProfileService = pcall(function()
+		return require(ReplicatedStorage.Packages.Knit).GetService("ProfileService")
+	end)
+	local profile = ok and ProfileService.Profiles[player]
+	return profile and profile.Data
+end
+
+local function pruneReceipts(receipts: { [string]: number })
+	local count = 0
+	for _ in pairs(receipts) do
+		count += 1
+	end
+	if count <= RECEIPT_KEEP then
+		return
+	end
+
+	local ids = {}
+	for id in pairs(receipts) do
+		table.insert(ids, id)
+	end
+	table.sort(ids, function(a, b)
+		return receipts[a] < receipts[b]
+	end)
+	for i = 1, count - RECEIPT_KEEP do
+		receipts[ids[i]] = nil
+	end
+end
+
 local function resolveDecision(handler, player, productId): Enum.ProductPurchaseDecision?
 	local ok, decision = pcall(handler, player, productId)
 
@@ -52,20 +88,46 @@ local function ensureClaimed()
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
 
-		local specific = specificHandlers[receiptInfo.ProductId]
-		if specific then
-			local decision = resolveDecision(specific, player, receiptInfo.ProductId)
-			return decision or Enum.ProductPurchaseDecision.NotProcessedYet
+		-- без загруженного профиля не выдаём: не к чему записать ни товар, ни факт выдачи
+		local data = profileFor(player)
+		if not data then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		if type(data.Receipts) ~= "table" then
+			data.Receipts = {}
 		end
 
-		for _, fallback in ipairs(fallbackHandlers) do
-			local decision = resolveDecision(fallback, player, receiptInfo.ProductId)
-			if decision then
-				return decision
+		local purchaseKey = tostring(receiptInfo.PurchaseId)
+		if data.Receipts[purchaseKey] then
+			return Enum.ProductPurchaseDecision.PurchaseGranted -- уже выдано раньше
+		end
+		if inFlight[purchaseKey] then
+			return Enum.ProductPurchaseDecision.NotProcessedYet -- параллельная доставка того же чека
+		end
+		inFlight[purchaseKey] = true
+
+		local decision: Enum.ProductPurchaseDecision? = nil
+		local specific = specificHandlers[receiptInfo.ProductId]
+		if specific then
+			decision = resolveDecision(specific, player, receiptInfo.ProductId)
+		else
+			for _, fallback in ipairs(fallbackHandlers) do
+				decision = resolveDecision(fallback, player, receiptInfo.ProductId)
+				if decision then
+					break
+				end
 			end
 		end
 
-		return Enum.ProductPurchaseDecision.NotProcessedYet
+		inFlight[purchaseKey] = nil
+
+		if decision == Enum.ProductPurchaseDecision.PurchaseGranted then
+			-- записываем сразу после выдачи (напрямую в данные профиля — клиенту это знать не нужно)
+			data.Receipts[purchaseKey] = os.time()
+			pruneReceipts(data.Receipts)
+		end
+
+		return decision or Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 end
 

@@ -460,6 +460,12 @@ function MagnetData.effectsFor(magnet: Magnet): { Text: number, Card: number }
 	}
 end
 
+-- Настоящий ли это ключ магнита (а не служебное поле таблицы: Order / effectsFor / ...).
+-- Для проверки ввода от клиента: MagnetData[имя] без этого вернёт функцию или таблицу.
+function MagnetData.isMagnet(key: any): boolean
+	return type(key) == "string" and MagnetEntries[key] ~= nil
+end
+
 -- Восстановить внутренний ключ по любому значению, когда-либо лежавшему в
 -- profile.Magnet.Name: сам ключ ("ChefsMagneticLadle"), старое испорченное
 -- отображаемое имя ("Chef's Favourite" — баг EquipMagnet до фикса) или мусор.

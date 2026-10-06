@@ -17,41 +17,52 @@ local PlayerManagerService
 ---- Datas
 
 ---- Assets
+-- Продать пачку предметов за ОДНУ запись денег (раньше — отдельная запись и сигнал клиенту на каждый предмет:
+-- Sell All на большом складе заливал сеть тысячами пакетов). id приходят с клиента — каждый проверяется:
+-- предмет должен реально лежать у игрока и не быть заблокированным (кнопка Lock; проверка тут, а не только в UI,
+-- потому что SellAll / Sell x2 вообще не идут через клиентский стейт). Цена берётся из профиля, не от клиента.
+function PlayerTreasureManager:_SellBatch(player, itemIds: { string }, extraMultiplier: number?)
+	local playerItems = PlayerManagerService:GetPlayerItems(player)
+	local money = PlayerManagerService:GetPlayerMoney(player)
+	if not playerItems or not money then
+		return
+	end
+
+	local cashMultiplier = PlayerManagerService:GetPlayerCashMultiplier(player) or 1
+	local multiplier = cashMultiplier * (extraMultiplier or 1)
+
+	local total = EtNum.convert("0")
+	local sold = {}
+	for _, itemId in ipairs(itemIds) do
+		local item = playerItems[itemId]
+		if
+			type(item) == "table"
+			and item.Price
+			and not sold[itemId]
+			and not PlayerManagerService:IsItemNameLocked(player, item.Name)
+		then
+			sold[itemId] = true
+			total = EtNum.add(total, EtNum.mul(item.Price, multiplier))
+		end
+	end
+
+	if next(sold) == nil then
+		return
+	end
+
+	PlayerManagerService:ChangePlayerMoney(player, EtNum.toString(EtNum.add(total, money)))
+	for itemId in pairs(sold) do
+		PlayerManagerService:RemoveItemToPlayer(player, itemId)
+	end
+end
+
 -- extraMultiplier — доп. множитель поверх обычного cashMultiplier (например,
 -- x2 за донат-продукт "Sell x2", см. SellBoostConfig/SellBoostPurchaseHandler).
 function PlayerTreasureManager:SellItem(player, itemId, extraMultiplier: number?)
-	local playerItems = PlayerManagerService:GetPlayerItems(player)
-
-	if not playerItems[itemId] then
-		print("Player dont have item with id " .. itemId)
+	if type(itemId) ~= "string" then
 		return
 	end
-
-	if not playerItems[itemId].Price or not PlayerManagerService:GetPlayerMoney(player) then
-		print("Invalid item price or player money")
-		return
-	end
-
-	-- заблокированные от продажи предметы (кнопка Lock) не продаются — ни по
-	-- одному, ни через Sell All/Sell x2. Проверка на сервере, а не только на
-	-- клиенте (там кнопка Sell уже задизейблена), т.к. SellAllItems не идёт
-	-- через клиентский UI-стейт вообще.
-	if PlayerManagerService:IsItemNameLocked(player, playerItems[itemId].Name) then
-		return
-	end
-
-	-- print(playerItems[itemId].Price)
-	-- print(PlayerManagerService:GetPlayerMoney(player))
-
-	-- множитель денег за ребёрсы/баффы/донат: применяется к цене продажи предмета
-	local cashMultiplier = PlayerManagerService:GetPlayerCashMultiplier(player) or 1
-	local payout = EtNum.mul(playerItems[itemId].Price, cashMultiplier * (extraMultiplier or 1))
-
-	local newMoney = EtNum.add(payout, PlayerManagerService:GetPlayerMoney(player))
-
-	PlayerManagerService:ChangePlayerMoney(player, EtNum.toString(newMoney))
-
-	PlayerManagerService:RemoveItemToPlayer(player, itemId)
+	self:_SellBatch(player, { itemId }, extraMultiplier)
 end
 
 -- Продать перечисленные предметы (стопка одинаковых в панели Sell Loot).
@@ -61,26 +72,26 @@ function PlayerTreasureManager:SellItems(player, itemIds, extraMultiplier: numbe
 		return
 	end
 
+	local ids = {}
 	for _, id in ipairs(itemIds) do
 		if type(id) == "string" then
-			self:SellItem(player, id, extraMultiplier)
+			table.insert(ids, id)
 		end
 	end
+	self:_SellBatch(player, ids, extraMultiplier)
 end
 
 function PlayerTreasureManager:SellAllItems(player, extraMultiplier: number?)
 	local playerItems = PlayerManagerService:GetPlayerItems(player)
 
-	-- сначала снимаем список id: SellItem удаляет ключи из этой же таблицы,
+	-- сначала снимаем список id: продажа удаляет ключи из этой же таблицы,
 	-- а менять таблицу во время pairs() по ней нельзя (часть предметов пропустится).
 	local ids = {}
 	for id in pairs(playerItems) do
 		table.insert(ids, id)
 	end
 
-	for _, id in ipairs(ids) do
-		self:SellItem(player, id, extraMultiplier)
-	end
+	self:_SellBatch(player, ids, extraMultiplier)
 end
 
 function PlayerTreasureManager.Start() end

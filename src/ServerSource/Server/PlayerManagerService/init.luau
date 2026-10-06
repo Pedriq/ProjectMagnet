@@ -3,6 +3,33 @@ local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
+local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresConfig)
+local RateLimiter = require(ReplicatedStorage.SharedSource.Utilities.RateLimiter)
+
+-- Всё, что приходит в Client:* методы, — недоверенный ввод: тип и длина проверяются здесь, лимит частоты — через RateLimiter.
+local MAX_NAME_LENGTH = 64
+local MAX_SELL_BATCH = 500 -- id предметов в одном вызове SellItems
+
+local function isShortString(value: any): boolean
+	return type(value) == "string" and #value > 0 and #value <= MAX_NAME_LENGTH
+end
+
+local function isProductId(value: any): boolean
+	return type(value) == "number" and value == value and value > 0 and value % 1 == 0
+end
+
+-- Имена всех предметов, которые вообще существуют (пресс делает их из TreasuresConfig): блокировать от продажи
+-- можно только их, иначе клиент засорит профиль произвольными ключами LockedItems.
+local VALID_ITEM_NAMES: { [string]: boolean } = {}
+for _, items in pairs(TreasuresConfig) do
+	if type(items) == "table" then
+		for _, item in ipairs(items) do
+			if type(item) == "table" and type(item.Name) == "string" then
+				VALID_ITEM_NAMES[item.Name] = true
+			end
+		end
+	end
+end
 local PlayerManagerService = Knit.CreateService({
 	Name = "PlayerManagerService",
 	PlayerStripData = {},
@@ -61,7 +88,10 @@ function PlayerManagerService:GetStripData()
 end
 
 function PlayerManagerService:GetRockState(userId, stripId, rockIndex)
-	return self.PlayerStripData[userId][stripId][rockIndex]
+	-- данные игрока могли быть уже очищены (вышел) или полосы нет — тогда просто nil, а не ошибка
+	local strips = self.PlayerStripData[userId]
+	local strip = strips and strips[stripId]
+	return strip and strip[rockIndex]
 end
 
 -- Вернуть игроку разбитые камни: HP всех камней сбрасывается к максимуму,
@@ -131,14 +161,24 @@ function PlayerManagerService:CompleteTutorial(player)
 end
 
 function PlayerManagerService.Client:CompleteTutorial(player)
+	if not RateLimiter.Allow(player, "CompleteTutorial", 2) then
+		return
+	end
 	self.Server:CompleteTutorial(player)
 end
 
 function PlayerManagerService.Client:BuyMagnet(player, magnetName)
+	if not MagnetData.isMagnet(magnetName) or not RateLimiter.Allow(player, "BuyMagnet", 0.2) then
+		return false
+	end
 	return self.Server:BuyMagnet(player, magnetName)
 end
 
 function PlayerManagerService.Client:EquipMagnet(player, magnetName)
+	-- экипировка пересоздаёт модель и хитбокс — не чаще раза в полсекунды
+	if not MagnetData.isMagnet(magnetName) or not RateLimiter.Allow(player, "EquipMagnet", 0.5) then
+		return false
+	end
 	return self.Server:EquipMagnet(player, magnetName)
 end
 
@@ -150,6 +190,9 @@ function PlayerManagerService:PromptMagnetRobuxPurchase(player, magnetName)
 end
 
 function PlayerManagerService.Client:PromptMagnetRobuxPurchase(player, magnetName)
+	if not MagnetData.isMagnet(magnetName) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	return self.Server:PromptMagnetRobuxPurchase(player, magnetName)
 end
 
@@ -162,6 +205,9 @@ function PlayerManagerService:PromptMagnetDevProductPurchase(player, magnetName)
 end
 
 function PlayerManagerService.Client:PromptMagnetDevProductPurchase(player, magnetName)
+	if not MagnetData.isMagnet(magnetName) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	return self.Server:PromptMagnetDevProductPurchase(player, magnetName)
 end
 
@@ -204,12 +250,32 @@ end
 -- Переключить блокировку продажи для всех предметов с этим именем (текущих и
 -- будущих — блокировка живёт по имени, а не по конкретным id).
 function PlayerManagerService:ToggleItemLock(player, itemName)
+	if type(itemName) ~= "string" then
+		return false
+	end
 	local locked = self:IsItemNameLocked(player, itemName)
+	-- Блокировать можно только настоящие предметы (из конфига или лежащие у игрока сейчас); снять блокировку —
+	-- с любого уже записанного имени.
+	if not locked and not VALID_ITEM_NAMES[itemName] then
+		local owned = false
+		for _, item in pairs(self:GetPlayerItems(player) or {}) do
+			if type(item) == "table" and item.Name == itemName then
+				owned = true
+				break
+			end
+		end
+		if not owned then
+			return false
+		end
+	end
 	ProfileService:ChangeData(player, { "LockedItems", itemName }, if locked then nil else true)
 	return not locked
 end
 
 function PlayerManagerService.Client:ToggleItemLock(player, itemName)
+	if not isShortString(itemName) or not RateLimiter.Allow(player, "ToggleItemLock", 0.15) then
+		return self.Server:IsItemNameLocked(player, tostring(itemName))
+	end
 	return self.Server:ToggleItemLock(player, itemName)
 end
 
@@ -256,6 +322,9 @@ function PlayerManagerService:PromptBuffPurchase(player, productId)
 end
 
 function PlayerManagerService.Client:PromptBuffPurchase(player, productId)
+	if not isProductId(productId) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptBuffPurchase(player, productId)
 end
 
@@ -267,6 +336,9 @@ function PlayerManagerService:PromptPermanentMultiplierPurchase(player, productI
 end
 
 function PlayerManagerService.Client:PromptPermanentMultiplierPurchase(player, productId)
+	if not isProductId(productId) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptPermanentMultiplierPurchase(player, productId)
 end
 
@@ -277,6 +349,9 @@ function PlayerManagerService:PromptPowerPackPurchase(player, productId)
 end
 
 function PlayerManagerService.Client:PromptPowerPackPurchase(player, productId)
+	if not isProductId(productId) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptPowerPackPurchase(player, productId)
 end
 
@@ -287,6 +362,9 @@ function PlayerManagerService:PromptSellBoostPurchase(player)
 end
 
 function PlayerManagerService.Client:PromptSellBoostPurchase(player)
+	if not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptSellBoostPurchase(player)
 end
 
@@ -364,6 +442,9 @@ end
 
 -- Клиент жмёт «прокачать за Money»: сервер сам проверит цену и спишет деньги.
 function PlayerManagerService.Client:BuyStatUpgrade(player, statKey)
+	if not isShortString(statKey) or not RateLimiter.Allow(player, "BuyStatUpgrade", 0.08) then
+		return false
+	end
 	return self.Server:BuyStatUpgrade(player, statKey)
 end
 
@@ -373,6 +454,9 @@ end
 
 -- Клиент жмёт «купить прокачку за донат»: сервер вызывает промпт покупки дев-продукта.
 function PlayerManagerService.Client:PromptStatRobuxUpgrade(player, statKey)
+	if not isShortString(statKey) or not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptStatRobuxUpgrade(player, statKey)
 end
 
@@ -382,6 +466,9 @@ function PlayerManagerService:PromptAutoCollectPass(player)
 end
 
 function PlayerManagerService.Client:PromptAutoCollectPass(player)
+	if not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptAutoCollectPass(player)
 end
 
@@ -486,15 +573,24 @@ end
 
 -- Продать один предмет со склада (цена = Price * множитель денег, см. PlayerTreasureManager).
 function PlayerManagerService.Client:SellItem(player, itemId)
+	if not isShortString(itemId) or not RateLimiter.Allow(player, "Sell", 0.1) then
+		return
+	end
 	self.Server:SellItem(player, itemId)
 end
 
 -- Продать пачку предметов (одна «стопка» одинаковых предметов в панели Sell Loot).
 function PlayerManagerService.Client:SellItems(player, itemIds)
+	if type(itemIds) ~= "table" or #itemIds > MAX_SELL_BATCH or not RateLimiter.Allow(player, "Sell", 0.1) then
+		return
+	end
 	self.Server:SellItems(player, itemIds)
 end
 
 function PlayerManagerService.Client:SellAllItems(player)
+	if not RateLimiter.Allow(player, "Sell", 0.3) then
+		return
+	end
 	self.Server:SellAllItems(player)
 end
 
@@ -504,6 +600,9 @@ end
 
 -- Клиент просит ребёрс: сервер сам проверит уровень (RebirthHandler:CanRebirth).
 function PlayerManagerService.Client:Rebirth(player)
+	if not RateLimiter.Allow(player, "Rebirth", 0.5) then
+		return
+	end
 	self.Server:RebirthPlayer(player)
 end
 
@@ -513,6 +612,9 @@ end
 
 -- Клиент жмёт Skip: сервер сам выберет ступень по числу реберсов и покажет покупку.
 function PlayerManagerService.Client:PromptSkipRebirth(player)
+	if not RateLimiter.Allow(player, "PromptPurchase", 1.5) then
+		return
+	end
 	self.Server:PromptSkipRebirth(player)
 end
 

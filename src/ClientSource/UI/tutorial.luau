@@ -112,6 +112,11 @@ local currentStage: string? = nil
 local stageSince = 0
 local freeSince: number? = nil
 
+local ROCK_RESCAN = 1.5 -- как часто перечитывать камни игрока в nearestOre
+local rockCache: { BasePart } = {}
+local rockCacheFolder: Instance? = nil
+local rockCacheAt = 0
+
 local promptCache: { [string]: { { Prompt: ProximityPrompt, Building: Instance } } } = {}
 local promptScanned: { [string]: number } = {}
 
@@ -211,9 +216,21 @@ local function nearestOre(): (Vector3?, Instance?)
 	local bestPreferred = false
 	local bestDistance = math.huge
 
-	-- хитбоксы лежат глубже: PlayersRock/<id>_Rock/<stripId>/Rock_<n>
-	for _, rock in ipairs(folder:GetDescendants()) do
-		if rock:IsA("BasePart") then
+	-- хитбоксы лежат глубже: PlayersRock/<id>_Rock/<stripId>/Rock_<n>. GetDescendants на сотнях камней каждые
+	-- 0.25 с дорог — список перестраиваем раз в ROCK_RESCAN секунд, а ближайший считаем по готовому списку
+	local now = os.clock()
+	if rockCacheFolder ~= folder or now - rockCacheAt > ROCK_RESCAN then
+		table.clear(rockCache)
+		for _, rock in ipairs(folder:GetDescendants()) do
+			if rock:IsA("BasePart") then
+				table.insert(rockCache, rock)
+			end
+		end
+		rockCacheFolder, rockCacheAt = folder, now
+	end
+
+	for _, rock in ipairs(rockCache) do
+		if rock.Parent then
 			local preferred = rock:GetAttribute("Section") == firstOre
 			local distance = (rock.Position - root.Position).Magnitude
 			if (preferred and not bestPreferred) or (preferred == bestPreferred and distance < bestDistance) then

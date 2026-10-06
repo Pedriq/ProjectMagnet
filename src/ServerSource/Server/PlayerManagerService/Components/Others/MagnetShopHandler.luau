@@ -31,10 +31,14 @@ local MagnetShopHandler = {}
 local PlayerManagerService
 
 local function magnetConfig(name: string)
-	return type(name) == "string" and MagnetData[name] or nil
+	-- MagnetData[name] без проверки вернул бы и служебные поля таблицы (Order, effectsFor, ...)
+	return MagnetData.isMagnet(name) and MagnetData[name] or nil
 end
 
 function MagnetShopHandler:Owns(player, name: string): boolean
+	if type(name) ~= "string" then
+		return false
+	end
 	local owned = PlayerManagerService:GetPlayerOwnedMagnets(player)
 	return owned ~= nil and owned[name] == true
 end

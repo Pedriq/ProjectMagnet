@@ -59,6 +59,9 @@ end
 
 -- Покупка одного уровня за Money. true — успех, false — нет денег / макс. уровень / нет стата.
 function StatUpgradeHandler:BuyWithMoney(player, statKey: string): boolean
+	if type(statKey) ~= "string" then
+		return false
+	end
 	local cfg = StatUpgradesConfig.Stats[statKey]
 	if not cfg then
 		warn(`[StatUpgrade] неизвестный стат "{statKey}"`)
@@ -87,6 +90,9 @@ function StatUpgradeHandler:BuyWithMoney(player, statKey: string): boolean
 end
 
 function StatUpgradeHandler:PromptRobuxUpgrade(player, statKey: string)
+	if type(statKey) ~= "string" then
+		return
+	end
 	local cfg = StatUpgradesConfig.Stats[statKey]
 	if not cfg then
 		warn(`[StatUpgrade] неизвестный стат "{statKey}"`)
@@ -103,8 +109,7 @@ function StatUpgradeHandler:PromptRobuxUpgrade(player, statKey: string)
 end
 
 function StatUpgradeHandler.Start()
-	-- TODO: идемпотентность чеков (кэш обработанных receipt'ов в профиле),
-	-- чтобы повторная обработка чека после падения сервера не выдала уровни дважды.
+	-- идемпотентность чеков (повторная доставка не выдаёт уровни дважды) — в MarketplaceReceiptRouter
 	-- каждая ступень — свой дев-продукт; уровни выдаёт ступень, чей ProductId купили
 	for statKey in pairs(StatUpgradesConfig.Stats) do
 		for _, step in ipairs(StatUpgradesConfig.RobuxSteps(statKey)) do
