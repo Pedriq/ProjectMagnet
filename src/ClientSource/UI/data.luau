@@ -243,6 +243,9 @@ function Data.start()
 			Data.pressHighestOre(tonumber(a) or 1)
 		elseif path[1] == "Press" and path[2] == "CraftSpeed" then
 			Data.pressSpeedLevel(tonumber(a) or 1)
+		elseif path[1] == "Press" and path[2] == "Ores" and path[3] == nil then
+			-- вся таблица руды пресса разом (Ore Merge)
+			Data.pressOres(savedOres(a))
 		elseif path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
 			local t = table.clone(Data.pressOres())
 			t[path[3]] = if type(a) == "number" and a > 0 then a else nil

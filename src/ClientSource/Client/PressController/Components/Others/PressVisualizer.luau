@@ -47,6 +47,9 @@ local FLY_STAGGER = 0.1 -- пауза между вылетами кусочко
 -- «Стройка» кучки: не долетевшие кусочки по одному падают в свои ячейки.
 local BUILD_TIME = 1.2 -- за сколько достраивается кучка (сколько бы кусочков ни было)
 local BUILD_MAX_STEP = 0.06 -- пауза между кусочками не больше этой (если их мало)
+local BUILD_MIN_STEP = 1 / 180 -- ...и не меньше этой (потолок ~3 кусочка за кадр)
+local MAX_ANIMATED_MOVERS = 60 -- сколько кусочков кучки плавно оседают после перестройки (остальные — сразу)
+local MAX_ANIMATED_HOPS = 30 -- сколько кусочков «выпрыгивает» при удалении руды (остальные — сразу исчезают)
 local DROP_TIME = 0.25 -- падение одного кусочка в ячейку
 local DROP_HEIGHT = 2.5 -- с какой высоты над ячейкой он падает
 -- Кучка руды: ровная сетка слоями над PressInventory (снизу вверх), до PILE_MAX_HEIGHT.
@@ -189,31 +192,61 @@ local function assetsFolder(name: string): Instance?
 	return assets and assets:FindFirstChild(name)
 end
 
-local function createOrePiece(oreId: string): Model
+-- Кусочек под размер ячейки. У готовых шаблонов (см. pieceTemplates) подгонка уже сделана и
+-- помечена атрибутом Fitted, так что для клонов это мгновенный выход.
+local function fitToCell(model: Model)
+	if model:GetAttribute("Fitted") then
+		return
+	end
+	local extents = model:GetExtentsSize()
+	local biggest = math.max(extents.X, extents.Y, extents.Z)
+	if biggest > 0 then
+		safeScale(model, model:GetScale() * PILE_CELL * PILE_PIECE_FILL / biggest)
+	end
+	model:SetAttribute("Fitted", true)
+end
+
+-- Готовые шаблоны кусочков по руде: уже «чисто визуальные» (makeVisual) и подогнанные под ячейку.
+-- Делаются ОДИН раз на руду; каждый новый кусочек — просто Clone() (раньше на каждый кусочек:
+-- поиск в Assets, GetDescendants, GetExtentsSize, ScaleTo — это и давало просадки при merge).
+local pieceTemplates: { [string]: { Model } } = {}
+
+local function buildPieceTemplates(oreId: string): { Model }
 	local ore = OreConfig.Get(oreId)
 	local folder = assetsFolder("Ores")
 	local variants = folder and ore and folder:FindFirstChild(ore.Model)
 
-	local model: Model? = nil
+	local list: { Model } = {}
 	if variants then
-		local options = {}
 		for _, child in ipairs(variants:GetChildren()) do
 			if child:IsA("BasePart") or child:IsA("Model") then
-				table.insert(options, child)
+				local model = toModel(child)
+				if model then
+					makeVisual(model)
+					fitToCell(model)
+					table.insert(list, model)
+				end
 			end
 		end
-		if #options > 0 then
-			model = toModel(options[math.random(1, #options)])
-		end
 	end
 
-	if not model then
+	if #list == 0 then
 		local rarity = ore and ore.Rarity or oreId
-		model = fallbackModel(PIECE_FALLBACK_SIZE, RarityColors.get(rarity), Enum.Material.Slate)
+		local model = fallbackModel(PIECE_FALLBACK_SIZE, RarityColors.get(rarity), Enum.Material.Slate)
+		makeVisual(model)
+		fitToCell(model)
+		table.insert(list, model)
 	end
+	return list
+end
 
-	makeVisual(model :: Model)
-	return model :: Model
+local function createOrePiece(oreId: string): Model
+	local list = pieceTemplates[oreId]
+	if not list then
+		list = buildPieceTemplates(oreId)
+		pieceTemplates[oreId] = list
+	end
+	return list[math.random(1, #list)]:Clone()
 end
 
 local warnedMissing: { [string]: boolean } = {}
@@ -367,24 +400,55 @@ local function randomYaw(): CFrame
 	return CFrame.Angles(0, math.rad(90 * math.random(0, 3)), 0)
 end
 
-local function vanish(model: Model)
-	task.spawn(function()
-		local baseScale = model:GetScale()
-		animate(PIECE_VANISH_TIME, function(alpha)
-			if model.Parent then
-				safeScale(model, baseScale * (1 - alpha))
-			end
-		end)
+-- Исчезающие кусочки (сняты с кучки): раньше на КАЖДЫЙ кусочек — свой поток + ScaleTo каждый
+-- кадр + Destroy, и при merge/крафте сотен кусочков это был скачок кадра. Теперь: один общий
+-- цикл Heartbeat; плавно сжимаются максимум MAX_VANISH_ANIMATED кусочков, остальные сразу
+-- скрываются и разрушаются порциями по DESTROY_PER_FRAME за кадр.
+local MAX_VANISH_ANIMATED = 24
+local DESTROY_PER_FRAME = 24
+local vanishing: { { Model: Model, Base: number, T: number } } = {}
+local destroyQueue: { Model } = {}
+local vanishConn: RBXScriptConnection? = nil
+
+local function pumpVanish(dt: number)
+	local i = 1
+	while i <= #vanishing do
+		local v = vanishing[i]
+		v.T += dt
+		local alpha = math.min(v.T / PIECE_VANISH_TIME, 1)
+		if v.Model.Parent and alpha < 1 then
+			safeScale(v.Model, v.Base * (1 - alpha))
+			i += 1
+		else
+			table.insert(destroyQueue, v.Model)
+			vanishing[i] = vanishing[#vanishing] -- swap-remove
+			vanishing[#vanishing] = nil
+		end
+	end
+
+	for _ = 1, DESTROY_PER_FRAME do
+		local model = table.remove(destroyQueue)
+		if not model then
+			break
+		end
 		model:Destroy()
-	end)
+	end
+
+	if #vanishing == 0 and #destroyQueue == 0 and vanishConn then
+		vanishConn:Disconnect()
+		vanishConn = nil
+	end
 end
 
--- Кусочек под размер ячейки.
-local function fitToCell(model: Model)
-	local extents = model:GetExtentsSize()
-	local biggest = math.max(extents.X, extents.Y, extents.Z)
-	if biggest > 0 then
-		safeScale(model, model:GetScale() * PILE_CELL * PILE_PIECE_FILL / biggest)
+local function vanish(model: Model)
+	if #vanishing < MAX_VANISH_ANIMATED then
+		table.insert(vanishing, { Model = model, Base = model:GetScale(), T = 0 })
+	else
+		model.Parent = nil -- мгновенно пропадает с глаз, разрушится порцией позже
+		table.insert(destroyQueue, model)
+	end
+	if not vanishConn then
+		vanishConn = RunService.Heartbeat:Connect(pumpVanish)
 	end
 end
 
@@ -443,6 +507,12 @@ local function ensureGlow(): boolean
 	return true
 end
 
+-- oreId -> номер руды в OreConfig.Order (вместо table.find в горячих циклах)
+local ORE_INDEX: { [string]: number } = {}
+for index, oreId in ipairs(OreConfig.Order) do
+	ORE_INDEX[oreId] = index
+end
+
 local function updatePileGlow()
 	if not ensureGlow() then
 		return
@@ -450,11 +520,11 @@ local function updatePileGlow()
 
 	local best = 0
 	for _, entry in ipairs(pileList) do
-		best = math.max(best, table.find(OreConfig.Order, entry.OreId) or 0)
+		best = math.max(best, ORE_INDEX[entry.OreId] or 0)
 	end
 	for oreId, count in pairs(hidden) do
 		if count > 0 then
-			best = math.max(best, table.find(OreConfig.Order, oreId) or 0)
+			best = math.max(best, ORE_INDEX[oreId] or 0)
 		end
 	end
 
@@ -518,10 +588,8 @@ local function dropPiled(oreId: string)
 	end
 	local model = createOrePiece(oreId)
 	fitToCell(model)
-	local baseScale = model:GetScale()
 	local entry = appendEntry(oreId, model, true)
 
-	safeScale(model, baseScale * 0.3)
 	model:PivotTo(entry.Target + Vector3.new(0, DROP_HEIGHT, 0))
 	model.Parent = visualsFolder
 
@@ -530,8 +598,8 @@ local function dropPiled(oreId: string)
 			if not model.Parent then
 				return
 			end
-			-- цель читается каждый кадр: кучка могла перестроиться (крафт)
-			safeScale(model, baseScale * (0.3 + 0.7 * alpha))
+			-- цель читается каждый кадр: кучка могла перестроиться (крафт); масштаб не трогаем
+			-- (ScaleTo на каждый кусочек каждый кадр — дорого, а падение читается и без него)
 			model:PivotTo(entry.Target + Vector3.new(0, DROP_HEIGHT * (1 - alpha * alpha), 0))
 		end)
 		entry.Flying = false
@@ -557,7 +625,8 @@ function PressVisualizer:_BuildHidden()
 			total += math.max(count, 0)
 		end
 		total = math.min(total, (grid :: Grid).Capacity - #pileList)
-		local step = math.min(BUILD_MAX_STEP, BUILD_TIME / math.max(total, 1))
+		-- не быстрее ~3 кусочков за кадр (BUILD_MIN_STEP): иначе сотни Clone за один кадр = просадка
+		local step = math.max(math.min(BUILD_MAX_STEP, BUILD_TIME / math.max(total, 1)), BUILD_MIN_STEP)
 
 		local debt = 0 -- накопленная пауза: если step меньше кадра, за кадр падает несколько
 		while grid and #pileList < grid.Capacity do
@@ -594,23 +663,34 @@ function PressVisualizer:_Relayout()
 		return
 	end
 
-	-- во время стройки скрытые дорисовывает она сама, по одному
+	-- Скрытые кусочки (не влезли в кучку) дорисовывает «стройка» порциями с анимацией падения —
+	-- а не все сразу в одном кадре, как раньше.
 	if not building then
-		for _, oreId in ipairs(OreConfig.Order) do
-			while (hidden[oreId] or 0) > 0 and #pileList < grid.Capacity do
-				hidden[oreId] -= 1
-				spawnPiled(oreId)
+		local anyHidden = false
+		for _, count in pairs(hidden) do
+			if count > 0 then
+				anyHidden = true
+				break
 			end
+		end
+		if anyHidden and #pileList < grid.Capacity then
+			self:_BuildHidden()
 		end
 	end
 
+	-- Двигаются только те, у кого ячейка поменялась; плавно оседают первые MAX_ANIMATED_MOVERS,
+	-- остальные просто ставятся на место одним PivotTo.
 	local moving = {}
 	for index, entry in ipairs(pileList) do
 		local target = slotCFrame(index, entry.Yaw)
 		if target ~= entry.Target then
 			entry.Target = target
 			if not entry.Flying then
-				table.insert(moving, { Entry = entry, From = entry.Model:GetPivot() })
+				if #moving < MAX_ANIMATED_MOVERS then
+					table.insert(moving, { Entry = entry, From = entry.Model:GetPivot() })
+				else
+					entry.Model:PivotTo(target)
+				end
 			end
 		end
 	end
@@ -736,24 +816,43 @@ end
 
 -- Убрать из кучки `count` кусочков руды oreId (ушли на предмет): сначала скрытые,
 -- потом нарисованные — с верха кучки.
-function PressVisualizer:_ConsumeFromPile(oreId: string, count: number)
+function PressVisualizer:_ConsumeFromPile(oreId: string, count: number, skipRelayout: boolean?)
 	local fromHidden = math.min(hidden[oreId] or 0, count)
 	hidden[oreId] = (hidden[oreId] or 0) - fromHidden
 	count -= fromHidden
 
-	for index = #pileList, 1, -1 do
-		if count <= 0 then
-			break
+	if count > 0 then
+		-- один проход сверху вниз: помечаем нужные, затем одним проходом уплотняем список
+		-- (table.remove в цикле сдвигал бы хвост на КАЖДЫЙ удалённый кусочек — O(n·k))
+		local drop: { [PileEntry]: boolean } = {}
+		for index = #pileList, 1, -1 do
+			if count <= 0 then
+				break
+			end
+			local entry = pileList[index]
+			if entry.OreId == oreId then
+				drop[entry] = true
+				vanish(entry.Model)
+				count -= 1
+			end
 		end
-		local entry = pileList[index]
-		if entry.OreId == oreId then
-			table.remove(pileList, index)
-			vanish(entry.Model)
-			count -= 1
+
+		local write = 0
+		for read = 1, #pileList do
+			local entry = pileList[read]
+			if not drop[entry] then
+				write += 1
+				pileList[write] = entry
+			end
+		end
+		for index = #pileList, write + 1, -1 do
+			pileList[index] = nil
 		end
 	end
 
-	self:_Relayout()
+	if not skipRelayout then
+		self:_Relayout()
+	end
 end
 
 -- Игрок убрал всю руду oreId из пресса (PressService.OreRemoved): все её кусочки
@@ -769,6 +868,10 @@ function PressVisualizer:RemoveOre(oreId: string)
 			table.remove(pileList, index)
 			removed += 1
 			local model = entry.Model
+			if removed > MAX_ANIMATED_HOPS then
+				vanish(model) -- сверх лимита: просто исчезает (общий пакетный цикл)
+				continue
+			end
 			local from = model:GetPivot()
 			local baseScale = model:GetScale()
 			local hop = Vector3.new((math.random() * 2 - 1) * 2.5, 2 + math.random() * 1.5, (math.random() * 2 - 1) * 2.5)
@@ -795,6 +898,74 @@ function PressVisualizer:RemoveOre(oreId: string)
 		)
 	end
 	self:_Relayout()
+end
+
+-- Ore Merge (PressService.OreMerged): кусочки сливаемых руд исчезают из кучки, а на их месте
+-- появляются кусочки получившейся руды. steps — список { From, To, Groups, Consumed, Produced }.
+-- Считаем ЧИСТОЕ изменение по каждой руде (при каскаде руда одновременно и получается, и
+-- сливается дальше), сначала убираем лишнее — освобождая ячейки, потом достраиваем новое.
+function PressVisualizer:ApplyMerge(steps: { any })
+	local net: { [string]: number } = {}
+	for _, step in ipairs(steps) do
+		local from = OreConfig.Get(step.From)
+		local to = OreConfig.Get(step.To)
+		if from and to then
+			net[step.From] = (net[step.From] or 0) - math.floor(step.Consumed / from.PieceWeight + 0.5)
+			net[step.To] = (net[step.To] or 0) + math.floor(step.Produced / to.PieceWeight + 0.5)
+		end
+	end
+
+	local added = false
+	local removedAny = false
+	local topColor: Color3? = nil
+	for _, oreId in ipairs(OreConfig.Order) do
+		local delta = net[oreId]
+		if delta and delta < 0 then
+			self:_ConsumeFromPile(oreId, -delta, true)
+			removedAny = true
+		end
+	end
+	if removedAny then
+		self:_Relayout() -- ОДИН раз на весь merge
+	end
+	for _, oreId in ipairs(OreConfig.Order) do
+		local delta = net[oreId]
+		if delta and delta > 0 then
+			hidden[oreId] = (hidden[oreId] or 0) + delta
+			added = true
+			topColor = RarityColors.get((OreConfig.Get(oreId) or {} :: any).Rarity)
+		end
+	end
+
+	if added then
+		self:_BuildHidden()
+	end
+	if grid and topColor then
+		juice.burst(
+			Vector3.new(grid.Origin.Position.X, pileTopY(), grid.Origin.Position.Z),
+			topColor,
+			16,
+			{ speed = 0.8, size = 0.8 }
+		)
+	end
+end
+
+-- Руды oreId в прессе больше нет (вес 0), а в кучке ещё остались её кусочки — например, остаток
+-- от крафта или рассинхрон: тихо убираем их, чтобы кучка отражала реальное содержимое.
+function PressVisualizer:SyncOreGone(oreId: string)
+	hidden[oreId] = 0
+	local removedAny = false
+	for index = #pileList, 1, -1 do
+		local entry = pileList[index]
+		if entry.OreId == oreId then
+			table.remove(pileList, index)
+			vanish(entry.Model)
+			removedAny = true
+		end
+	end
+	if removedAny then
+		self:_Relayout()
+	end
 end
 
 -- Точки конвейера: начало (ближе к PressInventory) и конец (ближе к Sell).

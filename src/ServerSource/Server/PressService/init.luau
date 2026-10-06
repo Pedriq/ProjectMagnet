@@ -123,11 +123,9 @@ function PressService:MergeOres(player, oreId: string?): boolean
 	if highest > self:GetStoredHighestOre(player) then
 		ProfileService:ChangeData(player, { "Press", "HighestOre" }, highest)
 	end
-	for _, id in ipairs(OreConfig.Order) do
-		if newOres[id] ~= ores[id] then
-			ProfileService:ChangeData(player, { "Press", "Ores", id }, newOres[id])
-		end
-	end
+	-- ОДНА запись всей таблицы руды (а не по записи на каждую руду): один пакет репликации,
+	-- одно событие на клиенте (PressController/Data обрабатывают путь Press/Ores без ключа руды)
+	ProfileService:ChangeData(player, { "Press", "Ores" }, newOres)
 
 	self.Client.OreMerged:Fire(player, steps)
 	return true

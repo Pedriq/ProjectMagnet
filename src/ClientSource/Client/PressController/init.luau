@@ -35,6 +35,42 @@ local PRESS_NAME = PressConfig.PRESS_NAME
 function PressController:_SetOre(oreId, weight)
 	self.PressOres[oreId] = if type(weight) == "number" and weight > 0 then weight else nil
 	self.Components.PressVisualizer:UpdateProgress(self.PressOres)
+
+	-- руды не осталось — убираем уцелевшие кусочки из кучки (с небольшой задержкой, чтобы не
+	-- перебить анимацию последнего крафта). Если за это время руда вернулась — ничего не делаем.
+	if not self.PressOres[oreId] then
+		task.delay(0.8, function()
+			if not self.PressOres[oreId] then
+				self.Components.PressVisualizer:SyncOreGone(oreId)
+			end
+		end)
+	end
+end
+
+-- Вся таблица руды пришла разом (Ore Merge): обновляем зеркало и убираем кусочки тех руд, которых
+-- больше нет. Сама кучка при merge перерисовывается по OreMerged (PressVisualizer:ApplyMerge).
+function PressController:_SetAll(ores)
+	local previous = self.PressOres
+	local fresh = {}
+	if type(ores) == "table" then
+		for oreId, weight in pairs(ores) do
+			if type(weight) == "number" and weight > 0 then
+				fresh[oreId] = weight
+			end
+		end
+	end
+	self.PressOres = fresh
+	self.Components.PressVisualizer:UpdateProgress(fresh)
+
+	for oreId in pairs(previous) do
+		if not fresh[oreId] then
+			task.delay(0.8, function()
+				if not self.PressOres[oreId] then
+					self.Components.PressVisualizer:SyncOreGone(oreId)
+				end
+			end)
+		end
+	end
 end
 
 function PressController:KnitStart()
@@ -62,8 +98,17 @@ function PressController:KnitStart()
 		end
 	end)
 
+	-- Ore Merge: слитые кусочки пропадают из кучки, на их месте — кусочки новой руды
+	PressService.OreMerged:Connect(function(steps)
+		if type(steps) == "table" then
+			visualizer:ApplyMerge(steps)
+		end
+	end)
+
 	ProfileService.UpdateSpecificData:Connect(function(path, value)
-		if path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
+		if path[1] == "Press" and path[2] == "Ores" and path[3] == nil then
+			self:_SetAll(value)
+		elseif path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then
 			self:_SetOre(path[3], value)
 		elseif path[1] == "Press" and path[2] == "Unclaimed" then
 			visualizer:SetUnclaimed(tostring(value or "0"))
