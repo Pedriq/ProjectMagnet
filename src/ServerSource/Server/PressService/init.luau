@@ -243,6 +243,21 @@ function PressService:BuySpeedUpgrade(player): boolean
 	return true
 end
 
+-- Платный skip (дев-продукт, StatUpgradeHandler): +amount уровней CraftSpeed без списания
+-- денег, с потолком MaxLevel. Возвращает сколько уровней реально добавлено.
+function PressService:GrantSpeedLevels(player, amount: number): number
+	if not self:IsProfileLoaded(player) then
+		return 0
+	end
+	local level = self:GetPressLevel(player, "CraftSpeed")
+	local newLevel = math.clamp(level + amount, level, StatUpgradesConfig.Stats.PressSpeed.MaxLevel)
+	if newLevel == level then
+		return 0
+	end
+	ProfileService:ChangeData(player, { "Press", "CraftSpeed" }, newLevel)
+	return newLevel - level
+end
+
 function PressService.Client:BuySpeedUpgrade(player)
 	return self.Server:BuySpeedUpgrade(player)
 end

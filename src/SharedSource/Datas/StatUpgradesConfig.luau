@@ -105,9 +105,17 @@ StatUpgradesConfig.Stats = {
 		Icon = "",
 		BaseCost = "7500",
 		MaxLevel = 500,
-		RobuxProductId = 0,
-		RobuxLevels = 10,
+		RobuxProductId = 0, -- не используется: платные ступени — в RobuxSteps
+		RobuxLevels = 5,
 		RobuxPrice = 0,
+		-- Платный skip в окне Press Upgrade: те же 4 ступени и цены, что у Range (1-6, 7-12,
+		-- 13-18, 19+), покупка даёт 5 уровней CraftSpeed. Выдача — PressService:GrantSpeedLevels.
+		RobuxSteps = {
+			{ FromLevel = 1, ProductId = 3716851089, Price = 24, Levels = 5 }, -- Press Speed 1
+			{ FromLevel = 7, ProductId = 3716851114, Price = 48, Levels = 5 }, -- Press Speed 2
+			{ FromLevel = 13, ProductId = 3716851142, Price = 96, Levels = 5 }, -- Press Speed 3
+			{ FromLevel = 19, ProductId = 3716851198, Price = 189, Levels = 5 }, -- Press Speed 4 и дальше
+		},
 	},
 	Mobility = {
 		Title = "Mobility",

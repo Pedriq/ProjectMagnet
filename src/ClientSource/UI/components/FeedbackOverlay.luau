@@ -13,6 +13,7 @@ local viewportScale = require(ReplicatedStorage.ClientSource.UI.viewportScale)
 local combo = require(ReplicatedStorage.ClientSource.combo)
 local juice = require(ReplicatedStorage.ClientSource.juice)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
+local RebirthEffect = require(ReplicatedStorage.ClientSource.UI.components.RebirthEffect)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local MagnetData = require(ReplicatedStorage.SharedSource.Datas.MagnetData)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
@@ -140,6 +141,8 @@ local function FeedbackOverlay()
 			BackgroundTransparency = 1,
 		}):Play()
 	end
+
+	local playRebirthEffect = RebirthEffect(root)
 
 	--=== баннеры =============================================================
 	local bannerHolder = Instance.new("Frame")
@@ -580,6 +583,36 @@ local function FeedbackOverlay()
 				end
 			end
 			prevLevel = level
+		end)
+	end)
+
+	-- Ребёрс: счётчик вырос после первого снапшота -> праздничный эффект + баннер
+	local prevRebirths: number? = nil
+	effect(function()
+		local rebirths = Data.rebirths()
+		local ready = Data.ready()
+		untrack(function()
+			if not ready then
+				return
+			end
+			if prevRebirths and rebirths > prevRebirths then
+				playRebirthEffect()
+				sfx.play("LevelUP")
+				juice.shake(0.25)
+				juice.fovPunch(4, 0.5)
+				pushBanner({
+					title = "REBIRTH!",
+					subtitle = "Rebirth " .. rebirths .. " — stronger than ever",
+					color = Theme.RebirthBright,
+					priority = 8,
+				})
+				local character = player.Character
+				local hrp = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if hrp then
+					juice.burst(hrp.Position, Theme.Rebirth, 45, { speed = 1.2, size = 1.4 })
+				end
+			end
+			prevRebirths = rebirths
 		end)
 	end)
 

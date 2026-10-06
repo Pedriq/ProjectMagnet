@@ -28,13 +28,14 @@ local create = vide.create
 	(см. PressConfig.GetCraftItemsPerSecond).
 
 	Использование:
-	  PressUpgradePanel({ OnClose = fn, OnUpgradeSpeed = fn })
+	  PressUpgradePanel({ OnClose = fn, OnUpgradeSpeed = fn, OnBuyRobux = fn })
 	возвращает компонент-тезис () -> Instance (для vide.switch в HUD).
 ]]
 
 export type Props = {
 	OnClose: () -> (),
 	OnUpgradeSpeed: () -> (),
+	OnBuyRobux: () -> (), -- платный skip (дев-продукт ступени, см. StatUpgradesConfig.PressSpeed.RobuxSteps)
 }
 
 local function formatSpeed(itemsPerSecond: number): string
@@ -42,7 +43,7 @@ local function formatSpeed(itemsPerSecond: number): string
 	return string.format("%.2f/s", itemsPerSecond)
 end
 
-local function SpeedUpgradeCard(onUpgrade: () -> ())
+local function SpeedUpgradeCard(onUpgrade: () -> (), onBuyRobux: () -> ())
 	local cfg = StatUpgradesConfig.Stats.PressSpeed
 
 	local function level()
@@ -72,11 +73,16 @@ local function SpeedUpgradeCard(onUpgrade: () -> ())
 		CostText = function()
 			return if atMax() then "MAX" else "$" .. Format.short(cost())
 		end,
-		HideRobux = true,
+		RobuxText = function()
+			-- цена зависит от ступени, соответствующей текущему уровню скорости
+			local step = StatUpgradesConfig.RobuxStepFor("PressSpeed", level())
+			return if step and step.Price > 0 then `R$ {step.Price}` else "R$ Buy"
+		end,
 		MoneyDisabled = function()
 			return atMax() or EtNum.me(cost(), Data.money())
 		end,
 		OnBuyMoney = onUpgrade,
+		OnBuyRobux = onBuyRobux,
 	})
 end
 
@@ -124,7 +130,7 @@ local function PressUpgradePanel(props: Props)
 					PaddingBottom = UDim.new(0, 2),
 				}),
 
-				SpeedUpgradeCard(props.OnUpgradeSpeed),
+				SpeedUpgradeCard(props.OnUpgradeSpeed, props.OnBuyRobux),
 			}),
 		})
 	end

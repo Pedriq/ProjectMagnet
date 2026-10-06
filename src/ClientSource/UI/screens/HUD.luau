@@ -566,6 +566,11 @@ local function HUD()
 						sfx.play("Buy")
 						Knit.GetService("PressService"):BuySpeedUpgrade():catch(warn)
 					end,
+					-- Платный skip: сервер выбирает ступень по текущему уровню скорости,
+					-- уровни выдаёт после покупки (StatUpgradeHandler -> PressService:GrantSpeedLevels).
+					OnBuyRobux = function()
+						Knit.GetService("PlayerManagerService"):PromptStatRobuxUpgrade("PressSpeed"):catch(warn)
+					end,
 				}),
 			}),
 		}),

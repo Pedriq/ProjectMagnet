@@ -7,7 +7,7 @@ local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgr
 local MarketplaceReceiptRouter = require(ReplicatedStorage.SharedSource.Utilities.MarketplaceReceiptRouter)
 
 --[[
-	StatUpgradeHandler — прокачка статов (Range / Capacity / Mobility)
+	StatUpgradeHandler — прокачка статов (Range / Capacity / Mobility; за донат — ещё PressSpeed)
 	за Money и за донат. Конфиг цен/бонусов — StatUpgradesConfig.
 
 	За Money: сервер считает цену из StatUpgradesConfig.CostFor(statKey, level),
@@ -25,7 +25,13 @@ local StatUpgradeHandler = {}
 ---- Knit Services
 local PlayerManagerService
 
+-- Press Speed живёт не в Stats, а в profile.Press.CraftSpeed (PressService)
+local PRESS_SPEED = "PressSpeed"
+
 local function currentLevel(player, statKey: string): number
+	if statKey == PRESS_SPEED then
+		return Knit.GetService("PressService"):GetPressLevel(player, "CraftSpeed")
+	end
 	return tonumber(PlayerManagerService:GetPlayerStatLevel(player, statKey)) or 1
 end
 
@@ -35,6 +41,10 @@ function StatUpgradeHandler:GrantLevels(player, statKey: string, amount: number)
 	if not cfg then
 		warn(`[StatUpgrade] неизвестный стат "{statKey}"`)
 		return 0
+	end
+
+	if statKey == PRESS_SPEED then
+		return Knit.GetService("PressService"):GrantSpeedLevels(player, amount)
 	end
 
 	local level = currentLevel(player, statKey)
@@ -53,6 +63,10 @@ function StatUpgradeHandler:BuyWithMoney(player, statKey: string): boolean
 	if not cfg then
 		warn(`[StatUpgrade] неизвестный стат "{statKey}"`)
 		return false
+	end
+
+	if statKey == PRESS_SPEED then
+		return false -- за Money — PressService:BuySpeedUpgrade
 	end
 
 	local level = currentLevel(player, statKey)
