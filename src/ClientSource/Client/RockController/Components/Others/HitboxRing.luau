@@ -5,10 +5,16 @@ local Players = game:GetService("Players")
 --[[
 	HitboxRing — видимая граница хитбокса магнита (чисто визуально, локально).
 
-	Пунктирное кольцо на земле + еле заметная заливка, радиус = радиусу
-	серверного MagnetHitbox (Size.X / 2; сервер бьёт по кругу, см.
-	PlayerMagnetHitboxManager:CollectTargets). Центр — хитбокс (т.е. игрок),
-	высота — земля под игроком (рейкаст вниз). Кольцо медленно вращается.
+	Это «радар»: тонкая СПЛОШНАЯ окружность радиуса серверного MagnetHitbox (Size.X / 2; сервер бьёт
+	по кругу, см. PlayerMagnetHitboxManager:CollectTargets) и слабая заливка внутри. От игрока к границе
+	расходятся мягкие кольца-волны (sonar) и гаснут у края — зона читается как «дальность действия».
+
+	Намеренно НЕ похоже на площадки пресса (Unloading / Collect / Merge): там неподвижные детали-кнопки,
+	которые утапливаются под ногами; здесь — ничего твёрдого и вращающегося, только лёгкая волна света.
+
+	Рисуется одной прозрачной деталью на земле, а кольца — GUI на её верхней грани (SurfaceGui +
+	круглые Frame с UIStroke): никаких штрихов/цилиндров, анимация — размер и прозрачность обводок.
+	Центр — хитбокс (т.е. игрок), высота — земля под игроком (рейкаст вниз).
 
 	Хитбокс пересоздаётся при прокачке ренджи / смене магнита — кольцо
 	замечает новый радиус и перестраивается само.
@@ -19,45 +25,35 @@ local HitboxRing = {}
 ---- Datas
 local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 
-local RING_COLOR = Theme.Electric
-local FILL_COLOR = Theme.ElectricDeep
-local SPIN_SPEED = math.rad(20) -- рад/сек
-local DASH_PITCH = 1.6 -- studs окружности на один штрих (штрих + промежуток)
-local DASH_FILL = 0.6 -- доля шага, занятая штрихом
-local DASH_WIDTH = 0.22
-local DASH_HEIGHT = 0.05
-local MIN_DASHES, MAX_DASHES = 16, 96
-local DASH_TRANSPARENCY = 0.15
-local FILL_TRANSPARENCY = 0.88
-local GROUND_LIFT = 0.04 -- над землёй, чтобы не мерцать (z-fighting)
+local RING_COLOR = Theme.TealBright -- холодный бирюзовый: не совпадает с цветами площадок пресса
+local FILL_COLOR = Theme.Teal
+local RING_TRANSPARENCY = 0.5
+local FILL_TRANSPARENCY = 0.93
+local RING_WORLD_WIDTH = 0.14 -- толщина линии в studs (не зависит от радиуса)
+local CANVAS = 512 -- px холста SurfaceGui
+local MIN_STROKE_PX = 1.5
+
+local WAVE_PERIOD = 2.8 -- секунд на одну волну
+local WAVE_COUNT = 2 -- волн одновременно (равномерно сдвинуты по фазе)
+local WAVE_START = 0.12 -- с какого размера (доля радиуса) волна стартует
+local WAVE_EASE = 2.2 -- >1: быстрый старт, плавное затухание у границы
+local WAVE_TRANSPARENCY = 0.4 -- прозрачность волны на старте (к краю растёт до 1)
+
+local PART_HEIGHT = 0.05
+local GROUND_LIFT = 0.05 -- над землёй, чтобы не мерцать (z-fighting)
 local RAY_DEPTH = 30
 
 ---- State
 local player = Players.LocalPlayer
 local folder: Folder? = nil
-local fill: BasePart? = nil
-local dashes: { BasePart } = {}
-local dashOffsets: { CFrame } = {}
-local frameCFrames: { CFrame } = {}
+local plate: Part? = nil
+local ringStroke: UIStroke? = nil
+local waves: { { Frame: Frame, Stroke: UIStroke } } = {}
 local builtRadius = 0
-local angle = 0
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 rayParams.IgnoreWater = true
-
-local function makePart(name: string): Part
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	return part
-end
 
 local function ensureFolder(): Folder
 	if folder and folder.Parent then
@@ -69,53 +65,84 @@ local function ensureFolder(): Folder
 	return folder :: Folder
 end
 
+local function circle(name: string, parent: Instance): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundTransparency = 1
+	frame.BorderSizePixel = 0
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = frame
+	frame.Parent = parent
+	return frame
+end
+
+local function outline(frame: Frame, thickness: number, transparency: number): UIStroke
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = RING_COLOR
+	stroke.Thickness = thickness
+	stroke.Transparency = transparency
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = frame
+	return stroke
+end
+
 local function clear()
-	for _, dash in ipairs(dashes) do
-		dash:Destroy()
+	if folder then
+		folder:ClearAllChildren()
 	end
-	table.clear(dashes)
-	table.clear(dashOffsets)
-	table.clear(frameCFrames)
-	if fill then
-		fill:Destroy()
-		fill = nil
-	end
+	plate, ringStroke = nil, nil
+	table.clear(waves)
 	builtRadius = 0
 end
 
--- Штрихи по окружности радиуса radius; число штрихов растёт с длиной кольца,
--- так что пунктир выглядит одинаково при любом рендже.
 local function build(radius: number)
 	clear()
 	local parent = ensureFolder()
 
-	local count = math.clamp(math.floor(2 * math.pi * radius / DASH_PITCH + 0.5), MIN_DASHES, MAX_DASHES)
-	local dashLength = 2 * math.pi * radius / count * DASH_FILL
+	local part = Instance.new("Part")
+	part.Name = "Radar"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Transparency = 1 -- GUI на грани рисуется и на невидимой детали
+	part.Size = Vector3.new(radius * 2, PART_HEIGHT, radius * 2)
+	part.Parent = parent
+	plate = part
 
-	for i = 1, count do
-		local dash = makePart("Dash")
-		dash.Material = Enum.Material.Neon
-		dash.Color = RING_COLOR
-		dash.Transparency = DASH_TRANSPARENCY
-		-- штрих — касательная к кольцу: длина вдоль X, внешняя кромка ровно на радиусе
-		dash.Size = Vector3.new(dashLength, DASH_HEIGHT, DASH_WIDTH)
-		dash.Parent = parent
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "Gui"
+	gui.Face = Enum.NormalId.Top
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	gui.CanvasSize = Vector2.new(CANVAS, CANVAS)
+	gui.LightInfluence = 0
+	gui.AlwaysOnTop = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = part
 
-		local theta = (i - 1) / count * 2 * math.pi
-		dashes[i] = dash
-		dashOffsets[i] = CFrame.Angles(0, theta, 0) * CFrame.new(0, 0, -(radius - DASH_WIDTH / 2))
-		frameCFrames[i] = CFrame.identity
+	-- толщина линии постоянна в мире: px холста на stud = CANVAS / диаметр
+	local stroke = math.max(RING_WORLD_WIDTH * CANVAS / (radius * 2), MIN_STROKE_PX)
+
+	-- слабая заливка зоны
+	local disc = circle("Fill", gui)
+	disc.BackgroundColor3 = FILL_COLOR
+	disc.BackgroundTransparency = FILL_TRANSPARENCY
+
+	-- граница хитбокса: тонкая сплошная линия
+	local ring = circle("Ring", gui)
+	ringStroke = outline(ring, stroke, RING_TRANSPARENCY)
+
+	-- волны от центра к границе
+	for i = 1, WAVE_COUNT do
+		local frame = circle("Wave" .. i, gui)
+		frame.Size = UDim2.fromScale(WAVE_START, WAVE_START)
+		waves[i] = { Frame = frame, Stroke = outline(frame, stroke, 1) }
 	end
-
-	local disc = makePart("Fill")
-	disc.Shape = Enum.PartType.Cylinder
-	disc.Material = Enum.Material.Neon
-	disc.Color = FILL_COLOR
-	disc.Transparency = FILL_TRANSPARENCY
-	-- ось цилиндра — X; кладём его плашмя (см. CFrame.Angles(0, 0, pi/2) в step)
-	disc.Size = Vector3.new(DASH_HEIGHT / 2, radius * 2, radius * 2)
-	disc.Parent = parent
-	fill = disc
 
 	builtRadius = radius
 end
@@ -126,7 +153,22 @@ local function hide()
 	end
 end
 
-local function step(dt: number)
+local function animate(now: number)
+	local arrival = 0 -- 0..1: насколько близко самая дальняя волна к границе (кольцо слегка «вспыхивает»)
+	for i, wave in ipairs(waves) do
+		local phase = (now / WAVE_PERIOD + (i - 1) / WAVE_COUNT) % 1
+		local eased = 1 - (1 - phase) ^ WAVE_EASE
+		local size = WAVE_START + (1 - WAVE_START) * eased
+		wave.Frame.Size = UDim2.fromScale(size, size)
+		wave.Stroke.Transparency = WAVE_TRANSPARENCY + (1 - WAVE_TRANSPARENCY) * phase ^ 0.8
+		arrival = math.max(arrival, math.clamp((phase - 0.8) / 0.2, 0, 1) * (1 - phase) * 5)
+	end
+	if ringStroke then
+		ringStroke.Transparency = RING_TRANSPARENCY - 0.2 * arrival
+	end
+end
+
+local function step()
 	local character = player.Character
 	local hitbox = character and character:FindFirstChild("MagnetHitbox") :: BasePart?
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -136,7 +178,7 @@ local function step(dt: number)
 	end
 
 	local radius = hitbox.Size.X / 2
-	if math.abs(radius - builtRadius) > 1e-3 or not (folder and folder.Parent) then
+	if math.abs(radius - builtRadius) > 1e-3 or not (folder and folder.Parent) or not (plate and plate.Parent) then
 		build(radius)
 	end
 
@@ -158,17 +200,10 @@ local function step(dt: number)
 		groundY = root.Position.Y - root.Size.Y / 2 - (humanoid and humanoid.HipHeight or 2)
 	end
 
-	angle = (angle + SPIN_SPEED * dt) % (2 * math.pi)
-	local base = CFrame.new(center.X, groundY + GROUND_LIFT + DASH_HEIGHT / 2, center.Z) * CFrame.Angles(0, angle, 0)
-
-	for i, offset in ipairs(dashOffsets) do
-		frameCFrames[i] = base * offset
+	if plate then
+		plate.CFrame = CFrame.new(center.X, groundY + GROUND_LIFT + PART_HEIGHT / 2, center.Z)
 	end
-	workspace:BulkMoveTo(dashes, frameCFrames, Enum.BulkMoveMode.FireCFrameChanged)
-
-	if fill then
-		fill.CFrame = CFrame.new(center.X, groundY + GROUND_LIFT, center.Z) * CFrame.Angles(0, 0, math.pi / 2)
-	end
+	animate(os.clock())
 end
 
 function HitboxRing.Start()
