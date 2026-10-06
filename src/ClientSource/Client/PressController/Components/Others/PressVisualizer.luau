@@ -70,7 +70,7 @@ local ITEM_SIZE = 2 -- самая большая сторона предмета
 local SELL_SINK_TIME = 0.3 -- после падения предмет «проваливается» в Sell
 local MONEY_POPUP_TIME = 1.2
 
--- Unloading.ZoneDashedOutline — декоративное кольцо зоны выгрузки, медленно
+-- ZoneDashedOutline у Unloading / Collect / Merge — декоративное кольцо зоны, медленно
 -- крутится вокруг своей оси (детект игрока идёт по ZoneFloor, см. PressService).
 local OUTLINE_SPIN_SPEED = math.rad(15) -- рад/сек
 
@@ -1215,6 +1215,16 @@ local function findCollect(): Instance?
 	return nil
 end
 
+local function findMerge(): Instance?
+	for _, name in ipairs(PressConfig.MERGE_NAMES) do
+		local found = findPart(name)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+
 local function findUnloading(): Instance?
 	for _, name in ipairs(PressConfig.UNLOADING_NAMES) do
 		local found = findPart(name)
@@ -1225,31 +1235,59 @@ local function findUnloading(): Instance?
 	return nil
 end
 
--- Крутит ZoneDashedOutline вокруг своей оси на месте (Model — через PivotTo,
--- BasePart — через CFrame), не трогая позицию. Останавливается сама, если
--- outline удалили (например, вместе со всей зоной Unloading).
-local function spinOutline(outline: Instance)
-	local initialPivot = if outline:IsA("Model") then (outline :: Model):GetPivot() else (outline :: BasePart).CFrame
-	local angle = 0
+-- Крутит ZoneDashedOutline вокруг своей оси на месте (Model — через PivotTo, BasePart — через
+-- CFrame), не трогая позицию. Колец несколько (Unloading, Collect, Merge — у каждой зоны своё),
+-- но ОДИН общий цикл Heartbeat на все. Кольцо, которое удалили (вместе с зоной), выпадает из
+-- списка само; когда колец не осталось, цикл останавливается.
+local spinners: { { Outline: Instance, Pivot: CFrame, Angle: number } } = {}
+local spinning: { [Instance]: boolean } = {}
 
-	outlineSpin = RunService.Heartbeat:Connect(function(deltaTime)
+local function stepSpinners(deltaTime: number)
+	local i = 1
+	while i <= #spinners do
+		local spinner = spinners[i]
+		local outline = spinner.Outline
 		if not outline.Parent then
-			if outlineSpin then
-				outlineSpin:Disconnect()
-				outlineSpin = nil
-			end
-			return
-		end
-
-		angle = (angle + OUTLINE_SPIN_SPEED * deltaTime) % (2 * math.pi)
-		local spun = initialPivot * CFrame.Angles(0, angle, 0)
-
-		if outline:IsA("Model") then
-			(outline :: Model):PivotTo(spun)
+			spinning[outline] = nil
+			spinners[i] = spinners[#spinners] -- swap-remove
+			spinners[#spinners] = nil
 		else
-			(outline :: BasePart).CFrame = spun
+			spinner.Angle = (spinner.Angle + OUTLINE_SPIN_SPEED * deltaTime) % (2 * math.pi)
+			local spun = spinner.Pivot * CFrame.Angles(0, spinner.Angle, 0)
+			if outline:IsA("Model") then
+				(outline :: Model):PivotTo(spun)
+			else
+				(outline :: BasePart).CFrame = spun
+			end
+			i += 1
 		end
-	end)
+	end
+
+	if #spinners == 0 and outlineSpin then
+		outlineSpin:Disconnect()
+		outlineSpin = nil
+	end
+end
+
+local function spinOutline(outline: Instance)
+	if spinning[outline] then
+		return
+	end
+	spinning[outline] = true
+	local pivot = if outline:IsA("Model") then (outline :: Model):GetPivot() else (outline :: BasePart).CFrame
+	table.insert(spinners, { Outline = outline, Pivot = pivot, Angle = 0 })
+	if not outlineSpin then
+		outlineSpin = RunService.Heartbeat:Connect(stepSpinners)
+	end
+end
+
+-- Кольцо ZoneDashedOutline зоны (Unloading / Collect / Merge — у всех одна структура:
+-- ZoneFloor для детекта + вращающееся ZoneDashedOutline) пускаем крутиться.
+local function spinZoneOutline(zone: Instance?)
+	local outline = zone and zone:FindFirstChild("ZoneDashedOutline")
+	if outline and (outline:IsA("Model") or outline:IsA("BasePart")) then
+		spinOutline(outline)
+	end
 end
 
 -- Табличка над Collect: сколько денег ждёт сбора (profile.Press.Unclaimed).
@@ -1270,8 +1308,34 @@ function PressVisualizer:MoneyCollected(amount: string)
 	end
 end
 
+-- Деталь, над которой висит табличка Collect: сама деталь (старый вариант) или ZoneFloor модели
+-- (как у Unloading). nil — детали ещё не дошли до клиента (стриминг): табличку создадим позже,
+-- а не посреди мира в (0, 3, 0), куда якорь попадал, пока у пустой модели не было ни одной детали.
+local function collectAnchorPart(collect: Instance): BasePart?
+	if collect:IsA("BasePart") then
+		return collect
+	end
+	local floor = collect:FindFirstChild("ZoneFloor")
+	if floor and floor:IsA("BasePart") then
+		return floor
+	end
+	for _, d in ipairs(collect:GetDescendants()) do
+		if d:IsA("BasePart") and not d:FindFirstAncestor("ZoneDashedOutline") and d.Name ~= "ZoneDashedOutline" then
+			return d
+		end
+	end
+	return nil
+end
+
+local function collectAnchorPosition(part: BasePart): Vector3
+	return part.Position + Vector3.new(0, part.Size.Y / 2 + 3, 0)
+end
+
 function PressVisualizer:_CreateCollectBillboard(collect: Instance)
-	local cf, size = getBox(collect)
+	local part = collectAnchorPart(collect)
+	if not part then
+		return
+	end
 
 	local anchor = Instance.new("Part")
 	anchor.Name = "CollectAnchor"
@@ -1281,7 +1345,7 @@ function PressVisualizer:_CreateCollectBillboard(collect: Instance)
 	anchor.CanTouch = false
 	anchor.Transparency = 1
 	anchor.Size = Vector3.one * 0.1
-	anchor.CFrame = CFrame.new(cf.Position + Vector3.new(0, size.Y / 2 + 3, 0))
+	anchor.CFrame = CFrame.new(collectAnchorPosition(part))
 	anchor.Parent = visualsFolder
 
 	local billboard = Instance.new("BillboardGui")
@@ -1344,18 +1408,31 @@ function PressVisualizer:_EnsureReady()
 		end
 	end
 
-	if not outlineSpin then
-		local unloading = findUnloading()
-		local outline = unloading and unloading:FindFirstChild("ZoneDashedOutline")
-		if outline and (outline:IsA("Model") or outline:IsA("BasePart")) then
-			spinOutline(outline)
-		end
-	end
+	-- кольца всех трёх зон; вызывается раз в секунду, так что зоны, дошедшие по стримингу позже,
+	-- подхватываются сами (spinOutline не дублирует уже вращающиеся)
+	spinZoneOutline(findUnloading())
+	spinZoneOutline(findCollect())
+	spinZoneOutline(findMerge())
 
-	if not collectLabel then
-		local collect = findCollect()
-		if collect then
+	-- Табличка с деньгами над Collect: создаём, когда у зоны появилась деталь; если якорь/табличку
+	-- удалили (стриминг, пересоздание модели) — делаем заново; якорь каждую секунду сверяем с
+	-- положением ZoneFloor (зона могла приехать/сместиться позже), а сумму выставляем заново.
+	local collect = findCollect()
+	if collect then
+		if not collectLabel or not collectAnchor or not collectAnchor.Parent then
+			if collectLabel and collectLabel.Parent then
+				collectLabel.Parent:Destroy()
+			end
+			collectLabel, collectAnchor = nil, nil
 			self:_CreateCollectBillboard(collect)
+		else
+			local part = collectAnchorPart(collect)
+			if part then
+				local wanted = collectAnchorPosition(part)
+				if (collectAnchor.Position - wanted).Magnitude > 0.05 then
+					collectAnchor.CFrame = CFrame.new(wanted)
+				end
+			end
 		end
 	end
 
