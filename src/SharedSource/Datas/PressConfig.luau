@@ -24,6 +24,8 @@ PressConfig.PRESS_NAME = "HydraulicPress"
 -- Площадки внутри HydraulicPress (по имени детали/модели).
 PressConfig.UNLOADING_NAMES = { "Unloading" }
 PressConfig.COLLECT_NAMES = { "Collect", "Cellect" }
+-- Площадка Ore Merge: касание объединяет руду в очереди (PressMergeHandler).
+PressConfig.MERGE_NAMES = { "Merge" }
 -- Высота зоны над площадкой, в которой должен оказаться HumanoidRootPart.
 PressConfig.PAD_CHECK_HEIGHT = 8
 

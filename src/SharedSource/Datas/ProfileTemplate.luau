@@ -44,6 +44,10 @@ local ProfileTemplate = {
 		Unclaimed = "0",
 		UnloadSpeed = 1,
 		CraftSpeed = 1,
+		-- Ore Merge (PressMergeConfig): MergeLevel — прокачка «Merge Efficiency» (ratio 3:1 -> 2:1);
+		-- HighestOre — индекс (OreConfig.Order) высшего достигнутого тира руды, выше него merge не поднимает.
+		MergeLevel = 1,
+		HighestOre = 1,
 	},
 
 	-- Имена предметов, заблокированные от продажи (панель Sell Loot, кнопка

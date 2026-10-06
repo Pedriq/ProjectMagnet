@@ -5,6 +5,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
+local PressMergeConfig = require(ReplicatedStorage.SharedSource.Datas.PressMergeConfig)
 
 --[[
 	PressService — гидравлический пресс (Workspace.HydraulicPress, см. PressConfig).
@@ -36,6 +37,11 @@ local PressService = Knit.CreateService({
 		-- Fire(player, oreId) — игрок убрал всю руду oreId из пресса (табличка
 		-- очереди, кнопка ✕), см. PressService:RemoveOre.
 		OreRemoved = Knit.CreateSignal(),
+		-- Fire(player, steps) — игрок объединил руду (Ore Merge): steps — список
+		-- { From, To, Groups, Consumed, Produced } (PressMergeConfig.Plan). Клиент играет эффект.
+		OreMerged = Knit.CreateSignal(),
+		-- Fire(player, title, subtitle?) — короткое уведомление игроку (например, «Nothing to merge»).
+		Notice = Knit.CreateSignal(),
 	},
 })
 
@@ -69,6 +75,95 @@ function PressService:AddPressOre(player, oreId, weight)
 	local current = tonumber(self:GetPressOres(player)[oreId]) or 0
 	local newWeight = current + weight
 	ProfileService:ChangeData(player, { "Press", "Ores", oreId }, if newWeight > 0 then newWeight else nil)
+
+	-- выгрузка руды = тир «достигнут» (Ore Merge не поднимается выше него)
+	if weight > 0 then
+		local index = table.find(OreConfig.Order, oreId)
+		if index and index > self:GetStoredHighestOre(player) then
+			ProfileService:ChangeData(player, { "Press", "HighestOre" }, index)
+		end
+	end
+end
+
+-- === Ore Merge (PressMergeConfig) ==============================================
+function PressService:GetStoredHighestOre(player): number
+	return math.max(math.floor(tonumber(ProfileService:GetData(player, { "Press", "HighestOre" })) or 1), 1)
+end
+
+function PressService:GetMergeLevel(player): number
+	return PressMergeConfig.ClampLevel(ProfileService:GetData(player, { "Press", "MergeLevel" }))
+end
+
+-- Ручное объединение руды в прессе. oreId — только эта руда на один тир вверх;
+-- nil — «Merge All» (все руды снизу вверх, результат каскадом идёт дальше).
+-- Выше высшего достигнутого тира руда не создаётся. true — что-то объединилось.
+function PressService:MergeOres(player, oreId: string?): boolean
+	if not self:IsProfileLoaded(player) then
+		return false
+	end
+	if oreId ~= nil and (type(oreId) ~= "string" or not OreConfig.Get(oreId)) then
+		return false
+	end
+
+	local ores = {}
+	for id, weight in pairs(self:GetPressOres(player)) do
+		if type(weight) == "number" then
+			ores[id] = weight
+		end
+	end
+
+	local highest = PressMergeConfig.HighestIndex(self:GetStoredHighestOre(player), ores)
+	local ratio = PressMergeConfig.GetRatio(self:GetMergeLevel(player))
+	local newOres, steps = PressMergeConfig.Plan(ores, ratio, highest, oreId)
+	if #steps == 0 then
+		return false
+	end
+
+	-- рекорд тира сохраняем (очередь могла опустеть позже)
+	if highest > self:GetStoredHighestOre(player) then
+		ProfileService:ChangeData(player, { "Press", "HighestOre" }, highest)
+	end
+	for _, id in ipairs(OreConfig.Order) do
+		if newOres[id] ~= ores[id] then
+			ProfileService:ChangeData(player, { "Press", "Ores", id }, newOres[id])
+		end
+	end
+
+	self.Client.OreMerged:Fire(player, steps)
+	return true
+end
+
+function PressService.Client:MergeOre(player, oreId)
+	return self.Server:MergeOres(player, oreId)
+end
+
+function PressService.Client:MergeAll(player)
+	return self.Server:MergeOres(player, nil)
+end
+
+-- Прокачка «Merge Efficiency» за Money (Press Upgrade). true — куплено.
+function PressService:BuyMergeUpgrade(player): boolean
+	if not self:IsProfileLoaded(player) then
+		return false
+	end
+	local level = self:GetMergeLevel(player)
+	local cost = PressMergeConfig.UpgradeCost(level)
+	if not cost then
+		return false -- максимум
+	end
+
+	local money = ProfileService:GetData(player, { "Stats", "Money" }) or "0"
+	if EtNum.me(cost, money) then -- цена > денег
+		return false
+	end
+
+	ProfileService:ChangeData(player, { "Stats", "Money" }, EtNum.toString(EtNum.sub(money, cost)))
+	ProfileService:ChangeData(player, { "Press", "MergeLevel" }, level + 1)
+	return true
+end
+
+function PressService.Client:BuyMergeUpgrade(player)
+	return self.Server:BuyMergeUpgrade(player)
 end
 
 -- Деньги за проданные прессом предметы, ещё не забранные на Collect (EtNum-строка).
@@ -266,6 +361,7 @@ function PressService:KnitStart()
 	self.Components.PressUnloadHandler:StartWatching()
 	self.Components.PressCraftHandler:StartCrafting()
 	self.Components.PressCollectHandler:StartWatching()
+	self.Components.PressMergeHandler:StartWatching()
 end
 
 function PressService:KnitInit()

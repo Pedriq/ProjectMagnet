@@ -572,6 +572,11 @@ local function HUD()
 					OnBuyRobux = function()
 						Knit.GetService("PlayerManagerService"):PromptStatRobuxUpgrade("PressSpeed"):catch(warn)
 					end,
+					-- Merge Efficiency: цену и списание Money считает сервер (PressService:BuyMergeUpgrade)
+					OnUpgradeMerge = function()
+						sfx.play("Buy")
+						Knit.GetService("PressService"):BuyMergeUpgrade():catch(warn)
+					end,
 				}),
 			}),
 		}),

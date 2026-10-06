@@ -33,6 +33,9 @@ Data.items = source({}) -- сохранённые предметы (склад):
 Data.ores = source({}) -- сохранённая руда (profile.Ores): map[oreId] = вес
 Data.pressOres = source({}) -- руда в прессе (profile.Press.Ores): map[oreId] = вес — окно Press Queue
 Data.world = source(1) -- самый дальний открытый мир (profile.Stats.World): размер Magnetism-паков, см. PowerPackConfig
+Data.pressMergeLevel = source(1) -- прокачка Ore Merge (profile.Press.MergeLevel), см. PressMergeConfig
+Data.pressHighestOre = source(1) -- высший достигнутый тир руды (profile.Press.HighestOre), индекс OreConfig.Order
+Data.mergeEvent = source(nil :: any) -- последний merge { Id, Steps } (PressService.OreMerged): эффекты строк Press Queue
 Data.autoCollectPass = source(false) -- куплен Game Pass «OP Auto Collect» (profile.AutoCollectPass): кнопка в HUD скрыта навсегда
 Data.ownedZones = source({}) -- map[ZoneId] = true: купленные донатные автоклик-зоны (profile.AutoClickZones) — ОДНО состояние и для Shop, и для касания зоны
 Data.zoneCatalog = source({}) -- список зон для Shop (от меньшего множителя к большему), см. AutoClickZoneService:GetZoneCatalog
@@ -157,6 +160,15 @@ function Data.start()
 		end
 	end)
 
+	--== Ore Merge: сервер подтвердил объединение -> звук + событие для строк Press Queue ==
+	local mergeId = 0
+	Knit.GetService("PressService").OreMerged:Connect(function(steps)
+		mergeId += 1
+		Data.mergeEvent({ Id = mergeId, Steps = steps })
+		sfx.play("LevelUP", { pitch = 1.35, volume = 0.7 })
+		sfx.play("Buy", { pitch = 1.1 })
+	end)
+
 	--== профиль: полный снапшот ==
 	Profile.GetData:Connect(function(profile)
 		if type(profile) ~= "table" then
@@ -182,6 +194,8 @@ function Data.start()
 		Data.ores(savedOres(profile.Ores))
 		Data.pressOres(savedOres(profile.Press and profile.Press.Ores))
 		Data.pressSpeedLevel(tonumber(profile.Press and profile.Press.CraftSpeed) or 1)
+		Data.pressMergeLevel(tonumber(profile.Press and profile.Press.MergeLevel) or 1)
+		Data.pressHighestOre(tonumber(profile.Press and profile.Press.HighestOre) or 1)
 		Data.lockedItems(profile.LockedItems or {})
 		Data.ownedZones(table.clone(profile.AutoClickZones or {}))
 		Data.autoCollectPass(profile.AutoCollectPass == true)
@@ -223,6 +237,10 @@ function Data.start()
 			local t = table.clone(Data.lockedItems())
 			t[path[2]] = a
 			Data.lockedItems(t)
+		elseif path[1] == "Press" and path[2] == "MergeLevel" then
+			Data.pressMergeLevel(tonumber(a) or 1)
+		elseif path[1] == "Press" and path[2] == "HighestOre" then
+			Data.pressHighestOre(tonumber(a) or 1)
 		elseif path[1] == "Press" and path[2] == "CraftSpeed" then
 			Data.pressSpeedLevel(tonumber(a) or 1)
 		elseif path[1] == "Press" and path[2] == "Ores" and path[3] ~= nil then

@@ -673,6 +673,45 @@ local function FeedbackOverlay()
 		end)
 	)
 
+	--=== Ore Merge: площадка Merge у пресса / кнопки Press Queue ====================
+	-- Merge прошёл: баннер с итогом + лёгкая вспышка/тряска/частицы (без ослепления).
+	-- «Nothing to merge» приходит отдельным уведомлением (Notice) — эффекта нет.
+	local MERGE_COLOR = Theme.TealBright
+	table.insert(
+		connections,
+		PressService.OreMerged:Connect(function(steps)
+			local total = 0
+			local last = steps[#steps]
+			for _, step in ipairs(steps) do
+				total += step.Groups
+			end
+			local subtitle = if #steps == 1
+				then `{steps[1].Groups}x {steps[1].To}`
+				else `{total} merges up to {last.To}`
+			pushBanner({ title = "ORE MERGED!", subtitle = subtitle, color = MERGE_COLOR, priority = 4 })
+			flashScreen(MERGE_COLOR, 0.2)
+			juice.shake(0.2)
+			local character = player.Character
+			local hrp = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if hrp then
+				juice.burst(hrp.Position, MERGE_COLOR, 40, { speed = 1.2, size = 1.3 })
+			end
+		end)
+	)
+	table.insert(
+		connections,
+		PressService.Notice:Connect(function(title: string, subtitle: string?)
+			sfx.play("BagFull", { pitch = 1.4, volume = 0.5 })
+			pushNotice({
+				key = "press:" .. title,
+				title = title,
+				subtitle = subtitle,
+				color = Theme.Warning,
+				hold = 2,
+			})
+		end)
+	)
+
 	--=== авто-зона: нет доступа («Not enough rebirths», «Not Enough Yet»…) ===
 	-- Сервер дебаунсит только одинаковые сообщения (AutoClickZoneHandler.MESSAGE_DEBOUNCE);
 	-- каждое новое уведомление заменяет текущее и сбрасывает таймер. Показ короткий.

@@ -7,6 +7,7 @@ local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local UpgradeCard = require(ReplicatedStorage.ClientSource.UI.components.UpgradeCard)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
+local PressMergeConfig = require(ReplicatedStorage.SharedSource.Datas.PressMergeConfig)
 local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 
@@ -28,13 +29,14 @@ local create = vide.create
 	(см. PressConfig.GetCraftItemsPerSecond).
 
 	Использование:
-	  PressUpgradePanel({ OnClose = fn, OnUpgradeSpeed = fn, OnBuyRobux = fn })
+	  PressUpgradePanel({ OnClose = fn, OnUpgradeSpeed = fn, OnBuyRobux = fn, OnUpgradeMerge = fn })
 	возвращает компонент-тезис () -> Instance (для vide.switch в HUD).
 ]]
 
 export type Props = {
 	OnClose: () -> (),
 	OnUpgradeSpeed: () -> (),
+	OnUpgradeMerge: () -> (), -- прокачка Merge Efficiency (PressService:BuyMergeUpgrade)
 	OnBuyRobux: () -> (), -- платный skip (дев-продукт ступени, см. StatUpgradesConfig.PressSpeed.RobuxSteps)
 }
 
@@ -86,6 +88,41 @@ local function SpeedUpgradeCard(onUpgrade: () -> (), onBuyRobux: () -> ())
 	})
 end
 
+-- Merge Efficiency: ratio Ore Merge 3:1 -> 2:1 (PressMergeConfig), цена — за Money
+local function MergeUpgradeCard(onUpgrade: () -> ())
+	local function level()
+		return Data.pressMergeLevel()
+	end
+	local function atMax()
+		return PressMergeConfig.UpgradeCost(level()) == nil
+	end
+	local function cost()
+		return PressMergeConfig.UpgradeCost(level()) or "0"
+	end
+
+	return UpgradeCard({
+		LayoutOrder = 2,
+		Title = "Merge Efficiency",
+		Icon = "",
+		Level = level,
+		Bonus = function()
+			local now = PressMergeConfig.RatioText(level())
+			if atMax() then
+				return now .. " (max)"
+			end
+			return now .. " → " .. PressMergeConfig.RatioText(level() + 1)
+		end,
+		CostText = function()
+			return if atMax() then "MAX" else "$" .. Format.short(cost())
+		end,
+		HideRobux = true,
+		MoneyDisabled = function()
+			return atMax() or EtNum.me(cost(), Data.money())
+		end,
+		OnBuyMoney = onUpgrade,
+	})
+end
+
 local function PressUpgradePanel(props: Props)
 	return function()
 		return Panel({
@@ -131,6 +168,7 @@ local function PressUpgradePanel(props: Props)
 				}),
 
 				SpeedUpgradeCard(props.OnUpgradeSpeed, props.OnBuyRobux),
+				MergeUpgradeCard(props.OnUpgradeMerge),
 			}),
 		})
 	end

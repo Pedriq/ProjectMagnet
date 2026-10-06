@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local vide = require(ReplicatedStorage.Packages.Vide)
 
 local Panel = require(ReplicatedStorage.ClientSource.UI.components.Panel)
@@ -7,6 +8,7 @@ local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
+local PressMergeConfig = require(ReplicatedStorage.SharedSource.Datas.PressMergeConfig)
 local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresConfig)
 
@@ -14,6 +16,8 @@ local create = vide.create
 local source = vide.source
 local spring = vide.spring
 local cleanup = vide.cleanup
+local effect = vide.effect
+local untrack = vide.untrack
 
 --[[
 	PressQueuePanel — окно очереди гидравлического пресса (открывается
@@ -31,6 +35,10 @@ local cleanup = vide.cleanup
 	(OreConfig.Order — пресс берёт руды по нему, см. PressCraftHandler).
 	[X] убирает всю руду этого типа: первый клик — «SURE?», второй в течение
 	CONFIRM_TIME — удаление (props.OnRemove -> PressService:RemoveOre).
+
+	Ore Merge (PressMergeConfig): панель Ore Merge показывает ratio и до какого тира можно
+	объединять; сам merge — касанием площадки Merge у пресса (PressMergeHandler). В строке
+	руды при merge — вспышка и «+N Руда».
 
 	Использование:
 	  PressQueuePanel({ OnClose = fn, OnRemove = fn(oreId) })
@@ -93,6 +101,64 @@ local function textStroke(thickness: number?)
 	})
 end
 
+-- ratio/рекорд тира из Data — те же, что считает сервер (PressMergeConfig.Plan)
+local function mergeRatio(): number
+	return PressMergeConfig.GetRatio(Data.pressMergeLevel())
+end
+
+local function highestIndex(): number
+	return PressMergeConfig.HighestIndex(Data.pressHighestOre(), Data.pressOres())
+end
+
+-- Эффект merge на строке результата: мягкая вспышка по строке + «+2 Rare», всплывающее вверх.
+local function playMergeFx(row: Frame, color: Color3, text: string)
+	local flash = Instance.new("Frame")
+	flash.Name = "MergeFlash"
+	flash.ZIndex = 8
+	flash.Size = UDim2.fromScale(1, 1)
+	flash.BackgroundColor3 = Color3.new(1, 1, 1):Lerp(color, 0.25)
+	flash.BackgroundTransparency = 0.4
+	flash.BorderSizePixel = 0
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = flash
+	flash.Parent = row
+	TweenService:Create(flash, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 1,
+	}):Play()
+
+	local popup = Instance.new("TextLabel")
+	popup.Name = "MergePopup"
+	popup.ZIndex = 9
+	popup.BackgroundTransparency = 1
+	popup.AnchorPoint = Vector2.new(0.5, 0.5)
+	popup.Position = UDim2.new(0.5, 0, 0.5, 0)
+	popup.Size = UDim2.fromOffset(200, 28)
+	popup.Font = Enum.Font.GothamBlack
+	popup.TextSize = 22
+	popup.TextColor3 = Color3.new(1, 1, 1):Lerp(color, 0.35)
+	popup.Text = text
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 2.5
+	stroke.Color = Color3.new(0, 0, 0)
+	stroke.Parent = popup
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.5
+	scale.Parent = popup
+	popup.Parent = row
+
+	TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	local rise = TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(popup, rise, { Position = UDim2.new(0.5, 0, 0.5, -26) }):Play()
+	local fade = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.6)
+	TweenService:Create(popup, fade, { TextTransparency = 1 }):Play()
+	TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
+	task.delay(1.1, function()
+		flash:Destroy()
+		popup:Destroy()
+	end)
+end
+
 local function OreRow(oreId: string, order: number, onRemove: (string) -> ())
 	local ore = OreConfig.Get(oreId)
 	local color = RarityColors.get(ore and ore.Rarity or oreId)
@@ -123,7 +189,7 @@ local function OreRow(oreId: string, order: number, onRemove: (string) -> ())
 		confirmToken += 1
 	end)
 
-	return create("Frame")({
+	local row = create("Frame")({
 		Name = oreId,
 		LayoutOrder = order,
 		Visible = function()
@@ -299,6 +365,70 @@ local function OreRow(oreId: string, order: number, onRemove: (string) -> ())
 				onRemove(oreId)
 			end,
 		}),
+	}) :: Frame
+
+	-- эффект merge на строке, КУДА пришла руда (событие приходит от сервера после подтверждения);
+	-- id уже показанного события запоминаем, чтобы открытие окна не проигрывало старое
+	local lastEvent = untrack(Data.mergeEvent)
+	local lastId = lastEvent and lastEvent.Id or 0
+	effect(function()
+		local event = Data.mergeEvent()
+		if not event or event.Id == lastId then
+			return
+		end
+		lastId = event.Id
+		untrack(function()
+			for _, step in ipairs(event.Steps) do
+				if step.To == oreId then
+					playMergeFx(row, color, `+{step.Groups} {oreId}`)
+				end
+			end
+		end)
+	end)
+
+	return row
+end
+
+-- Панель Ore Merge над списком: ratio и до какого тира можно (сам merge — площадка Merge у пресса).
+local function MergeBar()
+	return create("Frame")({
+		Name = "MergeBar",
+		LayoutOrder = 0,
+		Size = UDim2.new(1, -8, 0, 52),
+		BackgroundColor3 = ROW_COLOR,
+
+		create("UICorner")({ CornerRadius = UDim.new(0, 8) }),
+		create("UIStroke")({ Color = Theme.Teal, Thickness = 2, Transparency = 0.45 }),
+
+		create("TextLabel")({
+			Name = "Title",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(14, 6),
+			Size = UDim2.new(1, -28, 0, 22),
+			Font = Enum.Font.GothamBlack,
+			TextSize = 19,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Theme.TealBright,
+			Text = function()
+				return "Ore Merge  " .. PressMergeConfig.RatioText(Data.pressMergeLevel())
+			end,
+			textStroke(),
+		}),
+		create("TextLabel")({
+			Name = "Sub",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(14, 29),
+			Size = UDim2.new(1, -28, 0, 16),
+			Font = Enum.Font.GothamBold,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Theme.TextMuted,
+			Text = function()
+				return "Up to " .. OreConfig.Order[highestIndex()] .. " · merge at the press · improve in Press Upgrade"
+			end,
+			textStroke(1.5),
+		}),
+
 	})
 end
 
@@ -353,16 +483,18 @@ local function PressQueuePanel(props: Props)
 				-- подсказка, зачем удалять руду
 				create("TextLabel")({
 					Name = "Hint",
-					LayoutOrder = 0,
+					LayoutOrder = -1,
 					BackgroundTransparency = 1,
 					Size = UDim2.new(1, -8, 0, 22),
 					Font = Enum.Font.GothamBold,
 					TextSize = 15,
 					TextColor3 = Theme.TextMuted,
-					Text = "Lowest rarity is pressed first — remove cheap ore to skip it.",
+					Text = "Lowest rarity is pressed first — merge cheap ore up at the press, or remove it to skip.",
 					TextWrapped = true,
 					textStroke(1.5),
 				}),
+
+				MergeBar(),
 
 				create("TextLabel")({
 					Name = "Empty",
