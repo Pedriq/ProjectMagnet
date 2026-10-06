@@ -25,9 +25,6 @@ AutoClickZoneController.SetComponent = require(componentsFolder["Set()"])
 --- Knit Services
 local AutoClickZoneService
 
---- Knit Controllers
-local RockController
-
 -- Всплывающее число прироста силы за автоклик — тот же juice.worldText и тот же стиль
 -- (белый с лёгкой подкраской, «поп» + всплытие), что у чисел урона по камню
 -- (RockController.HitFeedback), только цвет силы и знак «+».
@@ -59,11 +56,6 @@ function AutoClickZoneController:KnitStart()
 			sfx.play("Hit")
 		end
 		self.Components.ZonePulseEffect:Pulse(teslaCoil)
-
-		-- Тот же свинг оружия, что и на обычном ударе по камню (см.
-		-- RockController:HitRock) — сервер сам анимацию не проигрывает
-		-- (AutoClickZoneHandler), это исключительно клиентская логика.
-		RockController.Components.RockAttackAnimation:PlayAttack()
 	end)
 end
 
@@ -71,7 +63,6 @@ function AutoClickZoneController:KnitInit()
 	componentsInitializer(script)
 
 	AutoClickZoneService = Knit.GetService("AutoClickZoneService")
-	RockController = Knit.GetController("RockController")
 end
 
 return AutoClickZoneController

@@ -1,7 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local PlayerStatsContainer = require(ReplicatedStorage.SharedSource.Object.PlayerStatsContainer)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
 
 local player = Players.LocalPlayer
@@ -50,13 +49,8 @@ end
 
 function RockController:HitRock(model)
 	self.Components.VisualEffects:HitRock(model)
-	-- Анимация удара — на каждый РЕАЛЬНЫЙ автоудар сервера (HitRock фирится
-	-- только своему игроку и только когда атака физически попала по камню).
-	-- Кулдаун атаки фиксированный (та же формула, что на сервере —
-	-- PlayerStatsContainer:CalculateAttackCooldown), анимация подгоняется под него.
-	self.Components.RockAttackAnimation:PlayAttack(
-		PlayerStatsContainer:CalculateAttackCooldown()
-	)
+	-- Анимации взмаха персонажа при ударе по камню нет (убрана): остаются эффект на камне и звук.
+	-- RockAttackAnimation по-прежнему используется автоклик-зонами (AutoClickZoneController).
 	sfx.play("Hit", { jitter = 0.1 })
 end
 
