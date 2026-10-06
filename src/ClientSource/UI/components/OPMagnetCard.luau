@@ -6,17 +6,15 @@ local WideButton = require(ReplicatedStorage.ClientSource.UI.components.WideButt
 local MagnetViewport = require(ReplicatedStorage.ClientSource.UI.components.MagnetViewport)
 local RarityBackdrop = require(ReplicatedStorage.ClientSource.UI.components.RarityBackdrop)
 local rarityFx = require(ReplicatedStorage.ClientSource.UI.rarityFx)
-local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 
 local create = vide.create
 local switch = vide.switch
 local clock = rarityFx.clock
 
 --[[
-	OPMagnetCard — карточка донатного (Game Pass) меча в магазине. Премиум-вид, в духе
-	секции платных зон: тёмная насыщенная база цвета редкости, анимированная рамка,
-	«сцена» за мечом (RarityBackdrop: свечение, лучи, искры), проезжающий блик,
-	пульсирующее свечение под ценой и плашка редкости.
+	OPMagnetCard — карточка донатного (Game Pass) меча в магазине. Премиум-вид в стиле
+	игрушечного LEGO-пластика: яркий глянцевый цвет редкости, скруглённые формы, глянцевая
+	полоса сверху, тёмная кромка снизу, «ячейка» под мечом и редкий мягкий блик.
 
 	Кнопка внизу карточки зависит от состояния (как у MagnetCard):
 	  не куплен → цена за Robux (покупка Game Pass, см. ShopPanel/MagnetGamePassPurchaseHandler)
@@ -48,37 +46,30 @@ local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 local PILL = UDim.new(0.5, 0) -- кнопки-«таблетки»: в стиле остального скруглённого UI, без квадратных углов
 
-type Palette = { Top: Color3, Bottom: Color3, Light: Color3 }
+-- Глянцевый игрушечный пластик: яркий чистый цвет сверху, насыщенный снизу, тёмная кромка того же тона
+type Palette = { Top: Color3, Bottom: Color3, Edge: Color3, Light: Color3 }
 
 local PALETTES: { [string]: Palette } = {
 	Secret = {
-		Top = Color3.fromRGB(78, 14, 80),
-		Bottom = Color3.fromRGB(24, 6, 38),
-		Light = Color3.fromRGB(255, 190, 238),
+		Top = Color3.fromRGB(208, 126, 255),
+		Bottom = Color3.fromRGB(130, 56, 206),
+		Edge = Color3.fromRGB(68, 26, 122),
+		Light = Color3.fromRGB(250, 232, 255),
 	},
 	Godly = {
-		Top = Color3.fromRGB(28, 38, 92),
-		Bottom = Color3.fromRGB(9, 13, 40),
-		Light = Color3.fromRGB(255, 248, 200),
+		Top = Color3.fromRGB(255, 226, 96),
+		Bottom = Color3.fromRGB(242, 152, 18),
+		Edge = Color3.fromRGB(140, 76, 6),
+		Light = Color3.fromRGB(255, 248, 214),
 	},
 }
-
-local function pulse(speed: number): number
-	return 0.5 + 0.5 * math.sin(clock() * speed)
-end
 
 local function OPMagnetCard(props: Props)
 	local rarity = props.Rarity or (if props.Red then "Godly" else "Secret")
 	local palette = PALETTES[rarity] or PALETTES.Secret
-	local accent = RarityColors.get(rarity)
 
 	local function stroke(thickness: number?)
 		return create("UIStroke")({ Thickness = thickness or 2, Color = BLACK })
-	end
-
-	-- цвет акцента «дышит» между самим акцентом и светлым тоном палитры
-	local function livingAccent(): Color3
-		return accent:Lerp(palette.Light, 0.35 * pulse(1.6))
 	end
 
 	return create("Frame")({
@@ -89,15 +80,16 @@ local function OPMagnetCard(props: Props)
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 
-		create("UICorner")({ CornerRadius = UDim.new(0, 10) }),
-		stroke(2.5),
-		-- база: тёмный насыщенный верх -> почти чёрный низ (цвет редкости)
+		create("UICorner")({ CornerRadius = UDim.new(0, 14) }),
+		-- шов игрушки: тёмная кромка того же оттенка вместо чёрной рамки
+		create("UIStroke")({ Thickness = 3.5, Color = palette.Edge }),
+		-- база: яркий пластик, чуть темнее к низу
 		create("UIGradient")({
 			Rotation = 90,
-			Color = ColorSequence.new(palette.Top, palette.Bottom),
+			Color = ColorSequence.new(palette.Top:Lerp(palette.Bottom, 0.35), palette.Bottom),
 		}),
 
-		-- слой эффектов уровня карточки: блик + мягкие угловые свечения (внутри скругления)
+		-- слой эффектов уровня карточки: глянец, нижняя «губа», редкий мягкий блик
 		create("CanvasGroup")({
 			Name = "Fx",
 			ZIndex = 1,
@@ -105,21 +97,29 @@ local function OPMagnetCard(props: Props)
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
 
-			create("UICorner")({ CornerRadius = UDim.new(0, 10) }),
+			create("UICorner")({ CornerRadius = UDim.new(0, 14) }),
 
-			-- свечение в правом верхнем углу (за плашкой редкости)
+			-- глянцевая полоса вдоль верхней кромки
 			create("Frame")({
-				Name = "CornerGlow",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.85, 0.12),
-				Size = UDim2.fromScale(0.7, 0.55),
+				Name = "Gloss",
+				Position = UDim2.fromScale(0.04, 0.02),
+				Size = UDim2.fromScale(0.92, 0.07),
+				BackgroundColor3 = WHITE,
+				BackgroundTransparency = 0.7,
 				BorderSizePixel = 0,
-				BackgroundColor3 = accent,
-				BackgroundTransparency = function()
-					return 0.86 - 0.06 * pulse(1.3)
-				end,
 
 				create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
+			}),
+
+			-- нижняя кромка кирпичика — даёт объём
+			create("Frame")({
+				Name = "Lip",
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.fromScale(0, 1),
+				Size = UDim2.fromScale(1, 0.06),
+				BackgroundColor3 = palette.Edge,
+				BackgroundTransparency = 0.4,
+				BorderSizePixel = 0,
 			}),
 
 			-- диагональный блик по всей карточке раз в несколько секунд
@@ -130,7 +130,7 @@ local function OPMagnetCard(props: Props)
 				Rotation = 18,
 				BorderSizePixel = 0,
 				BackgroundColor3 = WHITE,
-				BackgroundTransparency = 0.82,
+				BackgroundTransparency = 0.9,
 				Position = function()
 					local p = (clock() * 0.12) % 1
 					return UDim2.fromScale(-0.2 + p * 1.4, 0.5)
@@ -169,15 +169,25 @@ local function OPMagnetCard(props: Props)
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.fromScale(0.965, 0.06),
 			Size = UDim2.fromScale(0.3, 0.125),
-			BackgroundColor3 = palette.Bottom,
-			BackgroundTransparency = 0.1,
+			BackgroundColor3 = palette.Edge,
 			BorderSizePixel = 0,
 
-			create("UICorner")({ CornerRadius = UDim.new(0.35, 0) }),
+			create("UICorner")({ CornerRadius = UDim.new(0.5, 0) }),
 			create("UIStroke")({
 				Thickness = 1.5,
-				Color = livingAccent,
-				Transparency = 0.1,
+				Color = palette.Light,
+				Transparency = 0.35,
+			}),
+			create("ImageLabel")({
+				Name = "Texture",
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				Image = "rbxassetid://119993804734501",
+				ScaleType = Enum.ScaleType.Tile,
+				TileSize = UDim2.fromScale(0.3, 1),
+				ImageTransparency = 0.65,
+
+				create("UICorner")({ CornerRadius = UDim.new(0.5, 0) }),
 			}),
 			create("TextLabel")({
 				Name = "Label",
@@ -202,19 +212,34 @@ local function OPMagnetCard(props: Props)
 		create("Frame")({
 			Name = "Sword",
 			ZIndex = 2,
-			BackgroundColor3 = palette.Bottom,
+			BackgroundColor3 = palette.Edge,
 			BorderSizePixel = 0,
 			Position = UDim2.fromScale(0.03, 0.23),
 			Size = UDim2.fromScale(0.42, 0.72),
 
-			create("UICorner")({ CornerRadius = UDim.new(0, 8) }),
+			create("UICorner")({ CornerRadius = UDim.new(0, 12) }),
+			-- утопленная «ячейка» под меч: светлая кромка как у пластикового углубления
 			create("UIStroke")({
-				Thickness = 2.5,
-				Color = livingAccent,
-				Transparency = 0.15,
+				Thickness = 3,
+				Color = palette.Light,
+				Transparency = 0.25,
 			}),
 
-			RarityBackdrop({ Rarity = rarity, Radius = UDim.new(0, 8) }),
+			RarityBackdrop({ Rarity = rarity, Radius = UDim.new(0, 12) }),
+
+			-- фактура пластика поверх сцены (под мечом): тонкая, не спорит с превью
+			create("ImageLabel")({
+				Name = "Texture",
+				ZIndex = 1,
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				Image = "rbxassetid://119993804734501",
+				ScaleType = Enum.ScaleType.Tile,
+				TileSize = UDim2.fromScale(0.3, 0.2),
+				ImageTransparency = 0.7,
+
+				create("UICorner")({ CornerRadius = UDim.new(0, 12) }),
+			}),
 
 			-- вьюпорт в обёртке: ему нужен ZIndex выше фона-сцены
 			create("Frame")({
@@ -241,22 +266,6 @@ local function OPMagnetCard(props: Props)
 				Rotation = 90,
 				Color = ColorSequence.new(WHITE, palette.Light),
 			}),
-		}),
-
-		-- мягкое пульсирующее свечение под кнопкой цены (привлекает внимание, не перекрывает)
-		create("Frame")({
-			Name = "PriceGlow",
-			ZIndex = 2,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.7875, 0.845),
-			Size = UDim2.fromScale(0.45, 0.26),
-			BorderSizePixel = 0,
-			BackgroundColor3 = accent,
-			BackgroundTransparency = function()
-				return 0.8 - 0.1 * pulse(2.2)
-			end,
-
-			create("UICorner")({ CornerRadius = UDim.new(1, 0) }),
 		}),
 
 		create("Frame")({
@@ -309,29 +318,11 @@ local function OPMagnetCard(props: Props)
 			}),
 		}),
 
-		-- рамка внутри границ (отступ), пульсирует цветом редкости
-		create("Frame")({
-			Name = "Rim",
-			ZIndex = 5,
-			Position = UDim2.fromOffset(3, 3),
-			Size = UDim2.new(1, -6, 1, -6),
-			BackgroundTransparency = 1,
-
-			create("UICorner")({ CornerRadius = UDim.new(0, 8) }),
-			create("UIStroke")({
-				Thickness = 2,
-				Color = livingAccent,
-				Transparency = function()
-					return 0.05 + 0.3 * (1 - pulse(1.8))
-				end,
-			}),
-		}),
-
 		table.unpack(Surface({
-			Radius = UDim.new(0, 10),
+			Radius = UDim.new(0, 14),
 			Texture = "rbxassetid://119993804734501",
 			TileSize = UDim2.fromScale(0.2, 0.3),
-			TextureTransparency = 0.88,
+			TextureTransparency = 0.8,
 			Highlight = 0,
 			Shadow = 0,
 		})),
