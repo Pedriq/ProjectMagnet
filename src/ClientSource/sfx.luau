@@ -1,4 +1,6 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local AudioSettings = require(ReplicatedStorage.ClientSource.audioSettings)
 
 --[[
 	sfx — проигрывание звуков интерфейса/геймплея из SoundService.SFX.
@@ -34,7 +36,7 @@ local SoundService = game:GetService("SoundService")
 ]]
 
 local SFX = SoundService:WaitForChild("SFX") :: SoundGroup
-SFX.Volume = 1.2 -- звуки игры на первом плане: музыка (MusicController.MUSIC_VOLUME) намного тише
+AudioSettings.bindSfx(SFX) -- база SFX_BASE (audioSettings) × настройка игрока (окно Settings); звуки игры на первом плане: музыка (MusicController.MUSIC_VOLUME) намного тише
 
 -- Точечные переопределения громкости отдельных звуков.
 local VOLUME_OVERRIDES: { [string]: number } = {

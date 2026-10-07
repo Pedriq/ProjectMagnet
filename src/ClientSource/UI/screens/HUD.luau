@@ -28,6 +28,8 @@ local SellPanel = require(ReplicatedStorage.ClientSource.UI.screens.SellPanel)
 local MagnetShopPanel = require(ReplicatedStorage.ClientSource.UI.screens.MagnetShopPanel)
 local PressQueuePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressQueuePanel)
 local PressUpgradePanel = require(ReplicatedStorage.ClientSource.UI.screens.PressUpgradePanel)
+local SettingsPanel = require(ReplicatedStorage.ClientSource.UI.screens.SettingsPanel)
+local Icon = require(ReplicatedStorage.Packages.TopbarPlus)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
 local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
@@ -215,10 +217,61 @@ local function rollingMoney(): () -> any
 	return shown
 end
 
+-- Шестерёнка для кнопки Settings, нарисованная фреймами (без картинки-ассета, поэтому не зависит от загрузки
+-- текстур): кольцо-обод (UIStroke) + 8 зубцов по окружности. Родитель — IconButton иконки TopbarPlus.
+local GEAR_SIZE = 24
+local GEAR_TEETH = 8
+local function buildGear(parent: Instance)
+	local ringDiameter = 10
+	local ringStroke = 3
+	local toothRadius = ringDiameter / 2 + ringStroke + 1 -- центр зубца чуть за ободом
+
+	local gear = Instance.new("Frame")
+	gear.Name = "Gear"
+	gear.AnchorPoint = Vector2.new(0.5, 0.5)
+	gear.Position = UDim2.fromScale(0.5, 0.5)
+	gear.Size = UDim2.fromOffset(GEAR_SIZE, GEAR_SIZE)
+	gear.BackgroundTransparency = 1
+	gear.Active = false
+	gear.ZIndex = 16
+
+	local ring = Instance.new("Frame")
+	ring.Name = "Ring"
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromOffset(ringDiameter, ringDiameter)
+	ring.BackgroundTransparency = 1
+	ring.ZIndex = 16
+	ring.Parent = gear
+	local ringCorner = Instance.new("UICorner")
+	ringCorner.CornerRadius = UDim.new(1, 0)
+	ringCorner.Parent = ring
+	local ringLine = Instance.new("UIStroke")
+	ringLine.Thickness = ringStroke
+	ringLine.Color = Color3.new(1, 1, 1)
+	ringLine.Parent = ring
+
+	for i = 0, GEAR_TEETH - 1 do
+		local angle = math.rad(i * 360 / GEAR_TEETH)
+		local tooth = Instance.new("Frame")
+		tooth.Name = "Tooth" .. i
+		tooth.AnchorPoint = Vector2.new(0.5, 0.5)
+		tooth.Position = UDim2.new(0.5, math.sin(angle) * toothRadius, 0.5, -math.cos(angle) * toothRadius)
+		tooth.Size = UDim2.fromOffset(4, 5)
+		tooth.Rotation = i * 360 / GEAR_TEETH
+		tooth.BackgroundColor3 = Color3.new(1, 1, 1)
+		tooth.BorderSizePixel = 0
+		tooth.ZIndex = 16
+		tooth.Parent = gear
+	end
+
+	gear.Parent = parent
+end
+
 local function HUD()
 	local shownMoney = rollingMoney()
 
-	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | "press" | "pressUpgrade" | nil
+	-- какое окно открыто: "shop" | "rebirth" | "upgrades" | "sell" | "magnets" | "press" | "pressUpgrade" | "settings" | nil
 	local openPanel = source(nil :: string?)
 	local function closePanel()
 		openPanel(nil)
@@ -243,6 +296,33 @@ local function HUD()
 	end)
 	cleanup(function()
 		promptConn:Disconnect()
+	end)
+
+	--=== иконка Settings в верхней панели (TopbarPlus, правый край) =============
+	-- Иконка и окно синхронны: клик открывает/закрывает "settings", а закрытие окна
+	-- любым способом (крестик, клик мимо, другое окно) снимает выделение иконки.
+	local settingsIcon = Icon.new()
+		:setName("Settings")
+		:align("Right")
+		:bindEvent("selected", function()
+			openPanel("settings")
+		end)
+		:bindEvent("deselected", function()
+			if openPanel() == "settings" then
+				openPanel(nil)
+			end
+		end)
+	buildGear(settingsIcon:getInstance("IconButton"))
+	effect(function()
+		local isOpen = openPanel() == "settings"
+		if isOpen and not settingsIcon.isSelected then
+			settingsIcon:select()
+		elseif not isOpen and settingsIcon.isSelected then
+			settingsIcon:deselect()
+		end
+	end)
+	cleanup(function()
+		settingsIcon:destroy()
 	end)
 
 	--=== фон за открытой панелью: размытие + лёгкое отдаление камеры ==========
@@ -588,6 +668,13 @@ local function HUD()
 					-- через ProfileService.UpdateSpecificData, кучка в прессе — по OreRemoved.
 					OnRemove = function(oreId)
 						Knit.GetService("PressService"):RemoveOre(oreId):catch(warn)
+					end,
+				}),
+				settings = SettingsPanel({
+					OnClose = closePanel,
+					-- громкость уже применена на лету (audioSettings); здесь только сохраняем в профиль
+					OnVolumeCommitted = function(kind, value)
+						Knit.GetService("PlayerManagerService"):SetAudioSetting(kind, value):catch(warn)
 					end,
 				}),
 				pressUpgrade = PressUpgradePanel({

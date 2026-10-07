@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContentProvider = game:GetService("ContentProvider")
 local SoundService = game:GetService("SoundService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
+local AudioSettings = require(ReplicatedStorage.ClientSource.audioSettings)
 
 --[[
 	MusicController — фоновая музыка: SoundService.Music (SoundGroup) с треками Music1, Music2, Music3 играют по кругу
@@ -13,7 +14,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 	  * мягкий вход и выход громкости (FADE_TIME) на стыках — без щелчков, переход между треками чистый;
 	  * трек, который не загрузился (нет ассета/нулевая длина), пропускается; если не загрузился ни один — пауза и новая
 	    попытка, а не цикл вхолостую;
-	  * общая громкость — у SoundGroup Music (MUSIC_VOLUME, выставляется при старте); громкость самих Sound контроллер не
+	  * общая громкость — у SoundGroup Music (база MUSIC_BASE в audioSettings × ползунок Settings); громкость самих Sound контроллер не
 	    меняет, лишь масштабирует Sound.Volume на время фейдов и возвращает исходное значение.
 ]]
 local MusicController = Knit.CreateController({
@@ -25,7 +26,6 @@ local GROUP_NAME = "Music"
 local TRACK_NAMES = { "Music1", "Music2", "Music3" }
 -- Общая громкость музыки — ТОЛЬКО через SoundGroup Music (громкость отдельных треков не трогаем). SFX-группа стоит на 1.2
 -- (см. sfx.luau), поэтому музыка — тихий фон: звуки игры остаются на первом плане. Подстройка — это число.
-local MUSIC_VOLUME = 0.015
 local FADE_TIME = 1.2 -- секунд плавного входа/выхода на каждом треке
 local TICK = 0.05 -- шаг обновления громкости во время фейдов
 local LOAD_TIMEOUT = 10
@@ -115,10 +115,10 @@ function MusicController:KnitStart()
 			return
 		end
 
-		group.Volume = MUSIC_VOLUME
 
 		-- собираем плейлист в заданном порядке; по соединению Ended на трек, один раз
 		local playlist: { Track } = {}
+		local allRouted = true -- все найденные треки уже были направлены в группу Music до нас
 		for _, name in ipairs(TRACK_NAMES) do
 			local sound = findSound(group, name)
 			if not sound then
@@ -127,6 +127,12 @@ function MusicController:KnitStart()
 			end
 
 			sound.Looped = false
+			-- Трек должен идти через группу Music, иначе слайдер на него не действует. Если раньше он в группу
+			-- не направлялся, его громкость играла «как есть» — ниже база группы станет 1, чтобы не стало тише.
+			if sound.SoundGroup ~= group then
+				allRouted = false
+				sound.SoundGroup = group
+			end
 			sound:Stop()
 
 			local track = { Sound = sound, BaseVolume = sound.Volume, Ended = false } :: any
@@ -135,6 +141,8 @@ function MusicController:KnitStart()
 			end)
 			table.insert(playlist, track)
 		end
+
+		AudioSettings.bindMusic(group, allRouted) -- громкость группы = база × ползунок Settings
 
 		if #playlist == 0 then
 			warn("[Music] в группе нет ни одного трека из списка — музыка не запущена")

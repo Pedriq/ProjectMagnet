@@ -167,6 +167,28 @@ function PlayerManagerService.Client:CompleteTutorial(player)
 	self.Server:CompleteTutorial(player)
 end
 
+-- Громкость из окна Settings: kind = "Music" | "Sfx", value 0..1 (округляем до 1%, чтобы не писать шум в профиль).
+local AUDIO_SETTING_KEYS = { Music = "MusicVolume", Sfx = "SfxVolume" }
+
+function PlayerManagerService:SetAudioSetting(player, kind: string, value: number)
+	local key = AUDIO_SETTING_KEYS[kind]
+	if key then
+		ProfileService:ChangeData(player, { "Settings", key }, math.floor(math.clamp(value, 0, 1) * 100 + 0.5) / 100)
+	end
+end
+
+function PlayerManagerService.Client:SetAudioSetting(player, kind, value)
+	if
+		not AUDIO_SETTING_KEYS[kind]
+		or type(value) ~= "number"
+		or value ~= value
+		or not RateLimiter.Allow(player, "SetAudioSetting", 0.2)
+	then
+		return
+	end
+	self.Server:SetAudioSetting(player, kind, value)
+end
+
 function PlayerManagerService.Client:BuyMagnet(player, magnetName)
 	if not MagnetData.isMagnet(magnetName) or not RateLimiter.Allow(player, "BuyMagnet", 0.2) then
 		return false

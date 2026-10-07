@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 local vide = require(ReplicatedStorage.Packages.Vide)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
+local AudioSettings = require(ReplicatedStorage.ClientSource.audioSettings)
 local RebirthConfig = require(ReplicatedStorage.SharedSource.Datas.RebirthConfig)
 
 local source = vide.source
@@ -201,6 +202,9 @@ function Data.start()
 		Data.ownedZones(table.clone(profile.AutoClickZones or {}))
 		Data.autoCollectPass(profile.AutoCollectPass == true)
 		Data.tutorialCompleted(type(profile.Tutorial) == "table" and profile.Tutorial.Completed == true)
+		-- сохранённая громкость (окно Settings) применяется сразу, до открытия окна
+		local settings = if type(profile.Settings) == "table" then profile.Settings else {}
+		AudioSettings.load(tonumber(settings.MusicVolume) or 1, tonumber(settings.SfxVolume) or 1)
 		Data.ready(true)
 	end)
 	Profile.GetData:Fire()
