@@ -111,10 +111,10 @@ local function rebirthBadgeColor(): Color3
 end
 
 -- === бонус за друзей в сессии (для бейджа на кнопке Invite) ===
--- 0 друзей -> "0%" (бонуса нет), 1 друг -> "5%", 2 друга -> "10%" и т.д.
+-- 0 друзей -> "+0%" (бонуса нет), 1 друг -> "+5%", 2 друга -> "+10%" и т.д.
 -- (см. FriendBonusHandler на сервере — он же реально применяет бонус к силе за клик)
 local function inviteBadgeText(): string
-	return `{Data.friendBonusPercent()}%`
+	return `+{Data.friendBonusPercent()}%`
 end
 
 local function inviteBadgeColor(): Color3
