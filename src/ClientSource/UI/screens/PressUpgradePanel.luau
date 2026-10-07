@@ -40,6 +40,9 @@ export type Props = {
 	OnBuyRobux: () -> (), -- платный skip (дев-продукт ступени, см. StatUpgradesConfig.PressSpeed.RobuxSteps)
 }
 
+local TITLE_ICON = "rbxassetid://103766984268995" -- иконка в тайтле окна
+local MERGE_ICON = "rbxassetid://101622371294830" -- карточка Merge Efficiency (Press Speed — в StatUpgradesConfig)
+
 local function formatSpeed(itemsPerSecond: number): string
 	-- 2 знака: ранние уровни дают ~+0.02 предм./сек, с одним знаком «0.5 → 0.5»
 	return string.format("%.2f/s", itemsPerSecond)
@@ -103,7 +106,7 @@ local function MergeUpgradeCard(onUpgrade: () -> ())
 	return UpgradeCard({
 		LayoutOrder = 2,
 		Title = "Merge Efficiency",
-		Icon = "",
+		Icon = MERGE_ICON,
 		Level = level,
 		Bonus = function()
 			local now = PressMergeConfig.RatioText(level())
@@ -131,6 +134,7 @@ local function PressUpgradePanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Press Upgrade",
+			Icon = TITLE_ICON,
 			-- пресс = холодная «нержавеющая сталь» (UI.theme, Teal) — оба окна пресса одного цвета
 			TitleColor = Theme.titleColor("Teal"),
 			BodyColor = Theme.bodyColor("Teal"),

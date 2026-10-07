@@ -55,7 +55,8 @@ local ROW_COLOR = Theme.Steel700
 local TRACK_COLOR = Theme.Steel900
 local GOLD = Theme.CopperBright -- NEXT и «x3»
 local CONFIRM_COLOR = Theme.Danger
-local REMOVE_ICON = "rbxassetid://103344771690872"
+local TITLE_ICON = "rbxassetid://136449007381728" -- иконка в тайтле окна
+local REMOVE_ICON ="rbxassetid://103344771690872"
 
 local ROW_HEIGHT = 66
 local REMOVE_SIZE = 38
@@ -445,6 +446,7 @@ local function PressQueuePanel(props: Props)
 			OnClose = props.OnClose,
 
 			Title = "Press Queue",
+			Icon = TITLE_ICON,
 			TitleColor = Theme.titleColor("Teal"),
 			BodyColor = Theme.bodyColor("Teal"),
 			BodyTransparency = Theme.PanelBodyTransparency,
