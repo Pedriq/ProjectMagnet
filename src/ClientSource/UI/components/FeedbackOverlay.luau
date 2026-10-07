@@ -520,7 +520,7 @@ local function FeedbackOverlay()
 	local bagAlert = Instance.new("Frame")
 	bagAlert.Name = "BagFull"
 	bagAlert.AnchorPoint = Vector2.new(0.5, 0.5)
-	bagAlert.Position = UDim2.fromScale(0.5, 0.36)
+	bagAlert.Position = UDim2.fromScale(0.5, 0.2)
 	bagAlert.Size = UDim2.fromOffset(520, 150)
 	bagAlert.BackgroundTransparency = 1
 	bagAlert.Visible = false
@@ -549,11 +549,11 @@ local function FeedbackOverlay()
 	buyCapacity.Name = "BuyCapacity"
 	buyCapacity.AnchorPoint = Vector2.new(0.5, 0)
 	buyCapacity.Position = UDim2.new(0.5, 0, 0, 90)
-	buyCapacity.Size = UDim2.fromOffset(330, 48)
+	buyCapacity.Size = UDim2.fromOffset(280, 40)
 	buyCapacity.AutoButtonColor = false
 	buyCapacity.BackgroundColor3 = WHITE
 	buyCapacity.Font = Enum.Font.GothamBlack
-	buyCapacity.TextSize = 22
+	buyCapacity.TextSize = 18
 	buyCapacity.TextColor3 = WHITE
 	buyCapacity.Text = ""
 	buyCapacity.Parent = bagAlert
@@ -625,7 +625,7 @@ local function FeedbackOverlay()
 
 	-- nil — предупреждение не нужно; иначе "full" | "heavy"
 	local function bagMode(): string?
-		if not Data.ready() or WorldState.inSaveZone() then
+		if not Data.ready() or WorldState.inSaveZone() or Tutorial.active() then
 			return nil
 		end
 		if isBagFull() then
@@ -651,6 +651,9 @@ local function FeedbackOverlay()
 			if capacityHovered and shownMode ~= nil then
 				blockedUntil = math.max(blockedUntil, os.clock() + 1)
 			end
+
+			-- во время обучения кнопка скрыта целиком (вместе с BAG FULL, см. bagMode)
+			buyCapacity.Visible = not Tutorial.active()
 
 			local mode = bagMode()
 			if mode ~= shownMode then
@@ -681,6 +684,23 @@ local function FeedbackOverlay()
 				bagPulse += dt * 5
 				bagScale.Scale = 1 + math.abs(math.sin(bagPulse)) * 0.08
 			end
+
+			-- Баннеры (LEVEL UP, комбо...) никогда не накладываются на BAG FULL: пока он виден,
+			-- холдер баннеров плавно съезжает под него (под кнопку Capacity, если она показана).
+			-- Нижний край контента алерта = центр - 75 + (130 | 82); +16 пульс/зазор, +60 половина баннера.
+			local targetScale, targetOffset = 0.24, 0
+			if mode then
+				targetScale = 0.2
+				targetOffset = if buyCapacity.Visible then 55 + 16 + 60 else 7 + 16 + 60
+			end
+			local k = 1 - math.exp(-dt * 12)
+			local pos = bannerHolder.Position
+			bannerHolder.Position = UDim2.new(
+				0.5,
+				0,
+				pos.Y.Scale + (targetScale - pos.Y.Scale) * k,
+				pos.Y.Offset + (targetOffset - pos.Y.Offset) * k
+			)
 		end)
 	)
 
