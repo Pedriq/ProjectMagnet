@@ -166,6 +166,7 @@ end
 local function ensureGui(screen: BasePart, title: string): ScrollingFrame
 	local existing = screen:FindFirstChild("LeaderboardGui")
 	if existing then
+		existing.MaxDistance = LeaderboardConfig.RENDER_DISTANCE
 		return existing.Root.Rows
 	end
 
@@ -175,6 +176,7 @@ local function ensureGui(screen: BasePart, title: string): ScrollingFrame
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = 36
 	gui.LightInfluence = 0
+	gui.MaxDistance = LeaderboardConfig.RENDER_DISTANCE
 	gui.Parent = screen
 
 	local root = Instance.new("Frame")
