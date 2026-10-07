@@ -14,9 +14,8 @@ local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 	Unloading — Model с двумя детьми (см. PressService:GetPadParts):
 	  ZoneFloor         — BasePart, ПО НЕЙ идёт детект игрока (единственная часть,
 	                      которая на это влияет).
-	  ZoneDashedOutline — чисто декоративное вращающееся кольцо (Model или
-	                      BasePart), крутится на клиенте (PressVisualizer),
-	                      в детекте не участвует.
+	  ZoneDashedOutline — чисто декоративная квадратная рамка (Model или
+	                      BasePart), неподвижная, в детекте не участвует.
 	Старый вариант (просто BasePart без вложенных ZoneFloor/ZoneDashedOutline)
 	по-прежнему поддерживается — см. фолбэк в PressService:GetPadParts.
 ]]

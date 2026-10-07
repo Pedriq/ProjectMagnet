@@ -83,7 +83,30 @@ function PressService:AddPressOre(player, oreId, weight)
 		if index and index > self:GetStoredHighestOre(player) then
 			ProfileService:ChangeData(player, { "Press", "HighestOre" }, index)
 		end
+		self:RequestAutoMerge(player)
 	end
+end
+
+-- Автомерж: запускается событиями (руда добавлена в пресс, куплена Merge Efficiency), без циклов.
+-- Несколько событий в одном кадре (выгрузка руды по кусочкам) схлопываются в один MergeOres
+-- через task.defer; те же правила Plan/ratio, что и у площадки Merge. Нет что мержить — тихо.
+local autoMergePending: { [Player]: boolean } = {}
+
+function PressService:RequestAutoMerge(player)
+	if autoMergePending[player] then
+		return
+	end
+	autoMergePending[player] = true
+	task.defer(function()
+		autoMergePending[player] = nil
+		if player.Parent == nil then
+			return
+		end
+		local ok, err = pcall(self.MergeOres, self, player, nil)
+		if not ok then
+			warn("[PressService] auto merge failed:", err)
+		end
+	end)
 end
 
 -- === Ore Merge (PressMergeConfig) ==============================================
@@ -164,6 +187,7 @@ function PressService:BuyMergeUpgrade(player): boolean
 
 	ProfileService:ChangeData(player, { "Stats", "Money" }, EtNum.toString(EtNum.sub(money, cost)))
 	ProfileService:ChangeData(player, { "Press", "MergeLevel" }, level + 1)
+	self:RequestAutoMerge(player) -- ratio стал мягче: уже лежащая руда могла стать объединяемой
 	return true
 end
 
@@ -192,7 +216,7 @@ end
 --
 -- Модель зоны (например Unloading: ZoneDashedOutline + ZoneFloor, см. README/
 -- PressUnloadHandler) детектит игрока СТРОГО по ZoneFloor — не по всем BasePart
--- внутри, иначе в детект попал бы декоративный вращающийся ZoneDashedOutline.
+-- внутри, иначе в детект попал бы декоративный ZoneDashedOutline.
 -- Если ZoneFloor нет (старые/другие зоны без такой структуры) — падаем назад на
 -- поиск по всем BasePart, как раньше.
 local PAD_CACHE_TTL = 1 -- секунд; площадки сами не двигаются, но могут подгрузиться стримингом

@@ -70,8 +70,9 @@ local ITEM_SIZE = 2 -- самая большая сторона предмета
 local SELL_SINK_TIME = 0.3 -- после падения предмет «проваливается» в Sell
 local MONEY_POPUP_TIME = 1.2
 
--- ZoneDashedOutline у Unloading / Collect / Merge — декоративное кольцо зоны, медленно
--- крутится вокруг своей оси (детект игрока идёт по ZoneFloor, см. PressService).
+-- ZoneDashedOutline у Merge — декоративное кольцо зоны, медленно крутится вокруг своей оси
+-- (детект игрока идёт по ZoneFloor, см. PressService). У Unloading / Collect зона квадратная
+-- и не анимируется.
 local OUTLINE_SPIN_SPEED = math.rad(15) -- рад/сек
 
 ---- State
@@ -1281,8 +1282,7 @@ local function spinOutline(outline: Instance)
 	end
 end
 
--- Кольцо ZoneDashedOutline зоны (Unloading / Collect / Merge — у всех одна структура:
--- ZoneFloor для детекта + вращающееся ZoneDashedOutline) пускаем крутиться.
+-- Кольцо ZoneDashedOutline зоны (сейчас только Merge) пускаем крутиться.
 local function spinZoneOutline(zone: Instance?)
 	local outline = zone and zone:FindFirstChild("ZoneDashedOutline")
 	if outline and (outline:IsA("Model") or outline:IsA("BasePart")) then
@@ -1408,10 +1408,9 @@ function PressVisualizer:_EnsureReady()
 		end
 	end
 
-	-- кольца всех трёх зон; вызывается раз в секунду, так что зоны, дошедшие по стримингу позже,
-	-- подхватываются сами (spinOutline не дублирует уже вращающиеся)
-	spinZoneOutline(findUnloading())
-	spinZoneOutline(findCollect())
+	-- Unloading / Collect теперь квадратные и неподвижные; крутится только кольцо Merge.
+	-- Вызывается раз в секунду, так что зона, дошедшая по стримингу позже, подхватывается сама
+	-- (spinOutline не дублирует уже вращающиеся)
 	spinZoneOutline(findMerge())
 
 	-- Табличка с деньгами над Collect: создаём, когда у зоны появилась деталь; если якорь/табличку
