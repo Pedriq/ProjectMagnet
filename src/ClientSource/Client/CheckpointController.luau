@@ -72,27 +72,35 @@ local function indexOf(inst: Instance?): number?
 	return nil
 end
 
--- Все SurfaceGui чекпоинтов: внутри папки и в PlayerGui с Adornee на чекпоинт.
-local function collectGuis(): { [SurfaceGui]: number }
-	local result = {}
+
+local GUI_NAME = "CheckpointTemplateGui"
+
+local function formatCount(n: number): string
+	local s = tostring(math.floor(n))
+	local formatted = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (formatted:gsub("^,", ""))
+end
+
+-- Все чекпоинты: [номер] = парт. Если у номера есть парт с SurfaceGui — берём его,
+-- иначе самый большой парт (его же слушает CheckpointHandler).
+local function collectCheckpoints(): { [number]: BasePart }
+	local result: { [number]: BasePart } = {}
+	local hasGui: { [number]: boolean } = {}
 	if not folder then
 		return result
 	end
-	for _, gui in ipairs(folder:GetDescendants()) do
-		if gui:IsA("SurfaceGui") then
-			local index = indexOf(gui.Adornee or gui.Parent)
+	for _, inst in ipairs(folder:GetDescendants()) do
+		if inst:IsA("BasePart") then
+			local index = indexOf(inst)
 			if index then
-				result[gui] = index
-			end
-		end
-	end
-	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	if playerGui then
-		for _, gui in ipairs(playerGui:GetDescendants()) do
-			if gui:IsA("SurfaceGui") and gui.Adornee then
-				local index = indexOf(gui.Adornee)
-				if index then
-					result[gui] = index
+				local withGui = inst:FindFirstChildWhichIsA("SurfaceGui") ~= nil
+				local current = result[index]
+				local better = current == nil
+					or (withGui and not hasGui[index])
+					or (withGui == (hasGui[index] or false) and inst.Size.Magnitude > current.Size.Magnitude)
+				if better then
+					result[index] = inst
+					hasGui[index] = withGui
 				end
 			end
 		end
@@ -101,9 +109,9 @@ local function collectGuis(): { [SurfaceGui]: number }
 end
 
 -- Номер следующего чекпоинта: наименьший номер > highestPassed.
-local function nextIndex(guis: { [SurfaceGui]: number }): number?
+local function nextIndex(checkpoints: { [number]: BasePart }): number?
 	local best: number? = nil
-	for _, index in pairs(guis) do
+	for index in pairs(checkpoints) do
 		if index > highestPassed and (best == nil or index < best) then
 			best = index
 		end
@@ -111,247 +119,45 @@ local function nextIndex(guis: { [SurfaceGui]: number }): number?
 	return best
 end
 
--- Подсказка на чекпоинте: CHECKPOINT / [рюкзак] N ▶ [руда] M / TOUCH TO SAVE ORE.
--- N — руда в рюкзаке (Data.carryCount), M — всего сохранено (Data.ores). Иконки рюкзака/руды — как в HUD (CarryMeter /
--- SavedOreMeter).
-local INFO_NAME = "CheckpointInfo"
-local BACKPACK_ICON = "rbxassetid://15507675979"
-local ORE_ICON = "rbxassetid://75588119022884"
-local ARROW_COLOR = PASS_COLOR
-
-local function formatCount(n: number): string
-	local s = tostring(math.floor(n))
-	local formatted = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-	return (formatted:gsub("^,", ""))
-end
-
-local function addStroke(inst: Instance, thickness: number)
-	local s = Instance.new("UIStroke")
-	s.Thickness = thickness
-	s.Color = Color3.new(0, 0, 0)
-	s.Parent = inst
-end
-
--- Один раз строит панель поверх SurfaceGui; всё в масштабе, поэтому одинаково на любой поверхности.
--- Ширина текста в «высотах шрифта» (Size = 1): по реальным метрикам шрифта, чтобы строки
--- собирались плотно и точно по центру (TextScaled сам ширину не ужимает).
-local TextService = game:GetService("TextService")
-local FONT = Font.fromEnum(Enum.Font.GothamBlack)
-local widthCache: { [string]: number } = {}
-
-local function widthRatio(text: string): number
-	local cached = widthCache[text]
-	if cached then
-		return cached
+-- SurfaceGui-шаблон: ReplicatedStorage.Assets.Checkpoint.Template (сам SurfaceGui или парт/модель с ним).
+local function findTemplate(): SurfaceGui?
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local checkpoint = assets and assets:FindFirstChild("Checkpoint")
+	local template = checkpoint and checkpoint:FindFirstChild("Template")
+	if not template then
+		return nil
 	end
-	local params = Instance.new("GetTextBoundsParams")
-	params.Text = text
-	params.Font = FONT
-	params.Size = 100
-	params.Width = 10000
-	local ok, bounds = pcall(TextService.GetTextBoundsAsync, TextService, params)
-	local ratio = if ok then bounds.X / 100 else #text * 0.75
-	widthCache[text] = ratio
-	return ratio
-end
-
---[[
-	Композиция считается по метрикам и подгоняется ровно под свой контент (никаких «полей»):
-	высоты строк — это высота ЗАГЛАВНЫХ букв (кегль = строка / CAP), поэтому строки идут вплотную.
-	Единицы — доли высоты композиции H; ширина композиции W = max(ширина строк).
-	Композиция вписывается в поверхность чекпоинта по меньшей стороне (FitWithinMaxSize).
-]]
-local CAP = 0.74 -- высота заглавных GothamBlack / кегль
--- высоты строк (заглавные буквы заполняют строку целиком)
-local PITCH = { Title = 0.34, Flow = 0.26, Hint = 0.2 }
-local AMOUNT_PITCH = 0.22 -- числа рядом с иконками рюкзака и руды
-local GAP = 0.04 -- между строками
-local NOMINAL_AMOUNT = "1,000" -- ширина числа, под которую считается композиция (длиннее — сожмётся)
-local ARROW_W = 0.17 -- ширина стрелки
-local SPACE = 0.045 -- зазор между элементами цепочки
-
-local function fontSize(pitch: number): number -- кегль, при котором заглавные занимают всю строку
-	return pitch / CAP
-end
-
-local function addText(parent: Instance, props: { [string]: any }, strokeThickness: number): TextLabel
-	local l = Instance.new("TextLabel")
-	l.BackgroundTransparency = 1
-	l.Font = Enum.Font.GothamBlack
-	l.TextScaled = true
-	l.TextColor3 = Color3.new(1, 1, 1)
-	for k, v in pairs(props) do
-		(l :: any)[k] = v
+	if template:IsA("SurfaceGui") then
+		return template
 	end
-	l.Parent = parent
-	addStroke(l, strokeThickness)
-	return l
+	return template:FindFirstChildWhichIsA("SurfaceGui", true)
 end
 
--- Цепочка: [рюкзак] N ▶ [руда] M; две иконки одного размера и два числа:
--- N — руда в рюкзаке сейчас, M — всего сохранённой руды.
-local function flowWidth(carryWidth: number, savedWidth: number): number
-	return PITCH.Flow * 2 + ARROW_W + SPACE * 4 + carryWidth + savedWidth
-end
+-- Динамические поля шаблона ищутся по имени (без учёта регистра, любая вложенность).
+local CARRY_NAMES = { "carryvalue", "carry", "backpack", "backpackvalue", "backpackore", "carried" }
+local SAVED_NAMES = { "savedvalue", "saved", "total", "totalvalue", "savedore", "totalsaved" }
 
-local function rowWidths()
-	return {
-		Title = widthRatio("CHECKPOINT") * fontSize(PITCH.Title),
-		Flow = flowWidth(widthRatio(NOMINAL_AMOUNT) * fontSize(AMOUNT_PITCH), widthRatio(NOMINAL_AMOUNT) * fontSize(AMOUNT_PITCH)),
-		Hint = widthRatio("TOUCH TO SAVE ORE") * fontSize(PITCH.Hint),
-	}
-end
-
-local function contentHeight(): number
-	return PITCH.Title + PITCH.Flow + PITCH.Hint + GAP * 2
-end
-
--- Подгоняет число под реальную ширину и сжимает цепочку, если число длиннее номинала.
-local function setAmounts(info: Instance, carry: string, saved: string)
-	local carryLabel = info:FindFirstChild("CarryValue", true) :: TextLabel?
-	local savedLabel = info:FindFirstChild("SavedValue", true) :: TextLabel?
-	local scale = info:FindFirstChild("FlowScale", true) :: UIScale?
-	local width = info:GetAttribute("ContentWidth")
-	if not (carryLabel and savedLabel and scale and width) then
-		return
-	end
-	local font = fontSize(AMOUNT_PITCH)
-	local carryW = widthRatio(carry) * font
-	local savedW = widthRatio(saved) * font
-	carryLabel.Text = carry
-	savedLabel.Text = saved
-	carryLabel.Size = UDim2.fromScale(carryW * 1.03 / width, font / PITCH.Flow)
-	savedLabel.Size = UDim2.fromScale(savedW * 1.03 / width, font / PITCH.Flow)
-	scale.Scale = math.min(1, width / flowWidth(carryW, savedW))
-end
-
--- Один раз строит панель поверх SurfaceGui; всё в масштабе, поэтому одинаково на любой поверхности.
-local function ensureInfo(gui: SurfaceGui): Frame
-	local existing = gui:FindFirstChild(INFO_NAME)
-	if existing then
-		return existing :: Frame
-	end
-
-	local widths = rowWidths()
-	local width = math.max(widths.Title, widths.Flow, widths.Hint)
-	local height = contentHeight()
-
-	local info = Instance.new("Frame")
-	info.Name = INFO_NAME
-	info.Size = UDim2.fromScale(1, 1)
-	info.BackgroundTransparency = 1
-	info:SetAttribute("ContentWidth", width)
-	info.Parent = gui
-
-	local card = Instance.new("Frame")
-	card.Name = "Card"
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Position = UDim2.fromScale(0.5, 0.5)
-	card.Size = UDim2.fromScale(0.97, 0.97)
-	card.BackgroundTransparency = 1
-	card.Parent = info
-	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = width / height
-	aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-	aspect.Parent = card
-
-	local y = 0
-	local function newRow(name: string, pitch: number): Frame
-		local row = Instance.new("Frame")
-		row.Name = name
-		row.BackgroundTransparency = 1
-		row.Position = UDim2.fromScale(0, y / height)
-		row.Size = UDim2.fromScale(1, pitch / height)
-		row.Parent = card
-		y += pitch + GAP
-		local list = Instance.new("UIListLayout")
-		list.FillDirection = Enum.FillDirection.Horizontal
-		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		list.VerticalAlignment = Enum.VerticalAlignment.Center
-		list.SortOrder = Enum.SortOrder.LayoutOrder
-		list.Padding = UDim.new(0, 0)
-		list.Parent = row
-		return row
-	end
-
-	local function textRow(name: string, pitch: number, text: string, props: { [string]: any }, stroke: number)
-		local row = newRow(name, pitch)
-		local font = fontSize(pitch)
-		props.Text = text
-		props.Size = UDim2.fromScale(widthRatio(text) * font * 1.03 / width, font / pitch)
-		addText(row, props, stroke)
-	end
-
-	local function spacer(parent: Instance, order: number, w: number)
-		local s = Instance.new("Frame")
-		s.BackgroundTransparency = 1
-		s.LayoutOrder = order
-		s.Size = UDim2.fromScale(w / width, 0)
-		s.Parent = parent
-	end
-
-	local function icon(parent: Instance, order: number, image: string, emoji: string)
-		local obj: GuiObject
-		if image ~= "" then
-			local i = Instance.new("ImageLabel")
-			i.Image = image
-			i.ScaleType = Enum.ScaleType.Fit
-			obj = i
-		else
-			local t = Instance.new("TextLabel")
-			t.TextScaled = true
-			t.Text = emoji
-			obj = t
+local function findLabel(root: Instance, names: { string }): TextLabel?
+	for _, wanted in ipairs(names) do
+		for _, inst in ipairs(root:GetDescendants()) do
+			if inst:IsA("TextLabel") and string.lower(inst.Name) == wanted then
+				return inst
+			end
 		end
-		obj.BackgroundTransparency = 1
-		obj.LayoutOrder = order
-		obj.Size = UDim2.fromScale(PITCH.Flow / width, 1)
-		obj.Parent = parent
 	end
+	return nil
+end
 
-	local function arrow(parent: Instance, order: number)
-		local font = fontSize(ARROW_W)
-		addText(parent, {
-			Name = "Arrow",
-			LayoutOrder = order,
-			Text = "▶",
-			TextColor3 = ARROW_COLOR,
-			Size = UDim2.fromScale(ARROW_W / width, font * 0.95 / PITCH.Flow),
-		}, 3)
+local activeGui: SurfaceGui? = nil
+local activePart: BasePart? = nil
+local warnedTemplate = false
+local warnedLabels = false
+
+local function clearActive()
+	if activeGui then
+		activeGui:Destroy()
 	end
-
-	-- 1) CHECKPOINT — крупно, сверху
-	textRow("TitleRow", PITCH.Title, "CHECKPOINT", { Name = "Title", TextColor3 = PASS_COLOR }, 3.5)
-
-	-- 2) рюкзак ▶ руда N ▶ сохранение
-	local flow = newRow("FlowRow", PITCH.Flow)
-	local flowScale = Instance.new("UIScale")
-	flowScale.Name = "FlowScale"
-	flowScale.Parent = flow
-	local font = fontSize(AMOUNT_PITCH)
-	local function amount(order: number, name: string, color: Color3)
-		addText(flow, {
-			Name = name,
-			LayoutOrder = order,
-			Text = NOMINAL_AMOUNT,
-			TextColor3 = color,
-			Size = UDim2.fromScale(widthRatio(NOMINAL_AMOUNT) * font * 1.03 / width, font / PITCH.Flow),
-		}, 3.5)
-	end
-	icon(flow, 1, BACKPACK_ICON, "🎒")
-	spacer(flow, 2, SPACE)
-	amount(3, "CarryValue", ORE_COLOR) -- руда в рюкзаке сейчас
-	spacer(flow, 4, SPACE)
-	arrow(flow, 5)
-	spacer(flow, 6, SPACE)
-	icon(flow, 7, ORE_ICON, "⛏")
-	spacer(flow, 8, SPACE)
-	amount(9, "SavedValue", PASS_COLOR) -- всего сохранено
-
-	-- 3) действие — снизу
-	textRow("HintRow", PITCH.Hint, "TOUCH TO SAVE ORE", { Name = "Hint" }, 2.5)
-
-	return info
+	activeGui, activePart = nil, nil
 end
 
 -- Всего сохранённой руды (profile.Ores), как в SavedOreMeter.
@@ -363,29 +169,61 @@ local function savedTotal(): number
 	return total
 end
 
--- Включает SurfaceGui только у следующего чекпоинта и обновляет число сохраняемой руды.
+-- SurfaceGui из шаблона — только на следующем чекпоинте; значения берутся из Data.
 local function refresh()
 	if not folder then
 		return
 	end
-	local guis = collectGuis()
-	local target = nextIndex(guis)
-	local carry = formatCount(Data.carryCount())
-	local saved = formatCount(savedTotal())
-	for gui, index in pairs(guis) do
-		local active = index == target
-		gui.Enabled = active
-		if active then
-			-- старые текстовые подписи больше не показываем
-			for _, label in ipairs(gui:GetDescendants()) do
-				if (label:IsA("TextLabel") or label:IsA("TextButton")) and not label:FindFirstAncestor(INFO_NAME) then
-					label.Visible = false
-				end
-			end
-			setAmounts(ensureInfo(gui), carry, saved)
+	local checkpoints = collectCheckpoints()
+	local target = nextIndex(checkpoints)
+	local part = if target then checkpoints[target] else nil
+
+	-- старые SurfaceGui чекпоинтов заменены шаблоном
+	for _, gui in ipairs(folder:GetDescendants()) do
+		if gui:IsA("SurfaceGui") then
+			gui.Enabled = false
 		end
 	end
+
+	if not part then
+		clearActive()
+		return
+	end
+
+	if activePart ~= part or not activeGui or not activeGui.Parent then
+		clearActive()
+		local template = findTemplate()
+		local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+		if not template or not playerGui then
+			if not template and not warnedTemplate then
+				warnedTemplate = true
+				warn("[CheckpointController] нет ReplicatedStorage.Assets.Checkpoint.Template (SurfaceGui)")
+			end
+			return
+		end
+		local gui = template:Clone()
+		gui.Name = GUI_NAME
+		gui.Adornee = part
+		gui.Enabled = true
+		gui.Parent = playerGui
+		activeGui, activePart = gui, part
+	end
+
+	local gui = activeGui :: SurfaceGui
+	local carryLabel = findLabel(gui, CARRY_NAMES)
+	local savedLabel = findLabel(gui, SAVED_NAMES)
+	if carryLabel then
+		carryLabel.Text = formatCount(Data.carryCount())
+	end
+	if savedLabel then
+		savedLabel.Text = formatCount(savedTotal())
+	end
+	if not (carryLabel and savedLabel) and not warnedLabels then
+		warnedLabels = true
+		warn("[CheckpointController] в шаблоне не найдены TextLabel для руды в рюкзаке/всего сохранено (CarryValue / SavedValue)")
+	end
 end
+
 
 -- Ворота мягко подсвечиваются и плавно гаснут (вместо мгновенного Transparency = 1).
 function CheckpointController:Hide(part: BasePart)
@@ -577,18 +415,10 @@ function CheckpointController:KnitStart()
 		end
 		-- новые/подгруженные стримингом чекпоинты сразу получают верное состояние
 		folder.DescendantAdded:Connect(function(inst)
-			if inst:IsA("SurfaceGui") or ((inst:IsA("TextLabel") or inst:IsA("TextButton")) and not inst:FindFirstAncestor(INFO_NAME)) then
+			if inst:IsA("SurfaceGui") or inst:IsA("BasePart") then
 				task.defer(refresh)
 			end
 		end)
-		-- SurfaceGui могут жить и в PlayerGui с Adornee на чекпоинт
-		local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-		playerGui.DescendantAdded:Connect(function(inst)
-			if inst:IsA("SurfaceGui") then
-				task.defer(refresh)
-			end
-		end)
-
 		-- количество руды на подсказке — реактивно от инвентаря переноски
 		vide.root(function()
 			vide.effect(function()
