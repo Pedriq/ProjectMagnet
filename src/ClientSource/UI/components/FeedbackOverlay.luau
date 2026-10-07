@@ -549,11 +549,11 @@ local function FeedbackOverlay()
 	buyCapacity.Name = "BuyCapacity"
 	buyCapacity.AnchorPoint = Vector2.new(0.5, 0)
 	buyCapacity.Position = UDim2.new(0.5, 0, 0, 90)
-	buyCapacity.Size = UDim2.fromOffset(280, 40)
+	buyCapacity.Size = UDim2.fromOffset(250, 36)
 	buyCapacity.AutoButtonColor = false
 	buyCapacity.BackgroundColor3 = WHITE
 	buyCapacity.Font = Enum.Font.GothamBlack
-	buyCapacity.TextSize = 18
+	buyCapacity.TextSize = 16
 	buyCapacity.TextColor3 = WHITE
 	buyCapacity.Text = ""
 	buyCapacity.Parent = bagAlert
