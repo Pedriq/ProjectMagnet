@@ -563,6 +563,12 @@ local function finish(silent: boolean)
 	Knit.GetService("PlayerManagerService"):CompleteTutorial():catch(warn)
 end
 
+-- Воронка обучения (AnalyticsFunnelService): сообщаем серверу, до какого шага дошёл игрок. Сервер сам проверяет
+-- имя и порядок, поэтому повторы/пропуски здесь безопасны; завершение ("Completed") пишет сервер.
+local function reportStage(stage: string)
+	Knit.GetService("AnalyticsFunnelService"):TutorialStep(stage):catch(function() end)
+end
+
 local function tick(firstTick: boolean)
 	updateLatches()
 	updateDone()
@@ -584,6 +590,7 @@ local function tick(firstTick: boolean)
 		end
 		currentStage = stage
 		stageSince = os.clock()
+		reportStage(stage)
 		if stage == "Free" then
 			freeSince = os.clock()
 		end

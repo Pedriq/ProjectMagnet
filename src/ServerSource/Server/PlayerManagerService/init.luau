@@ -157,6 +157,10 @@ end
 
 -- Обучение пройдено: сохраняем в профиле навсегда (клиент сам решает, когда оно закончено).
 function PlayerManagerService:CompleteTutorial(player)
+	-- воронка обучения: шаг "Completed" пишет сервер (только если воронка в этой сессии была открыта)
+	pcall(function()
+		Knit.GetService("AnalyticsFunnelService"):TutorialCompleted(player)
+	end)
 	ProfileService:ChangeData(player, { "Tutorial", "Completed" }, true)
 end
 

@@ -21,6 +21,28 @@ local PlayerManagerService
 local FOLDER_NAME = "Checkpoints"
 
 ---- State
+-- Номер чекпоинта для аналитики: первое число в именах от папки Checkpoints вниз к парту (та же логика, что
+-- у клиентского CheckpointController.indexOf: «3», «Checkpoint3», модель «3» > парт «Checkpoint»).
+local function checkpointIndex(part: Instance): number?
+	local folder = workspace:FindFirstChild(FOLDER_NAME)
+	if not folder or not part:IsDescendantOf(folder) then
+		return nil
+	end
+	local chain = {}
+	local current: Instance? = part
+	while current and current ~= folder do
+		table.insert(chain, 1, current)
+		current = current.Parent
+	end
+	for _, node in ipairs(chain) do
+		local n = tonumber(node.Name) or tonumber(string.match(node.Name, "%d+"))
+		if n then
+			return n
+		end
+	end
+	return nil
+end
+
 local passed = {} -- [userId] = { [BasePart] = true }
 
 function CheckpointHandler:_OnTouched(part: BasePart, hit: BasePart)
@@ -45,6 +67,14 @@ function CheckpointHandler:_OnTouched(part: BasePart, hit: BasePart)
 	local saved = PlayerManagerService:GetCarryInfo(player).Count
 	PlayerManagerService:SaveCarriedOres(player)
 	PlayerManagerService.Client.CheckpointPassed:Fire(player, part, saved)
+
+	-- аналитика: воронка чекпоинтов (никогда не ломает чекпоинт)
+	local ok, err = pcall(function()
+		Knit.GetService("AnalyticsFunnelService"):CheckpointReached(player, checkpointIndex(part), part.Name)
+	end)
+	if not ok then
+		warn("[CheckpointHandler] analytics failed:", err)
+	end
 end
 
 function CheckpointHandler:_Bind(part: Instance)
