@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local vide = require(ReplicatedStorage.Packages.Vide)
 local Theme = require(ReplicatedStorage.ClientSource.UI.theme)
 local EtNum = require(ReplicatedStorage.Packages.EtNum)
@@ -526,6 +527,24 @@ local function FeedbackOverlay()
 	bagAlert.Visible = false
 	bagAlert.Parent = root
 
+	-- Только на телефонах/планшетах: на маленьком экране 20% высоты — это почти вплотную к кнопке Base
+	-- (она занимает 16..62 сверху), поэтому опускаем алерт так, чтобы его верх (с запасом на пульс) был
+	-- не выше 82 и не меньше чем на 30 ниже обычной позиции. На ПК смещение всегда 0.
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local mobileDrop = 0
+	local function updateMobileDrop()
+		if not isMobile then
+			return
+		end
+		local height = root.AbsoluteSize.Y / math.max(guiScale(), 0.01)
+		mobileDrop = math.max(30, 82 + 75 - height * 0.2)
+		bagAlert.Position = UDim2.new(0.5, 0, 0.2, mobileDrop)
+	end
+	if isMobile then
+		table.insert(connections, root:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateMobileDrop))
+		updateMobileDrop()
+	end
+
 	local bagTitle = label({
 		Size = UDim2.new(1, 0, 0, 52),
 		TextSize = 48,
@@ -705,7 +724,7 @@ local function FeedbackOverlay()
 			local targetScale, targetOffset = 0.24, 0
 			if mode then
 				targetScale = 0.2
-				targetOffset = if buyCapacity.Visible then 55 + 16 + 60 else 7 + 16 + 60
+				targetOffset = (if buyCapacity.Visible then 55 + 16 + 60 else 7 + 16 + 60) + mobileDrop
 			end
 			local pos = bannerHolder.Position
 			-- уже на месте — не трогаем Position (раньше писался каждый кадр, даже в покое)

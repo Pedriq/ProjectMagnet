@@ -31,7 +31,7 @@ local cleanup = vide.cleanup
 	  LoadingScreen({ Duration = 3.5?, OnFinished = (() -> ())? }) -> ScreenGui
 ]]
 
-local TITLE = "+1 Magnetism to Mining"
+local TITLE = "+1 Magnet Miner"
 local LOADING_TIME = 3.5
 local FADE_TIME = 0.3 -- растворение уже ПОСЛЕ Duration; ввод к этому моменту не блокируется
 local MAX_FRAME_STEP = 0.1 -- один кадр сдвигает время не больше чем на это (подвисания не перематывают анимацию)
