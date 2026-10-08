@@ -129,9 +129,6 @@ function AutoClickZoneHandler:_HandleDenied(player: Player, zoneModel: Instance)
 	end
 	lastPromptedZone[userId] = zoneKey
 
-	if RunService:IsStudio() then
-		print(`[AutoClickZoneHandler][trace] _HandleDenied: {player.Name} зона="{zoneKey}" zoneId={zoneId} gamePassId={gamePassId}`)
-	end
 
 	-- RequestPurchase сам ещё раз проверит владение по кэшу (README: защита от
 	-- гонки между касанием и одновременной покупкой в магазине) — окно покупки
@@ -278,17 +275,13 @@ function AutoClickZoneHandler:_Resolve(player: Player, inZones: { Instance }): (
 	return bestDenied :: Instance, false
 end
 
--- Разовая диагностика при старте сервера — чтобы сразу увидеть в Output,
--- нашлась ли папка/зоны и правильная ли у них структура (Zone + BasePart).
+-- Разовая проверка конфигурации при старте сервера: предупреждения (warn) о неверной структуре зон.
 local function logStartupDiagnostics()
 	local root = workspace:FindFirstChild("AutoClickZones")
 	if not root then
 		warn('[AutoClickZoneHandler] Workspace.AutoClickZones не найден — автоклик-зоны не будут работать')
 		return
 	end
-
-	local zones = collectZoneModels(root)
-	print(`[AutoClickZoneHandler] найдено зон с корректной структурой (Zone + Part): {#zones}`)
 
 	for _, child in ipairs(root:GetChildren()) do
 		if not getZonePart(child) then
@@ -299,12 +292,6 @@ local function logStartupDiagnostics()
 			warn(`[AutoClickZoneHandler] у "{child:GetFullName()}" нет модели "TeslaCoil" — эффект пульсации не сработает`)
 		end
 
-		-- Дамп РЕАЛЬНО прочитанных Attribute'ов каждой зоны — самый быстрый способ
-		-- поймать опечатку в имени/регистре Attribute'а (GetAttribute с неверным
-		-- именем молча вернёт nil, без ошибки).
-		print(
-			`[AutoClickZoneHandler] "{child:GetFullName()}": ZoneId={child:GetAttribute("ZoneId")} gamePassId={child:GetAttribute("gamePassId")} rebirth={child:GetAttribute("rebirth")} multiplier={child:GetAttribute("multiplier")}`
-		)
 	end
 end
 

@@ -61,9 +61,6 @@ function AutoCollectPassHandler.Start()
 			return
 		end
 		AutoCollectPassHandler:Grant(player)
-		if RunService:IsStudio() then
-			print(`[AutoCollectPass] {player.Name} купил OP Auto Collect`)
-		end
 	end)
 
 	-- Уже подключённые игроки (Play Solo в Studio)

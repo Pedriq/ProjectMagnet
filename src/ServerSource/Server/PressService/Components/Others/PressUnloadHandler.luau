@@ -27,19 +27,15 @@ local PlayerManagerService
 
 ---- Datas
 local TICK = 0.15
-local DEBUG = false -- диагностика в Output (включать только при отладке)
 
 ---- State
 local watching = false
 local standing = {} -- [player] = true, пока игрок на площадке
 local lastUnload = {} -- [player] = os.clock() последней выгрузки
 
-function PressUnloadHandler:_UnloadFor(player: Player, justStepped: boolean)
+function PressUnloadHandler:_UnloadFor(player: Player)
 	local ores = PlayerManagerService:TakeAllOres(player)
 	if not ores then
-		if DEBUG and justStepped then
-			print("[Press] " .. player.Name .. " на Unloading, но руды нет (ни в руках, ни в profile.Ores)")
-		end
 		return
 	end
 
@@ -60,12 +56,8 @@ function PressUnloadHandler:_Tick()
 	end
 
 	for player in pairs(onPad) do
-		local justStepped = not standing[player]
 		standing[player] = true
-		if DEBUG and justStepped then
-			print("[Press] " .. player.Name .. " встал на Unloading")
-		end
-		local ok, err = pcall(self._UnloadFor, self, player, justStepped)
+		local ok, err = pcall(self._UnloadFor, self, player)
 		if not ok then
 			warn("[PressUnloadHandler] unload failed:", err)
 		end
@@ -84,23 +76,6 @@ function PressUnloadHandler:StartWatching()
 		return
 	end
 	watching = true
-
-	if DEBUG then
-		task.spawn(function()
-			local press = workspace:WaitForChild(PressConfig.PRESS_NAME, 10)
-			if not press then
-				warn("[Press] В Workspace нет модели " .. PressConfig.PRESS_NAME)
-				return
-			end
-			local names = {}
-			for _, child in ipairs(press:GetChildren()) do
-				table.insert(names, child.Name .. " (" .. child.ClassName .. ")")
-			end
-			print("[Press] " .. PressConfig.PRESS_NAME .. " найден, дети: " .. table.concat(names, ", "))
-			print("[Press] площадок Unloading (BasePart): " .. #PressService:GetPadParts(PressConfig.UNLOADING_NAMES))
-			print("[Press] площадок Collect (BasePart): " .. #PressService:GetPadParts(PressConfig.COLLECT_NAMES))
-		end)
-	end
 
 	task.spawn(function()
 		while watching do

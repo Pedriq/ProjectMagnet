@@ -753,24 +753,6 @@ function PlayerManagerService:KnitStart()
 	-- парты Workspace.Checkpoints: разовое сохранение руды до ресета на Save
 	self.Components.CheckpointHandler:StartWatching()
 
-	-- ==== For test
-	-- local testSellpart = workspace:WaitForChild("TestSellOne") :: BasePart
-	-- local testSellAllpart = workspace:WaitForChild("TestSellAll") :: BasePart
-
-	-- testSellpart.Touched:Connect(function()
-	-- 	self:SellItem(Players:FindFirstChild("pedreONTHEWAY"), testSellpart:GetAttribute("Id"))
-
-	-- 	print(self:GetAllPlayerData(Players:FindFirstChild("pedreONTHEWAY")))
-	-- end)
-
-	-- testSellAllpart.Touched:Connect(function()
-	-- 	self:SellAllItems(Players:FindFirstChild("pedreONTHEWAY"))
-
-	-- 	print(self:GetAllPlayerData(Players:FindFirstChild("pedreONTHEWAY")))
-	-- end)
-
-	-- self:ClearTresuresToPlayer(Players:WaitForChild("pedreONTHEWAY"))
-	-- =====
 end
 
 function PlayerManagerService:KnitInit()

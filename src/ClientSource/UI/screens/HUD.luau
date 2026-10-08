@@ -172,8 +172,7 @@ end
 -- настоящий клиент Roblox. Проверять кнопку нужно там, а не в Studio.
 local function onInviteActivated()
 	if RunService:IsStudio() then
-		warn("[Invite] PromptGameInvite не работает в Studio — протестируй в опубликованной игре.")
-		return
+		return -- PromptGameInvite в Studio ничего не показывает
 	end
 
 	local localPlayer = Players.LocalPlayer

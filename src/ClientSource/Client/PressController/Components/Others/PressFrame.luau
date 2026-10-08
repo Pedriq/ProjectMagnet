@@ -179,16 +179,6 @@ function PressFrame:Setup(frame: Instance?): boolean
 	headBottom0 = head.Position.Y - worldHalfHeight(head)
 	currentLift, slamOffset = 0, 0
 	ready = true
-	print(
-		string.format(
-			"[Press] рама найдена: %s, %s, %s, %s; низ головки Y=%.2f",
-			left.Name,
-			right.Name,
-			middle.Name,
-			head.Name,
-			headBottom0
-		)
-	)
 
 	local appliedLift, appliedSlam = 0, 0
 	local connection

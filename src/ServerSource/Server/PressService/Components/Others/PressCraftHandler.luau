@@ -26,8 +26,6 @@ local PlayerManagerService
 
 ---- Datas
 local IDLE_WAIT = 0.25
--- логи крафта в Output. Выключено: на прокачанном прессе это до 5 строк в секунду.
-local DEBUG = false
 
 ---- State
 local crafting = false
@@ -64,15 +62,6 @@ local function findCraftableOre(player: Player): (string?, number)
 	return nil, 0
 end
 
--- Строка «руда=вес» для логов.
-local function describePress(player: Player): string
-	local parts = {}
-	for oreId, weight in pairs(PressService:GetPressOres(player)) do
-		table.insert(parts, tostring(oreId) .. "=" .. tostring(weight))
-	end
-	return if #parts > 0 then table.concat(parts, ", ") else "пусто"
-end
-
 -- Деньги не зачисляются сразу: копятся в profile.Press.Unclaimed, игрок
 -- забирает их на Collect (см. PressCollectHandler).
 local function payOut(player: Player, payout)
@@ -99,18 +88,6 @@ function PressCraftHandler:_Craft(player: Player, oreId: string, weight: number)
 
 	PressService:AddPressOre(player, oreId, -weight)
 
-	if DEBUG then
-		print(
-			string.format(
-				"[Press] %s: %s x%d -> %s | осталось в прессе: %s",
-				player.Name,
-				oreId,
-				weight,
-				if item then item.Name .. " (" .. tostring(rarity) .. ")" else "НИЧЕГО (остаток сгорел)",
-				describePress(player)
-			)
-		)
-	end
 
 	if not item then
 		-- остаток самой низкой редкости не повезло — руда сгорает без предмета

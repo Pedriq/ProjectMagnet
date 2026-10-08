@@ -75,9 +75,6 @@ local function restoreForPlayer(player: Player)
 
 				if ok and owns then
 					PlayerManagerService:SetMagnetOwned(player, magnetName)
-					if RunService:IsStudio() then
-						print(`[MagnetGamePassPurchase] {player.Name} уже владеет "{magnetName}" (восстановлено при входе)`)
-					end
 				elseif not ok then
 					warn(`[MagnetGamePassPurchase] UserOwnsGamePassAsync упал для {player.Name}, gamePassId={gamePassId}:`, owns)
 				end
@@ -88,11 +85,6 @@ end
 
 function MagnetGamePassPurchaseHandler.Start()
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
-		if RunService:IsStudio() then
-			print(
-				`[MagnetGamePassPurchase][trace] PromptGamePassPurchaseFinished: player={player and player.Name} gamePassId={gamePassId} wasPurchased={wasPurchased}`
-			)
-		end
 
 		if not wasPurchased then
 			return
@@ -105,9 +97,6 @@ function MagnetGamePassPurchaseHandler.Start()
 
 		grantMagnet(player, magnetName)
 
-		if RunService:IsStudio() then
-			print(`[MagnetGamePassPurchase] {player.Name} получил меч "{magnetName}" (Game Pass {gamePassId})`)
-		end
 	end)
 
 	-- Уже подключённые игроки (Play Solo в Studio — сервер стартует, когда

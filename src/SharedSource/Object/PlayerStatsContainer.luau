@@ -20,7 +20,6 @@ end
 
 function PlayerStatsContainer:UpdateRange(level)
 	self.AttackRange = self:CalculateAttackRadius(level)
-	print(self)
 end
 
 function PlayerStatsContainer:UpdateCapacity(level)

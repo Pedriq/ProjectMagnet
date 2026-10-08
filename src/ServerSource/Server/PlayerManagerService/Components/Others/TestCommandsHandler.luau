@@ -41,7 +41,6 @@ local function onChatted(player: Player, message: string)
 	local newMoney = EtNum.toString(EtNum.add(current, amount))
 
 	PlayerManagerService:ChangePlayerMoney(player, newMoney)
-	print(("[TestCommands] %s: /money %s -> баланс %s"):format(player.Name, amountText, newMoney))
 end
 
 local function hook(player: Player)

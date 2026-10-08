@@ -1386,16 +1386,6 @@ function PressVisualizer:_EnsureReady()
 	if not grid then
 		grid = buildGrid()
 		if grid then
-			print(
-				string.format(
-					"[Press] сетка кучки: %dx%d, %d слоёв, вместимость %d кусочков, основание Y=%.2f",
-					grid.Cols,
-					grid.Rows,
-					grid.Capacity // grid.PerLayer,
-					grid.Capacity,
-					grid.Origin.Position.Y
-				)
-			)
 			-- руда, пришедшая до появления сетки, лежит в hidden — дорисуется здесь
 			self:_Relayout()
 		end

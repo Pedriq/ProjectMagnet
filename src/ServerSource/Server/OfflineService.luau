@@ -38,7 +38,7 @@ local ClickerService
 
 local ready: { [Player]: boolean } = {} -- расчёт за отсутствие для игрока завершён
 local READY_TIMEOUT = 30
-local DEBUG = game:GetService("RunService"):IsStudio() -- в Studio пишем в Output, почему награды нет / сколько вышло
+local STUDIO = game:GetService("RunService"):IsStudio() -- тестовый Simulate доступен только в Studio
 
 -- Сила, которую дадут `seconds` секунд симулируемых кликов, или nil, если кликов/магнита нет.
 function OfflineService:_ComputeMagnetism(player, seconds: number): string?
@@ -68,18 +68,6 @@ function OfflineService:_OnProfileLoaded(player, fakeAway: number?)
 	ProfileService:ChangeData(player, { "Offline", "LastSeen" }, now)
 
 	local away = now - lastSeen
-	if DEBUG then
-		print(
-			string.format(
-				"[Offline] %s: LastSeen=%d away=%ds (min %d) %s",
-				player.Name,
-				lastSeen,
-				if lastSeen > 0 then away else 0,
-				OfflineConfig.MIN_AWAY_SECONDS,
-				if lastSeen > 0 then "" else "-> первая сессия или профиль не сохранялся: награды нет"
-			)
-		)
-	end
 	if lastSeen > 0 and away >= OfflineConfig.MIN_AWAY_SECONDS then
 		local rewardSeconds = math.min(away, OfflineConfig.MAX_OFFLINE_SECONDS)
 		local money = PressService:SimulateOffline(player, rewardSeconds)
@@ -172,12 +160,11 @@ end
 
 -- ТОЛЬКО Studio (TestCommandsHandler, /offline <секунд>): как будто игрока не было `seconds` секунд.
 function OfflineService:Simulate(player, seconds: number)
-	if not DEBUG or not ready[player] then
+	if not STUDIO or not ready[player] then
 		return
 	end
 	self:_OnProfileLoaded(player, seconds)
 	local pending = self:GetPending(player)
-	print("[Offline] pending:", pending)
 	if pending then
 		self.Client.RewardReady:Fire(player, pending)
 	end

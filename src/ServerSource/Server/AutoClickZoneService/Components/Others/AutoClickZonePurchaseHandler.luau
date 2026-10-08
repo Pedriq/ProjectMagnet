@@ -148,9 +148,6 @@ end
 -- быстро, без yield), окно покупки не открывается вообще.
 function AutoClickZonePurchaseHandler:RequestPurchase(player: Player, zoneId: string, gamePassId: number)
 	if AutoClickZonePlayerData:IsOwned(player, zoneId) then
-		if RunService:IsStudio() then
-			print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} — уже владеет (кэш), окно НЕ открываю`)
-		end
 		return
 	end
 
@@ -158,18 +155,12 @@ function AutoClickZonePurchaseHandler:RequestPurchase(player: Player, zoneId: st
 	-- тормозить тик Zone Manager. Кэш мог отстать (пасс куплен на другом сервере/вне игры).
 	task.spawn(function()
 		if AutoClickZonePlayerData:Refresh(player, zoneId, gamePassId) then
-			if RunService:IsStudio() then
-				print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} — владение подтвердилось вживую, окно НЕ открываю`)
-			end
 			return
 		end
 		if not player.Parent then
 			return
 		end
 
-		if RunService:IsStudio() then
-			print(`[AutoClickZonePurchase][trace] RequestPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} — открываю PromptGamePassPurchase`)
-		end
 
 		-- владение могло появиться, пока шёл запрос
 		if AutoClickZonePlayerData:IsOwned(player, zoneId) then
@@ -200,11 +191,6 @@ function AutoClickZonePurchaseHandler:PromptValidatedPurchase(player: Player, zo
 	-- Кэш/профиль — общее состояние с касанием зоны; живая проверка Roblox — подстраховка.
 	local owned = AutoClickZonePlayerData:IsOwned(player, zoneId)
 		or AutoClickZonePlayerData:Refresh(player, zoneId, gamePassId)
-	if RunService:IsStudio() then
-		print(
-			`[AutoClickZonePurchase][trace] PromptValidatedPurchase: {player.Name} zoneId={zoneId} gamePassId={gamePassId} owned(live)={owned}`
-		)
-	end
 
 	if owned then
 		-- повторно не списываем: окно покупки не открывается вообще
@@ -322,11 +308,6 @@ function AutoClickZonePurchaseHandler.Start()
 		-- если это не наш gamePassId или покупку отменили. Если этой строки нет
 		-- в Output вообще после покупки — событие в принципе не долетает
 		-- (среда/тест), дело не в нашей логике сопоставления зоны.
-		if RunService:IsStudio() then
-			print(
-				`[AutoClickZonePurchase][trace] PromptGamePassPurchaseFinished: player={player and player.Name} gamePassId={gamePassId} wasPurchased={wasPurchased}`
-			)
-		end
 
 		if not wasPurchased then
 			return
@@ -334,9 +315,6 @@ function AutoClickZonePurchaseHandler.Start()
 
 		local zoneModel = findZoneModelByGamePassId(gamePassId)
 		if not zoneModel then
-			if RunService:IsStudio() then
-				print(`[AutoClickZonePurchase][trace] gamePassId={gamePassId} не сопоставлен ни с одной зоной в Workspace.AutoClickZones`)
-			end
 			return -- не наш gamePassId
 		end
 
@@ -351,9 +329,6 @@ function AutoClickZonePurchaseHandler.Start()
 		AutoClickZonePlayerData:MarkOwned(player, zoneId)
 		AutoClickZoneService.Client.ZonePurchased:Fire(player, zoneId)
 
-		if RunService:IsStudio() then
-			print(`[AutoClickZonePurchase] {player.Name} получил доступ к зоне ZoneId={zoneId} (Game Pass)`)
-		end
 	end)
 
 	-- Уже подключённые игроки (например, Play Solo в Studio, где сервер

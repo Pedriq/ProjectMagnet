@@ -101,9 +101,6 @@ end
 function ProfileService:WaitUntilProfileLoaded(player)
 	repeat
 		task.wait(2)
-		if RunService:IsStudio() then
-			print("Waiting for profile to load for " .. player.Name .. "...")
-		end
 	until Profiles[player] or not player:IsDescendantOf(Players)
 end
 

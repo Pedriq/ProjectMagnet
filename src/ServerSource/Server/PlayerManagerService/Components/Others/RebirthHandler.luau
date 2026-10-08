@@ -43,7 +43,6 @@ end
 
 function RebirthHandler:Rebirth(player)
 	if not self:CanRebirth(player) then
-		print("Player does not meet the requirements to rebirth.")
 		return
 	end
 
