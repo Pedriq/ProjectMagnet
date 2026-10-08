@@ -19,6 +19,7 @@ local LoadingScreen = require(ClientSource.UI.components.LoadingScreen)
 local Data = require(ClientSource.UI.data)
 local WorldState = require(ClientSource.UI.worldState)
 local Tutorial = require(ClientSource.UI.tutorial)
+local Offline = require(ClientSource.UI.offline)
 
 -- PlayerGui - не require(), статическая типизация тут ни на что не влияет,
 -- а WaitForChild остаётся уместной защитой на случай гонки при старте.
@@ -30,6 +31,7 @@ local unmountLoading: (() -> ())? = nil
 unmountLoading = vide.mount(function()
 	return LoadingScreen({
 		OnFinished = function()
+			Offline.loadingFinished() -- офлайн-награда (если есть) открывается сразу, как только экран загрузки погас
 			task.defer(function()
 				if unmountLoading then
 					unmountLoading()
@@ -44,6 +46,7 @@ end, playerGui)
 Knit.OnStart():await()
 Data.start()
 WorldState.start()
+Offline.start() -- спросит у сервера офлайн-награду; окно покажется, только если есть что забрать
 Tutorial.start() -- сам дождётся профиля и не запустится, если обучение уже пройдено
 
 local unmount = vide.mount(App, playerGui)

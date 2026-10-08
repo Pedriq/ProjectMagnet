@@ -6,6 +6,8 @@ local ClickEffect = require(ReplicatedStorage.ClientSource.UI.components.ClickEf
 local FeedbackOverlay = require(ReplicatedStorage.ClientSource.UI.components.FeedbackOverlay)
 local TutorialOverlay = require(ReplicatedStorage.ClientSource.UI.components.TutorialOverlay)
 
+local OfflineRewardsPanel = require(ReplicatedStorage.ClientSource.UI.screens.OfflineRewardsPanel)
+
 local create = vide.create
 
 -- Оборачивает экран-Frame в собственный ScreenGui.
@@ -34,6 +36,8 @@ local function App()
 		-- плашка-цель и подсказка клика обучения (см. UI/tutorial); ничего не перехватывает.
 		-- Ниже HUD: HUD и открытые панели всегда поверх туториала, а не наоборот.
 		Screen("Tutorial", TutorialOverlay, 0),
+		-- «Welcome Back!» — офлайн-награда при заходе (UI/offline); поверх HUD, под экраном загрузки.
+		Screen("OfflineRewards", OfflineRewardsPanel, 8),
 	})
 end
 

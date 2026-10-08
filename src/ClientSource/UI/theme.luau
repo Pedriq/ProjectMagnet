@@ -68,6 +68,12 @@ Theme.RebirthDeep = Color3.fromRGB(70, 40, 130)
 Theme.Rebirth = Color3.fromRGB(156, 104, 255)
 Theme.RebirthBright = Color3.fromRGB(205, 175, 255)
 
+---- офлайн-награды (окно Welcome Back): приглушённый «закатный» розово-красный металл —
+-- единственное окно с таким тайтлом, не конфликтует ни с одним смыслом выше
+Theme.OfflineDeep = Color3.fromRGB(196, 28, 104)
+Theme.Offline = Color3.fromRGB(255, 56, 140)
+Theme.OfflineBright = Color3.fromRGB(255, 160, 205)
+
 ---- состояния
 Theme.Danger = Color3.fromRGB(232, 64, 64)
 Theme.DangerDeep = Color3.fromRGB(120, 26, 30)

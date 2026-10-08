@@ -5,6 +5,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local PressConfig = require(ReplicatedStorage.SharedSource.Datas.PressConfig)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local StatUpgradesConfig = require(ReplicatedStorage.SharedSource.Datas.StatUpgradesConfig)
+local TreasuresConfig = require(ReplicatedStorage.SharedSource.Datas.TreasuresConfig)
 local PressMergeConfig = require(ReplicatedStorage.SharedSource.Datas.PressMergeConfig)
 local RateLimiter = require(ReplicatedStorage.SharedSource.Utilities.RateLimiter)
 
@@ -416,6 +417,78 @@ function PressService.Client:BuySpeedUpgrade(player)
 		return false
 	end
 	return self.Server:BuySpeedUpgrade(player)
+end
+
+-- === Офлайн (OfflineService) ====================================================
+-- Средняя цена предмета редкости (EtNum): офлайн не крутим рандом по каждому предмету.
+local averagePriceCache: { [string]: any } = {}
+
+local function averageItemPrice(rarity: string)
+	local cached = averagePriceCache[rarity]
+	if cached then
+		return cached
+	end
+	local items = TreasuresConfig[rarity]
+	if not items or #items == 0 then
+		return nil
+	end
+	local sum = "0"
+	for _, item in ipairs(items) do
+		sum = EtNum.add(sum, item.Price)
+	end
+	local average = EtNum.div(sum, #items)
+	averagePriceCache[rarity] = average
+	return average
+end
+
+-- Что пресс успел бы переплавить за `seconds` секунд: тот же порядок руд (OreConfig.Order), вес на
+-- предмет, скорость CraftSpeed и множитель денег, что у PressCraftHandler, но одним расчётом
+-- (без циклов и ожиданий). Предметов не больше, чем позволяет скорость пресса за период, и не
+-- больше, чем есть руды в очереди. Переплавленная руда списывается из очереди, остатки меньше
+-- веса на предмет остаются. Возвращает деньги (EtNum-строка), напрямую в Unclaimed/Money НЕ кладёт.
+function PressService:SimulateOffline(player, seconds: number): string
+	if not self:IsProfileLoaded(player) or seconds <= 0 then
+		return "0"
+	end
+
+	local PlayerManagerService = Knit.GetService("PlayerManagerService")
+	local budget = math.floor(seconds * PressConfig.GetCraftItemsPerSecond(self:GetPressLevel(player, "CraftSpeed")))
+	if budget <= 0 then
+		return "0"
+	end
+
+	local cashMultiplier = PlayerManagerService:GetPlayerCashMultiplier(player) or 1
+	local ores = {}
+	for oreId, weight in pairs(self:GetPressOres(player)) do
+		if type(weight) == "number" then
+			ores[oreId] = weight
+		end
+	end
+
+	local total = "0"
+	local changed = false
+	for _, oreId in ipairs(OreConfig.Order) do
+		if budget <= 0 then
+			break
+		end
+		local weight = ores[oreId] or 0
+		local perItem = PressConfig.GetWeightPerItem(oreId)
+		local ore = OreConfig.Get(oreId)
+		local average = ore and averageItemPrice(ore.Rarity)
+		if average and weight >= perItem then
+			local count = math.min(math.floor(weight / perItem), budget)
+			budget -= count
+			local left = weight - count * perItem
+			ores[oreId] = if left > 0 then left else nil
+			changed = true
+			total = EtNum.toString(EtNum.add(total, EtNum.mul(EtNum.mul(average, count), cashMultiplier)))
+		end
+	end
+
+	if changed then
+		ProfileService:ChangeData(player, { "Press", "Ores" }, ores)
+	end
+	return total
 end
 
 function PressService:KnitStart()

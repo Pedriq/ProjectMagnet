@@ -10,6 +10,8 @@ local EtNum = require(ReplicatedStorage.Packages.EtNum)
 
 	/money <сумма> — начислить себе деньги. Сумма — обычное число ("10000")
 	или EtNum-scientific ("1e50").
+	/offline <секунд> — симулировать отсутствие на столько секунд: считает офлайн-награду
+	и открывает окно Welcome Back (OfflineService:Simulate).
 ]]
 
 local TestCommandsHandler = {}
@@ -18,6 +20,12 @@ local TestCommandsHandler = {}
 local PlayerManagerService
 
 local function onChatted(player: Player, message: string)
+	local awaySeconds = message:match("^/offline%s+(%d+)$")
+	if awaySeconds then
+		Knit.GetService("OfflineService"):Simulate(player, tonumber(awaySeconds))
+		return
+	end
+
 	local amountText = message:match("^/money%s+(%S+)$")
 	if not amountText then
 		return

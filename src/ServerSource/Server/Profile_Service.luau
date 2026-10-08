@@ -22,6 +22,8 @@ local ProfileService = Knit.CreateService({
 	},
 
 	UpdateSpecificData = Signal.new(),
+	-- Fire(player) — профиль загружен и лежит в Profiles (OfflineService считает награду за отсутствие).
+	ProfileLoaded = Signal.new(),
 })
 
 local ActualProfileStore =
@@ -35,7 +37,7 @@ ProfileService.Profiles = Profiles
 
 local function DataSuccessfullyLoaded(player)
 	-- Called when a profile is successfully loaded
-	-- Add any post-load logic here
+	ProfileService.ProfileLoaded:Fire(player)
 end
 
 local function HandlePlayerAdded(player)
@@ -53,6 +55,16 @@ local function HandlePlayerAdded(player)
 				ActiveSession = profile.Session,
 			}
 		end
+
+		-- Офлайн-награды (OfflineService): LastSeen обновляется при КАЖДОМ сохранении профиля — автосейв,
+		-- выход, остановка сервера. Иначе после падения/шатдауна в профиле остался бы старый (или нулевой,
+		-- то есть «первая сессия») LastSeen, и награда не посчиталась бы.
+		profile.OnSave:Connect(function()
+			local offline = profile.Data.Offline
+			if offline then
+				offline.LastSeen = os.time()
+			end
+		end)
 
 		profile.OnSessionEnd:Connect(function()
 			Profiles[player] = nil
@@ -77,6 +89,11 @@ end
 local function HandlePlayerRemoving(player)
 	local profile = Profiles[player]
 	if profile ~= nil then
+		-- время выхода для офлайн-наград (OfflineService): пишем до EndSession, чтобы попало в сохранение
+		local offline = profile.Data.Offline
+		if offline then
+			offline.LastSeen = os.time()
+		end
 		profile:EndSession()
 	end
 end

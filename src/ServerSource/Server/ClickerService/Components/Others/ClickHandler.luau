@@ -51,6 +51,32 @@ local function registerManualClick(player): (boolean, number, number, boolean)
 end
 
 ---- Assets
+-- Начисляет силу (EtNum/строка) и повышает уровень, если набрано на следующий. Общий путь для
+-- клика и офлайн-награды (OfflineService). false — данных силы ещё нет.
+function ClickHandler:GrantMagnetism(player, gain): boolean
+	local magnetism = ClickerService:GetPlayerMagnetism(player)
+	if not magnetism then
+		return false
+	end
+
+	local newMagnetism = EtNum.add(magnetism, gain)
+
+	local currentLevel = ClickerService:GetPlayerLevel(player)
+	local leveledUp = false
+
+	while EtNum.meeq(newMagnetism, TotalXPForLevel(currentLevel + 1)) do
+		currentLevel += 1
+		leveledUp = true
+	end
+
+	if leveledUp then
+		ClickerService:ChangePlayerLevel(player, currentLevel)
+	end
+
+	ClickerService:ChangePlayerMagnetism(player, EtNum.toString(newMagnetism))
+	return true
+end
+
 -- extraMultiplier — доп. множитель поверх обычного клика (например, AutoClickZone.multiplier).
 -- manual — клик игрока по экрану (комбо/криты/лимит частоты), а не автоудар/автозона.
 -- Возвращает прирост силы за клик (EtNum-строка) или nil, если клик не засчитан.
@@ -81,21 +107,7 @@ function ClickHandler:Click(player, extraMultiplier: number?, manual: boolean?):
 	local magnetismGain =
 		EtNum.mul(EtNum.mul(EtNum.mul(magnetMagnetism, magnetismMultiplier), extraMultiplier), friendBonusMultiplier)
 
-	local newMagnetism = EtNum.add(magnetism, magnetismGain)
-
-	local currentLevel = ClickerService:GetPlayerLevel(player)
-	local leveledUp = false
-
-	while EtNum.meeq(newMagnetism, TotalXPForLevel(currentLevel + 1)) do
-		currentLevel += 1
-		leveledUp = true
-	end
-
-	if leveledUp then
-		ClickerService:ChangePlayerLevel(player, currentLevel)
-	end
-
-	ClickerService:ChangePlayerMagnetism(player, EtNum.toString(newMagnetism))
+	ClickHandler:GrantMagnetism(player, magnetismGain)
 
 	if crit then
 		ClickerService.Client.CritClick:Fire(player, EtNum.toString(magnetismGain))

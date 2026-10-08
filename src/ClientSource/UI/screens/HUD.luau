@@ -33,6 +33,7 @@ local Icon = require(ReplicatedStorage.Packages.TopbarPlus)
 local Data = require(ReplicatedStorage.ClientSource.UI.data)
 local WorldState = require(ReplicatedStorage.ClientSource.UI.worldState)
 local Tutorial = require(ReplicatedStorage.ClientSource.UI.tutorial)
+local Offline = require(ReplicatedStorage.ClientSource.UI.offline)
 local TutorialPulse = require(ReplicatedStorage.ClientSource.UI.components.TutorialPulse)
 local BaseStructures = require(ReplicatedStorage.ClientSource.UI.baseStructures)
 local viewportScale = require(ReplicatedStorage.ClientSource.UI.viewportScale)
@@ -334,7 +335,8 @@ local function HUD()
 	local baseFov = Workspace.CurrentCamera and Workspace.CurrentCamera.FieldOfView or 70
 
 	effect(function()
-		local open = openPanel() ~= nil
+		-- офлайн-награда (Welcome Back) использует тот же блюр и отдаление камеры, что и обычные панели
+		local open = openPanel() ~= nil or Offline.reward() ~= nil
 
 		TweenService:Create(blur, PANEL_TWEEN, {
 			Size = open and PANEL_BLUR_SIZE or 0,
