@@ -24,7 +24,7 @@ local PressMergeHandler = {}
 local PressService
 
 ---- Datas
-local TICK = 0.1
+local TICK = 0.2
 local COOLDOWN = 1.0 -- секунд между срабатываниями у одного игрока
 
 ---- State

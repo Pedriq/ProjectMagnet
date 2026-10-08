@@ -51,8 +51,21 @@ function PlayerTreasureManager:_SellBatch(player, itemIds: { string }, extraMult
 	end
 
 	PlayerManagerService:ChangePlayerMoney(player, EtNum.toString(EtNum.add(total, money)))
-	for itemId in pairs(sold) do
-		PlayerManagerService:RemoveItemToPlayer(player, itemId)
+	-- Продали всё, что есть (типичный Sell All) — одна запись Clear вместо отдельного сигнала репликации на
+	-- каждый предмет: при сотнях предметов это сотни сетевых пакетов и перерисовок панели подряд.
+	local soldCount, totalCount = 0, 0
+	for _ in pairs(sold) do
+		soldCount += 1
+	end
+	for _ in pairs(playerItems) do
+		totalCount += 1
+	end
+	if soldCount == totalCount then
+		PlayerManagerService:ClearTresuresToPlayer(player)
+	else
+		for itemId in pairs(sold) do
+			PlayerManagerService:RemoveItemToPlayer(player, itemId)
+		end
 	end
 end
 

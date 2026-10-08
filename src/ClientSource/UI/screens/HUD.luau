@@ -192,22 +192,31 @@ local MONEY_ROLL_SPEED = 8
 local function rollingMoney(): () -> any
 	local shown = source(Data.money() :: any)
 
+	-- target, к которому счётчик уже дошёл: пока деньги не менялись, кадр ничего не считает
+	-- (раньше каждый кадр дважды конвертировал EtNum в число даже в покое)
+	local settled: any = nil
 	local conn = RunService.Heartbeat:Connect(function(dt)
 		local target = Data.money()
+		if target == settled then
+			return
+		end
 		local okTarget, t = pcall(EtNum.toNumber, EtNum.convert(target))
 		local okShown, c = pcall(EtNum.toNumber, EtNum.convert(shown()))
 		if not okTarget or not okShown or t ~= t or c ~= c or math.abs(t) >= 1e300 then
 			if shown() ~= target then
 				shown(target)
 			end
+			settled = target
 			return
 		end
 		if t == c then
+			settled = target
 			return
 		end
 		local nextValue = c + (t - c) * math.min(dt * MONEY_ROLL_SPEED, 1)
 		if math.abs(t - nextValue) <= math.max(1, math.abs(t) * 0.001) then
 			nextValue = t
+			settled = target
 		end
 		shown(math.floor(nextValue + 0.5))
 	end)

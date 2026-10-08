@@ -185,6 +185,9 @@ end
 -- не использовал — удалён. Свои данные клиент получает снапшотом GetData и точечными UpdateSpecificData.
 
 function ProfileService.Client:GetProfileAge(player)
+	if not RateLimiter.Allow(player, "GetProfileAge", 2) then
+		return 0
+	end
 	local profile = ProfileService:GetProfile(player)
 	if not profile then
 		return 0

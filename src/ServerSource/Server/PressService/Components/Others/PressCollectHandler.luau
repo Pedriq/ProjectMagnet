@@ -23,7 +23,7 @@ local PressService
 local PlayerManagerService
 
 ---- Datas
-local TICK = 0.1
+local TICK = 0.2
 
 ---- State
 local watching = false

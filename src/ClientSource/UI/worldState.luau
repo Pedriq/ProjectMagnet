@@ -69,6 +69,23 @@ function WorldState.start()
 	CollectionService:GetInstanceAddedSignal(ENTRANCE_TAG):Connect(bindEntrance)
 
 	--== SaveItemsZone: опрос присутствия локального HRP ==
+	-- Список зон ведём по событиям тега (а не CollectionService:GetTagged на каждом опросе)
+	local saveZones: { BasePart } = {}
+	local function addZone(zone: Instance)
+		if zone:IsA("BasePart") and not table.find(saveZones, zone) then
+			table.insert(saveZones, zone)
+		end
+	end
+	for _, zone in ipairs(CollectionService:GetTagged(ZONE_TAG)) do
+		addZone(zone)
+	end
+	CollectionService:GetInstanceAddedSignal(ZONE_TAG):Connect(addZone)
+	CollectionService:GetInstanceRemovedSignal(ZONE_TAG):Connect(function(zone)
+		local index = table.find(saveZones, zone :: any)
+		if index then
+			table.remove(saveZones, index)
+		end
+	end)
 	task.spawn(function()
 		local params = OverlapParams.new()
 		params.FilterType = Enum.RaycastFilterType.Include
@@ -83,8 +100,8 @@ function WorldState.start()
 			local inside = false
 			if root then
 				params.FilterDescendantsInstances = { root }
-				for _, zone in ipairs(CollectionService:GetTagged(ZONE_TAG)) do
-					if zone:IsA("BasePart") and #workspace:GetPartsInPart(zone, params) > 0 then
+				for _, zone in ipairs(saveZones) do
+					if zone.Parent and #workspace:GetPartsInPart(zone, params) > 0 then
 						inside = true
 						break
 					end

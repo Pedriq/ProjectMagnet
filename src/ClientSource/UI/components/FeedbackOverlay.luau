@@ -653,7 +653,10 @@ local function FeedbackOverlay()
 			end
 
 			-- во время обучения кнопка скрыта целиком (вместе с BAG FULL, см. bagMode)
-			buyCapacity.Visible = not Tutorial.active()
+			local capacityVisible = not Tutorial.active()
+			if buyCapacity.Visible ~= capacityVisible then
+				buyCapacity.Visible = capacityVisible
+			end
 
 			local mode = bagMode()
 			if mode ~= shownMode then
@@ -670,14 +673,25 @@ local function FeedbackOverlay()
 				end
 			end
 
+			-- текст/цвет пишем только при изменении: присваивание Text каждый кадр заставляет
+			-- перерисовывать/перекладывать TextLabel даже когда строка та же
+			local titleText, titleColor, hintText
 			if mode == "full" then
-				bagTitle.Text = "BAG FULL!"
-				bagTitle.TextColor3 = RED
-				bagHint.Text = "Return to base to save your ore"
+				titleText, titleColor, hintText = "BAG FULL!", RED, "Return to base to save your ore"
 			elseif mode == "heavy" then
-				bagTitle.Text = "ORE TOO HEAVY!"
-				bagTitle.TextColor3 = WARNING
-				bagHint.Text = `Ore Weight: {blockedNeed} | Available: {math.floor(freeSpace())}`
+				titleText, titleColor = "ORE TOO HEAVY!", WARNING
+				hintText = `Ore Weight: {blockedNeed} | Available: {math.floor(freeSpace())}`
+			end
+			if titleText then
+				if bagTitle.Text ~= titleText then
+					bagTitle.Text = titleText
+				end
+				if bagTitle.TextColor3 ~= titleColor then
+					bagTitle.TextColor3 = titleColor
+				end
+				if bagHint.Text ~= hintText then
+					bagHint.Text = hintText
+				end
 			end
 
 			if mode then
@@ -693,14 +707,20 @@ local function FeedbackOverlay()
 				targetScale = 0.2
 				targetOffset = if buyCapacity.Visible then 55 + 16 + 60 else 7 + 16 + 60
 			end
-			local k = 1 - math.exp(-dt * 12)
 			local pos = bannerHolder.Position
-			bannerHolder.Position = UDim2.new(
-				0.5,
-				0,
-				pos.Y.Scale + (targetScale - pos.Y.Scale) * k,
-				pos.Y.Offset + (targetOffset - pos.Y.Offset) * k
-			)
+			-- уже на месте — не трогаем Position (раньше писался каждый кадр, даже в покое)
+			if
+				math.abs(pos.Y.Scale - targetScale) > 1e-4
+				or math.abs(pos.Y.Offset - targetOffset) > 0.05
+			then
+				local k = 1 - math.exp(-dt * 12)
+				bannerHolder.Position = UDim2.new(
+					0.5,
+					0,
+					pos.Y.Scale + (targetScale - pos.Y.Scale) * k,
+					pos.Y.Offset + (targetOffset - pos.Y.Offset) * k
+				)
+			end
 		end)
 	)
 

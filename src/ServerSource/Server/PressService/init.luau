@@ -341,6 +341,9 @@ end
 
 -- Снапшот при старте клиента: руда, уже лежащая в прессе (для визуала кучки), и статы.
 function PressService.Client:GetState(player)
+	if not RateLimiter.Allow(player, "PressGetState", 0.5) then
+		return { Ores = {}, Unclaimed = "0", UnloadSpeed = 1, CraftSpeed = 1 }
+	end
 	return self.Server:GetState(player)
 end
 

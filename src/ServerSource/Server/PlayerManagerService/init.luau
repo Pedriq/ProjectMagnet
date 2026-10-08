@@ -557,6 +557,10 @@ function PlayerManagerService:GetCarryInfo(player)
 end
 
 function PlayerManagerService.Client:GetCarryInfo(player)
+	-- без лимита спам вызовов плодил бы потоки, ждущие PlayerStats (WaitForPlayerStats)
+	if not RateLimiter.Allow(player, "GetCarryInfo", 0.5) then
+		return { Count = 0, Capacity = BaseStatsValues.InvetoryCapacity }
+	end
 	return self.Server:GetCarryInfo(player)
 end
 
@@ -646,6 +650,9 @@ function PlayerManagerService:TeleportToWorldSpawn(player)
 end
 
 function PlayerManagerService.Client:TeleportToWorldSpawn(player)
+	if not RateLimiter.Allow(player, "TeleportToWorldSpawn", 0.5) then
+		return
+	end
 	self.Server:TeleportToWorldSpawn(player)
 end
 
@@ -673,6 +680,9 @@ end
 
 -- Клиент запрашивает актуальный бонус при старте (кнопка Invite в HUD).
 function PlayerManagerService.Client:GetFriendBonusInfo(player)
+	if not RateLimiter.Allow(player, "GetFriendBonusInfo", 1) then
+		return { Count = 0, Percent = 0 }
+	end
 	return self.Server:GetFriendBonusInfo(player)
 end
 
@@ -683,6 +693,9 @@ function PlayerManagerService:GetActiveBuffs(player)
 end
 
 function PlayerManagerService.Client:GetActiveBuffs(player)
+	if not RateLimiter.Allow(player, "GetActiveBuffs", 1) then
+		return {}
+	end
 	return self.Server:GetActiveBuffs(player)
 end
 
@@ -695,7 +708,7 @@ function PlayerManagerService:WaitForPlayerStats(player)
 			return stats
 		end
 
-		task.wait()
+		task.wait(0.1) -- не каждый кадр: статы появляются после загрузки профиля (секунды)
 	end
 
 	return nil
@@ -764,7 +777,8 @@ function PlayerManagerService:KnitInit()
 	componentsInitializer(script)
 
 	-- ==== Player Init ====
-	Players.PlayerAdded:Connect(function(player: Player)
+	local function onPlayerAdded(player: Player)
+		player:SetAttribute("PM_Added", true) -- защита от двойной инициализации (см. Knit.OnStart ниже)
 		-- без прыжка: и для уже заспавненного персонажа, и для всех следующих
 		if player.Character then
 			task.spawn(self.DisableJump, self, player.Character)
@@ -811,6 +825,18 @@ function PlayerManagerService:KnitInit()
 		self:WaitForPlayerStats(player)
 
 		self.Components.PlayerMagnetHitboxManager:StartPlayerLoop(player)
+	end
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	-- игроки, зашедшие до подключения (быстрый джойн / Studio): иначе у них не будет ни статов, ни хитбокса
+	-- (после старта Knit — все компоненты и сервисы уже инициализированы)
+	Knit.OnStart():andThen(function()
+		for _, existing in ipairs(Players:GetPlayers()) do
+			-- PlayerAdded мог успеть сработать для него между KnitInit и стартом — тогда он уже помечен
+			if not existing:GetAttribute("PM_Added") then
+				task.spawn(onPlayerAdded, existing)
+			end
+		end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)

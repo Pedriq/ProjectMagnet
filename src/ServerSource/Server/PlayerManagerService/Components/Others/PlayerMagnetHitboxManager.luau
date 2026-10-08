@@ -27,6 +27,12 @@ local ONE_SHOT_SWEEP_INTERVAL = 0.1
 
 ---- State
 local lastReward = {} -- [player] = os.clock() последнего засчитанного взмаха
+-- Свип one-shot'ов идёт 10 раз в секунду на игрока. Если игрок стоит на месте и прошлый свип ничего не
+-- нашёл (камней рядом нет / ни один не добивается с одного удара), пространственный запрос повторяем
+-- не чаще SWEEP_IDLE_RECHECK — это основная нагрузка сервера на игрока в покое. Пошёл/сдвинулся — свип сразу.
+local SWEEP_IDLE_RECHECK = 0.4
+local SWEEP_IDLE_MOVE = 0.5 -- studs: сдвиг, после которого свип делается немедленно
+local sweepIdle = {} -- [player] = { Position: Vector3, At: number }
 local lastBlocked = {} -- [player] = os.clock() последнего уведомления «не влезает» (CarryBlocked)
 local BLOCKED_NOTIFY_INTERVAL = 0.75 -- не чаще, чтобы не слать сигнал на каждый тик хитбокса
 
@@ -238,8 +244,25 @@ end
 -- не чаще раза в AttackCooldown, так что экономика не меняется: быстрее
 -- становится только разрушение.
 function PlayerMagnetHitboxManager:ApplyOneShots(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local idle = sweepIdle[player]
+	if
+		idle
+		and root
+		and os.clock() - idle.At < SWEEP_IDLE_RECHECK
+		and (root.Position - idle.Position).Magnitude < SWEEP_IDLE_MOVE
+	then
+		return
+	end
+
+	local function markIdle()
+		sweepIdle[player] = if root then { Position = root.Position, At = os.clock() } else nil
+	end
+
 	local targets = self:_HittableTargets(player)
 	if not targets then
+		markIdle()
 		return
 	end
 
@@ -251,8 +274,10 @@ function PlayerMagnetHitboxManager:ApplyOneShots(player)
 		end
 	end
 	if #oneShots == 0 then
+		markIdle()
 		return
 	end
+	sweepIdle[player] = nil
 
 	local stats = PlayerManagerService:GetPlayerStatsValues(player)
 	local cooldown = stats and stats.AttackCooldown or 0
@@ -323,6 +348,7 @@ function PlayerMagnetHitboxManager.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		lastReward[player] = nil
 		lastBlocked[player] = nil
+		sweepIdle[player] = nil
 	end)
 end
 

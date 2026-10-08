@@ -26,7 +26,7 @@ local PressService
 local PlayerManagerService
 
 ---- Datas
-local TICK = 0.1
+local TICK = 0.15
 local DEBUG = false -- диагностика в Output (включать только при отладке)
 
 ---- State

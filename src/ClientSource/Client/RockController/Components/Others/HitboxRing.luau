@@ -51,6 +51,12 @@ local ringStroke: UIStroke? = nil
 local waves: { { Frame: Frame, Stroke: UIStroke } } = {}
 local builtRadius = 0
 
+local RAY_INTERVAL = 1 / 20 -- сек между лучами до земли
+local lastRay = 0
+local groundY = 0
+local filterCharacter: Instance? = nil
+local filterFolder: Instance? = nil
+
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 rayParams.IgnoreWater = true
@@ -182,28 +188,38 @@ local function step()
 		build(radius)
 	end
 
-	-- земля под игроком; без попадания (прыжок над пропастью) — уровень ног
-	rayParams.FilterDescendantsInstances = { character, folder :: Folder, workspace:FindFirstChild("PlayersRock") }
-	-- Луч видит только то, на чём персонаж реально может стоять: группа
-	-- "Char_<id>" не коллайдится с чужими персонажами (PlayerCollisionInitializer),
-	-- значит кольцо не «залезает» на игрока, в котором стоишь. RespectCanCollide
-	-- заодно игнорирует неколлайдящиеся триггеры/зоны.
-	rayParams.CollisionGroup = root.CollisionGroup
-	rayParams.RespectCanCollide = true
+	-- земля под игроком; без попадания (прыжок над пропастью) — уровень ног.
+	-- Луч — не каждый кадр, а раз в RAY_INTERVAL (высота земли меняется медленно); X/Z кольца
+	-- по-прежнему следуют за хитбоксом каждый кадр. Фильтр луча пересобирается только при смене
+	-- персонажа/папки, а не аллокацией новой таблицы на каждый кадр.
+	local now = os.clock()
 	local center = hitbox.Position
-	local hit = workspace:Raycast(root.Position, Vector3.new(0, -RAY_DEPTH, 0), rayParams)
-	local groundY
-	if hit then
-		groundY = hit.Position.Y
-	else
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		groundY = root.Position.Y - root.Size.Y / 2 - (humanoid and humanoid.HipHeight or 2)
+	if now - lastRay >= RAY_INTERVAL or filterCharacter ~= character or filterFolder ~= folder then
+		lastRay = now
+		if filterCharacter ~= character or filterFolder ~= folder then
+			filterCharacter = character
+			filterFolder = folder
+			rayParams.FilterDescendantsInstances = { character, folder :: Folder, workspace:FindFirstChild("PlayersRock") }
+			-- Луч видит только то, на чём персонаж реально может стоять: группа
+			-- "Char_<id>" не коллайдится с чужими персонажами (PlayerCollisionInitializer),
+			-- значит кольцо не «залезает» на игрока, в котором стоишь. RespectCanCollide
+			-- заодно игнорирует неколлайдящиеся триггеры/зоны.
+			rayParams.CollisionGroup = root.CollisionGroup
+			rayParams.RespectCanCollide = true
+		end
+		local hit = workspace:Raycast(root.Position, Vector3.new(0, -RAY_DEPTH, 0), rayParams)
+		if hit then
+			groundY = hit.Position.Y
+		else
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			groundY = root.Position.Y - root.Size.Y / 2 - (humanoid and humanoid.HipHeight or 2)
+		end
 	end
 
 	if plate then
 		plate.CFrame = CFrame.new(center.X, groundY + GROUND_LIFT + PART_HEIGHT / 2, center.Z)
 	end
-	animate(os.clock())
+	animate(now)
 end
 
 function HitboxRing.Start()

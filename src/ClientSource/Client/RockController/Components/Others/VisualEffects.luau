@@ -346,23 +346,23 @@ function VisualEffects:BreakSegment(segment, delay: number?)
 	-- остальной части камня (как и одиночный кубик) — рвём все такие связи
 	-- и жёстко анкорим всё, что внутри, иначе куски разлетятся сами по себе
 	-- под гравитацией ещё до начала полёта к игроку.
-	for _, weld in ipairs(segment:GetDescendants()) do
-		if weld:IsA("WeldConstraint") then
-			weld:Destroy()
+	local isModel = segment:IsA("Model")
+	-- один проход по осколку (раньше GetDescendants вызывался дважды): рвём сварки и анкорим части
+	for _, inst in ipairs(segment:GetDescendants()) do
+		if inst:IsA("WeldConstraint") then
+			inst:Destroy()
+		elseif isModel and inst:IsA("BasePart") then
+			inst.Anchored = true
+			inst.CanCollide = false
+			inst.CanTouch = false
+			inst.CanQuery = false
 		end
 	end
 
 	local startCFrame = segmentPivot(segment)
 
-	if segment:IsA("Model") then
-		for _, part in ipairs(segment:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Anchored = true
-				part.CanCollide = false
-				part.CanTouch = false
-				part.CanQuery = false
-			end
-		end
+	if isModel then
+		-- части уже заанкорены выше
 	else
 		segment.Anchored = true
 		segment.CanCollide = false
