@@ -24,6 +24,9 @@ local ProfileService = Knit.CreateService({
 	UpdateSpecificData = Signal.new(),
 	-- Fire(player) — профиль загружен и лежит в Profiles (OfflineService считает награду за отсутствие).
 	ProfileLoaded = Signal.new(),
+	-- Fire(player) — СИНХРОННО перед EndSession при выходе: профиль ещё в Profiles (финальная синхронизация
+	-- лидербордов и т.п.). После этого Profiles[player] == nil, а Data больше не принадлежит серверу.
+	ProfileReleasing = Signal.new(),
 })
 
 local ActualProfileStore =
@@ -35,13 +38,53 @@ local PlayerProfileStore
 local Profiles = {} -- [player] = profile
 ProfileService.Profiles = Profiles
 
+-- Состояние жизненного цикла (чистится в PlayerRemoving):
+local loading: { [Player]: boolean } = {} -- StartSessionAsync уже идёт (защита от двойной загрузки)
+local loadFailed: { [Player]: boolean } = {} -- загрузка не удалась → игрок кикнут, ждать нечего
+local leaving: { [Player]: boolean } = {} -- PlayerRemoving уже прошёл
+local waiters: { [Player]: { thread } } = {} -- потоки, ждущие профиль
+local warned: { [Player]: boolean } = {} -- «профиль недоступен» уже выводилось для игрока
+
+local function resumeWaiters(player)
+	local list = waiters[player]
+	if not list then
+		return
+	end
+	waiters[player] = nil
+	for _, thread in ipairs(list) do
+		task.spawn(thread)
+	end
+end
+
+-- Профиль недоступен: если игрок уже уходит/кикнут — это штатно (тихо). Если игрок ещё на сервере, а профиля нет
+-- (сбой загрузки / сессия отобрана) — это настоящая проблема, пишем ОДИН раз на игрока, а не на каждый вызов.
+local function reportUnavailable(player, context: string)
+	if leaving[player] or not player:IsDescendantOf(Players) or warned[player] then
+		return
+	end
+	warned[player] = true
+	warn(("Profile data not found for player: %s (%s)"):format(player.Name, context))
+end
+
 local function DataSuccessfullyLoaded(player)
 	-- Called when a profile is successfully loaded
 	ProfileService.ProfileLoaded:Fire(player)
 end
 
 local function HandlePlayerAdded(player)
-	local profile = PlayerProfileStore:StartSessionAsync("Player_" .. player.UserId)
+	if loading[player] or Profiles[player] then
+		return
+	end
+	loading[player] = true
+
+	-- pcall: ошибка DataStore не должна оставить игрока в игре без профиля с вечно ждущими системами.
+	-- Данные при сбое НЕ подменяются шаблоном: профиля нет → игрок кикается, ничего не записывается.
+	local ok, profile = pcall(PlayerProfileStore.StartSessionAsync, PlayerProfileStore, "Player_" .. player.UserId)
+	loading[player] = nil
+	if not ok then
+		warn(`[ProfileService] StartSessionAsync failed for {player.Name} ({player.UserId}): {tostring(profile)}`)
+		profile = nil
+	end
 
 	if profile ~= nil then
 		profile:AddUserId(player.UserId) -- GDPR compliance
@@ -67,28 +110,41 @@ local function HandlePlayerAdded(player)
 		end)
 
 		profile.OnSessionEnd:Connect(function()
-			Profiles[player] = nil
+			if Profiles[player] == profile then
+				Profiles[player] = nil
+			end
 			-- The profile could've been loaded on another Roblox server
-			player:Kick()
+			if not leaving[player] then
+				player:Kick()
+			end
 		end)
 
-		if player:IsDescendantOf(Players) then
+		if player:IsDescendantOf(Players) and not leaving[player] then
 			Profiles[player] = profile
 			DataSuccessfullyLoaded(player)
+			resumeWaiters(player)
 		else
-			-- Player left before the profile loaded
+			-- Player left before the profile loaded: данные не трогаем, просто отпускаем сессию
 			profile:EndSession()
+			resumeWaiters(player)
 		end
 	else
 		-- The profile couldn't be loaded possibly due to other
 		-- Roblox servers trying to load this profile at the same time
-		player:Kick()
+		loadFailed[player] = true
+		resumeWaiters(player)
+		if not leaving[player] then
+			warn(`[ProfileService] profile not loaded for {player.Name} ({player.UserId}) — kicking, nothing written`)
+			player:Kick("Не удалось загрузить данные. Попробуйте зайти ещё раз.")
+		end
 	end
 end
 
 local function HandlePlayerRemoving(player)
+	leaving[player] = true
 	local profile = Profiles[player]
 	if profile ~= nil then
+		ProfileService.ProfileReleasing:Fire(player)
 		-- время выхода для офлайн-наград (OfflineService): пишем до EndSession, чтобы попало в сохранение
 		local offline = profile.Data.Offline
 		if offline then
@@ -96,12 +152,36 @@ local function HandlePlayerRemoving(player)
 		end
 		profile:EndSession()
 	end
+	resumeWaiters(player)
+
+	-- состояние чистим позже: обработчики PlayerRemoving других сервисов ещё могут спросить профиль
+	task.delay(10, function()
+		if not player:IsDescendantOf(Players) then
+			loading[player], loadFailed[player], leaving[player], warned[player], waiters[player] =
+				nil, nil, nil, nil, nil
+		end
+	end)
 end
 
-function ProfileService:WaitUntilProfileLoaded(player)
-	repeat
-		task.wait(2)
-	until Profiles[player] or not player:IsDescendantOf(Players)
+function ProfileService:IsProfileLoaded(player): boolean
+	return player ~= nil and Profiles[player] ~= nil
+end
+
+-- Ждёт профиль без опроса: true — готов; false — игрок ушёл / загрузка не удалась (вызывающий обязан остановиться).
+function ProfileService:WaitUntilProfileLoaded(player): boolean
+	while not Profiles[player] do
+		if leaving[player] or loadFailed[player] or not player:IsDescendantOf(Players) then
+			return false
+		end
+		local list = waiters[player]
+		if not list then
+			list = {}
+			waiters[player] = list
+		end
+		table.insert(list, coroutine.running())
+		coroutine.yield()
+	end
+	return true
 end
 
 function ProfileService:GetProfile(player)
@@ -122,7 +202,7 @@ function ProfileService:ChangeData(player, redirectories, newValue)
 	local profile, profileData = ProfileService:GetProfile(player)
 
 	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		reportUnavailable(player, "ChangeData")
 		return
 	end
 
@@ -160,7 +240,7 @@ function ProfileService:GetData(player, redirectories)
 	local profile, profileData = ProfileService:GetProfile(player)
 
 	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		reportUnavailable(player, "GetData")
 		return nil
 	end
 
@@ -227,7 +307,7 @@ end
 function ProfileService:AddItem(player, itemId, itemData)
 	local profile, profileData = ProfileService:GetProfile(player)
 	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		reportUnavailable(player, "AddItem")
 		return false
 	end
 
@@ -247,7 +327,7 @@ end
 function ProfileService:RemoveItem(player, itemId)
 	local profile, profileData = ProfileService:GetProfile(player)
 	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		reportUnavailable(player, "RemoveItem")
 		return false
 	end
 
@@ -267,7 +347,7 @@ end
 function ProfileService:ClearItems(player)
 	local profile, profileData = ProfileService:GetProfile(player)
 	if not profileData then
-		warn("Profile data not found for player: " .. (player.Name or "Unknown"))
+		reportUnavailable(player, "ClearItems")
 		return
 	end
 

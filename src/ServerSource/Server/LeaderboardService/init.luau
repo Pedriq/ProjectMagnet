@@ -365,8 +365,10 @@ function LeaderboardService:KnitStart()
 		syncPlayer(player)
 	end)
 
+	-- Финальная запись — пока профиль ещё у сервера (после PlayerRemoving ProfileService уже отпустил сессию)
+	ProfileService.ProfileReleasing:Connect(syncPlayer)
+
 	Players.PlayerRemoving:Connect(function(player)
-		syncPlayer(player)
 		-- кэш последней записи больше не нужен (иначе копился бы по записи на каждого побывавшего игрока)
 		for _, stat in ipairs(STATS) do
 			lastWritten[tostring(player.UserId) .. stat.key] = nil
