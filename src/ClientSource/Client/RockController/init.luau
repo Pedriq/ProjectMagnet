@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
+local perf = require(ReplicatedStorage.ClientSource.perf)
 
 local player = Players.LocalPlayer
 
@@ -59,39 +60,51 @@ function RockController:UpdateRockDamage(newHp, maxHp, visualData, value)
 end
 
 function RockController:KnitStart()
-	PlayerManagerService.HitRock:Connect(function(stripId, rockIndex, maxHp, newHp)
-		if not stripId or not rockIndex then
+	PlayerManagerService.HitRocks:Connect(function(hits)
+		if type(hits) ~= "table" then
 			return
 		end
-
-		local rockKey = tostring(stripId) .. "_" .. tostring(rockIndex)
-
-		local visualData = self.VisualizedRocks[rockKey]
-
-		if not visualData then
-			return
+		for _, hit in ipairs(hits) do
+			self:_OnRockHit(hit[1], hit[2], hit[3], hit[4])
 		end
-
-		-- Камень добит: сразу убираем коллизию хитбокса ЛОКАЛЬНО. Сервер и так
-		-- удалит хитбокс, но удаление долетает только через пинг, а персонаж
-		-- симулируется у клиента — без этого игрок успевает «споткнуться» о
-		-- невидимый хитбокс уже разбитого камня. Один раз по событию, без опроса.
-		if newHp <= 0 then
-			local hitbox = visualData.Hitbox
-			if hitbox and hitbox.Parent then
-				hitbox.CanCollide = false
-			end
-		end
-
-		-- Эффект попадания
-		self:HitRock(visualData.Model)
-
-		-- Цифра урона, полоска HP, искры, тряска; на добивании — взрыв
-		self.Components.HitFeedback:OnHit(visualData, maxHp, newHp)
-
-		-- Разрушение сегментов
-		self:UpdateRockDamage(newHp, maxHp, visualData, true)
 	end)
+end
+
+function RockController:_OnRockHit(stripId, rockIndex, maxHp, newHp)
+	if not stripId or not rockIndex then
+		return
+	end
+
+	local rockKey = tostring(stripId) .. "_" .. tostring(rockIndex)
+
+	local visualData = self.VisualizedRocks[rockKey]
+
+	if not visualData then
+		return
+	end
+
+	-- Камень добит: сразу убираем коллизию хитбокса ЛОКАЛЬНО. Сервер и так
+	-- удалит хитбокс, но удаление долетает только через пинг, а персонаж
+	-- симулируется у клиента — без этого игрок успевает «споткнуться» о
+	-- невидимый хитбокс уже разбитого камня. Один раз по событию, без опроса.
+	if newHp <= 0 then
+		local hitbox = visualData.Hitbox
+		if hitbox and hitbox.Parent then
+			hitbox.CanCollide = false
+		end
+	end
+
+	-- Эффект попадания. На мобильных на добивающем ударе пропускаем тряску/вспышку:
+	-- модель тут же рассыпается (ShatterRock), лишние tween'ы только жгут кадр.
+	if not (perf.isMobile and newHp <= 0) then
+		self:HitRock(visualData.Model)
+	end
+
+	-- Цифра урона, полоска HP, искры, тряска; на добивании — взрыв
+	self.Components.HitFeedback:OnHit(visualData, maxHp, newHp)
+
+	-- Разрушение сегментов
+	self:UpdateRockDamage(newHp, maxHp, visualData, true)
 end
 
 function RockController:KnitInit()

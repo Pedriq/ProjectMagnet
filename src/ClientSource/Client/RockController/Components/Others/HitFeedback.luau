@@ -5,6 +5,7 @@ local RarityColors = require(ReplicatedStorage.SharedSource.Datas.RarityColors)
 local Format = require(ReplicatedStorage.SharedSource.Utilities.Format)
 local juice = require(ReplicatedStorage.ClientSource.juice)
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
+local perf = require(ReplicatedStorage.ClientSource.perf)
 
 --[[
 	HitFeedback — «сочность» удара по камню (только у локального игрока):
@@ -18,6 +19,10 @@ local sfx = require(ReplicatedStorage.ClientSource.sfx)
 ]]
 
 local HitFeedback = {}
+
+-- сколько живёт цифра урона (juice.worldText: time 0.8 + запас) — для учёта лимита perf.maxWorldTexts
+local WORLD_TEXT_LIFETIME = 0.9
+local activeTexts = 0
 
 local HP_BAR_HIDE_AFTER = 1.6
 local HP_BAR_SIZE = UDim2.fromOffset(110, 14)
@@ -138,14 +143,24 @@ function HitFeedback:OnHit(visualData, maxHp: number, newHp: number)
 	local top = topOf(model)
 	local share = math.clamp(dealt / maxHp, 0, 1)
 
-	if dealt > 0 then
+	-- На мобильных при массовом разрушении цифр не больше perf.maxWorldTexts одновременно
+	if dealt > 0 and activeTexts < perf.maxWorldTexts then
+		activeTexts += 1
+		task.delay(WORLD_TEXT_LIFETIME, function()
+			activeTexts -= 1
+		end)
 		juice.worldText(top, "-" .. Format.short(dealt), Color3.new(1, 1, 1):Lerp(color, 0.35), {
 			-- studs: компактно над камнем, чуть крупнее при сильном ударе
 			size = 0.9 + share * 0.4,
 			rise = 1.8 + share * 0.8,
 		})
 	end
-	juice.burst(top - Vector3.new(0, 0.8, 0), color, 6 + math.floor(share * 10), { size = 0.7 })
+	juice.burst(
+		top - Vector3.new(0, 0.8, 0),
+		color,
+		math.max(math.floor((6 + math.floor(share * 10)) * perf.burstScale), 1),
+		{ size = 0.7 }
+	)
 	-- лёгкая тряска только на обычных ударах; добивающий удар камеру не трясёт
 	if newHp > 0 then
 		juice.shake(0.06 + share * 0.15)
@@ -165,7 +180,7 @@ function HitFeedback:OnShatter(visualData, top: Vector3, color: Color3)
 	end
 
 	-- без тряски камеры и FOV-удара на разрушении — только искры и звук
-	juice.burst(top, color, 40, { speed = 1.6, size = 1.4 })
+	juice.burst(top, color, math.floor(40 * perf.burstScale), { speed = 1.6, size = 1.4 })
 	sfx.play("Shatter", { jitter = 0.06 })
 end
 

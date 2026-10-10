@@ -41,9 +41,11 @@ local PlayerManagerService = Knit.CreateService({
 	-- См. BuffHandler / BuffConfig.
 	PlayerBuffs = {},
 	Client = {
-		-- Fire(player, stripId, rockIndex, maxHp, newHp) — за КАЖДЫЙ задетый камень
-		-- (для визуала конкретного камня — ShakeRock/FlashRock в RockController).
-		HitRock = Knit.CreateSignal(),
+		-- Fire(player, hits) — ОДИН раз за взмах/свип сразу по всем задетым камням:
+		-- hits = { {stripId, rockIndex, maxHp, newHp}, ... } (для визуала конкретного
+		-- камня — ShakeRock/FlashRock в RockController). Батч вместо remote'а на камень —
+		-- при беге через поле камней много, и сетевой трафик/нагрузка на мобильных росла.
+		HitRocks = Knit.CreateSignal(),
 		-- Fire(player) — ровно 1 раз за взмах (см. PlayerMagnetHitboxManager),
 		-- даже если этим взмахом задето сразу несколько стеблей.
 		-- Для UI-фидбека начисления силы (ClickEffect) — не привязан к конкретному камню.

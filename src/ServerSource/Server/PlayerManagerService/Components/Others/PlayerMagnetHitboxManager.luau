@@ -209,21 +209,26 @@ function PlayerMagnetHitboxManager:_HitTargets(player, targets, damage: number, 
 	-- события HitRock, DeleteRockVisual снесёт визуал первым, и обработчик
 	-- HitRock просто не найдёт камень в VisualizedRocks (эффект удара пропадёт).
 	local killedParts = {}
+	local hits = table.create(#targets)
 
 	for _, target in ipairs(targets) do
 		local isLethal = self:ApplyDamage(player, target.rockState, target.part, damage)
 
-		PlayerManagerService.Client.HitRock:Fire(
-			player,
+		table.insert(hits, {
 			target.part:GetAttribute("StripId"),
 			target.part:GetAttribute("RockIndex"),
 			target.part:GetAttribute("MaxHp"),
-			target.rockState.hp
-		)
+			target.rockState.hp,
+		})
 
 		if isLethal then
 			table.insert(killedParts, target.part)
 		end
+	end
+
+	-- один remote на весь батч (раньше — по remote'у на камень)
+	if #hits > 0 then
+		PlayerManagerService.Client.HitRocks:Fire(player, hits)
 	end
 
 	for _, part in ipairs(killedParts) do

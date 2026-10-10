@@ -1,5 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local perf = require(ReplicatedStorage.ClientSource.perf)
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
@@ -164,17 +166,51 @@ function RockVisualizer:UpdateRockDamage(hp, maxHp, visualData, animate)
 	end
 end
 
-function RockVisualizer.Start()
-	PlayerRockFolder.DescendantAdded:Connect(function(descendant)
+-- Целая полоса камней приходит разом: клон модели + проход по всем деталям на каждый
+-- камень в один кадр давали лаг-спайк при беге на высокой скорости. На мобильных
+-- визуалы создаются очередью (perf.rockVisualsPerFrame за кадр), на ПК — сразу, как раньше.
+local pending: { BasePart } = {}
+local pendingHead = 1
+
+local function enqueueVisual(descendant: Instance)
+	if perf.rockVisualsPerFrame == math.huge then
 		RockVisualizer:CreateRockVisual(descendant)
-	end)
+	elseif descendant:IsA("BasePart") then
+		table.insert(pending, descendant)
+	end
+end
+
+local function drainQueue()
+	local budget = perf.rockVisualsPerFrame
+	while budget > 0 and pendingHead <= #pending do
+		local rock = pending[pendingHead]
+		pending[pendingHead] = nil
+		pendingHead += 1
+		-- камень мог исчезнуть (деспавн полосы/добит), пока ждал очереди
+		if rock.Parent then
+			RockVisualizer:CreateRockVisual(rock)
+			budget -= 1
+		end
+	end
+	if pendingHead > #pending then
+		table.clear(pending)
+		pendingHead = 1
+	end
+end
+
+function RockVisualizer.Start()
+	PlayerRockFolder.DescendantAdded:Connect(enqueueVisual)
 
 	PlayerRockFolder.DescendantRemoving:Connect(function(descendant)
 		RockVisualizer:DeleteRockVisual(descendant)
 	end)
 
 	for _, descendant in ipairs(PlayerRockFolder:GetDescendants()) do
-		RockVisualizer:CreateRockVisual(descendant)
+		enqueueVisual(descendant)
+	end
+
+	if perf.rockVisualsPerFrame ~= math.huge then
+		RunService.Heartbeat:Connect(drainQueue)
 	end
 end
 

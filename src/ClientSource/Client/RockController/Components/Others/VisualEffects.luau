@@ -4,6 +4,7 @@ local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local sfx = require(ReplicatedStorage.ClientSource.sfx)
+local perf = require(ReplicatedStorage.ClientSource.perf)
 
 local VisualEffects = {}
 
@@ -70,7 +71,8 @@ function VisualEffects:_GetHighlight(model)
 end
 
 function VisualEffects:FlashRock(model)
-	if not model or not model.Parent then
+	-- Highlight на мобильных дорогой (и есть лимит одновременных Highlight в движке) — там вспышки нет
+	if perf.isMobile or not model or not model.Parent then
 		return
 	end
 
@@ -246,6 +248,13 @@ end
 -- factor — доля от исходного размера (1 = как было, MAGNET_END_SCALE = в момент засасывания).
 local function setSegmentScale(segment, factor: number, baseSize: Vector3?)
 	if segment:IsA("Model") then
+		-- ScaleTo у Model — самая дорогая операция полёта; на мобильных не чаще, чем
+		-- при заметном (>6%) изменении масштаба
+		local last = segment:GetAttribute("LastScale")
+		if perf.isMobile and last and math.abs(last - factor) < 0.06 and factor > MAGNET_END_SCALE then
+			return
+		end
+		segment:SetAttribute("LastScale", factor)
 		segment:ScaleTo(factor)
 	else
 		segment.Size = (baseSize :: Vector3) * factor
@@ -341,6 +350,13 @@ function VisualEffects:BreakSegment(segment, delay: number?)
 	end
 
 	segment:SetAttribute("Broken", true)
+
+	-- Массовое разрушение (бег по полю на мобильном): лишние кусочки не летят, а просто
+	-- исчезают — руда начисляется сервером независимо от визуала.
+	if #flying >= perf.maxFlying then
+		segment:Destroy()
+		return
+	end
 
 	-- Внутри Model осколка части держатся на весу через WeldConstraint к
 	-- остальной части камня (как и одиночный кубик) — рвём все такие связи
