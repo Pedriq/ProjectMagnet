@@ -11,7 +11,12 @@ local EtNum = require(ReplicatedStorage.Packages.EtNum)
 local BaseStatsValues = require(ReplicatedStorage.SharedSource.Datas.BaseStatsValues)
 local OreConfig = require(ReplicatedStorage.SharedSource.Datas.OreConfig)
 local DamageCurve = require(ReplicatedStorage.SharedSource.Datas.DamageCurve)
+local RockGeometry = require(ReplicatedStorage.SharedSource.Object.RockGeometry)
 local PlayerMagnetHitboxManager = {}
+
+local PlayersRockFolder = workspace:WaitForChild("PlayersRock")
+-- Высота запроса камней над землёй (studs): с запасом выше любого камня и любого роста аватара
+local HIT_QUERY_HEIGHT = 40
 
 ---- Utilities
 local utilsFolder = ReplicatedStorage.SharedSource.Utilities
@@ -93,19 +98,27 @@ local function overlapsCircle(hitbox: BasePart, part: BasePart): boolean
 end
 
 function PlayerMagnetHitboxManager:CollectTargets(player)
-	local OverlapParams = OverlapParams.new()
-	OverlapParams.FilterType = Enum.RaycastFilterType.Exclude
-	OverlapParams.FilterDescendantsInstances = {}
-
 	local hitbox = player.Character and player.Character:FindFirstChild("MagnetHitbox")
+	local rockFolder = PlayersRockFolder:FindFirstChild(player.UserId .. "_Rock")
 
-	if not hitbox then
+	if not hitbox or not rockFolder then
 		return {}
 	end
 
-	OverlapParams.CollisionGroup = hitbox.CollisionGroup
+	-- Сам хитбокс почти плоский (Y ~0.13) и сидит на высоте HumanoidRootPart, а коробка
+	-- камня идёт от земли до высоты модели. Если искать пересечение с самим хитбоксом,
+	-- попадание зависит от роста/масштаба аватара: у высокого аватара корень выше
+	-- верхушки камня — сервер его не бьёт, хотя клиент уже трясёт камень и пускает
+	-- игрока насквозь. Поэтому ищем по высокой коробке от земли над кругом хитбокса,
+	-- а точную проверку по кругу делает overlapsCircle (по горизонтали). Только камни
+	-- этого игрока — по его папке (Include).
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { rockFolder }
 
-	local parts = workspace:GetPartsInPart(hitbox, OverlapParams)
+	local side = math.max(hitbox.Size.X, hitbox.Size.Z)
+	local center = Vector3.new(hitbox.Position.X, RockGeometry.GetGroundY() + HIT_QUERY_HEIGHT / 2, hitbox.Position.Z)
+	local parts = workspace:GetPartBoundsInBox(CFrame.new(center), Vector3.new(side, HIT_QUERY_HEIGHT, side), params)
 
 	-- Собираем задетые камни, ничего пока не начисляя и не проигрывая —
 	-- иначе на каждый тик хитбокса (их может быть больше, чем реальных взмахов)
